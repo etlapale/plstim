@@ -7,8 +7,12 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
+#ifdef _WIN32
+# include <windows.h>
+#else
+# include <X11/Xlib.h>
+# include <X11/Xatom.h>
+#endif
 
 #include <EGL/egl.h>
 
@@ -24,10 +28,20 @@
 //#define CLOCK CLOCK_MONOTONIC
 
 
+static EGLNativeDisplayType
+open_native_display (void* param)
+{
+#ifdef _WIN32
+  return (EGLNativeDisplayType) 0;
+#else
+  return (EGLNativeDisplayType) XOpenDisplay ((char*) param);
+#endif
+}
+
 static int
-make_x_window (Display *dpy, EGLDisplay egl_dpy,
-	       int width, int height, const char* title,
-	       Window *window, EGLConfig *conf)
+make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
+		    int width, int height, const char* title,
+		    EGLNativeWindowType *window, EGLConfig *conf)
 {
   // Required characteristics
   EGLint egl_attr[] = {
@@ -47,20 +61,26 @@ make_x_window (Display *dpy, EGLDisplay egl_dpy,
     return 0;
   }
 
+#ifdef _WIN32
+#else
   // Get the default screen and root window
+  Display *dpy = (Display*) nat_dpy;
   Window root = DefaultRootWindow (dpy);
   Window scrnum = DefaultScreen (dpy);
+#endif
 
   // Fetch visual information for the configuration
-  XVisualInfo xvis;
   EGLint vid;
-  XVisualInfo *xvinfo;
   int num_visuals;
   if (! eglGetConfigAttrib (egl_dpy, config,
 			    EGL_NATIVE_VISUAL_ID, &vid)) {
     fprintf (stderr, "could not get native visual id\n");
     return 0;
   }
+#ifdef _WIN32
+#else
+  XVisualInfo xvis;
+  XVisualInfo *xvinfo;
   xvis.visualid = vid;
   xvinfo = XGetVisualInfo (dpy, VisualIDMask, &xvis, &num_visuals);
   if (num_visuals == 0) {
@@ -81,75 +101,17 @@ make_x_window (Display *dpy, EGLDisplay egl_dpy,
   win = XCreateWindow (dpy, root, 0, 0, width, height, 0,
 			xvinfo->depth, InputOutput, xvinfo->visual,
 			mask, &xattr);
+  *window = (EGLNativeWindowType) win;
 
   // Set X hints and properties
   XStoreName (dpy, win, title);
 
-  XFree (xvinfo);
-  *conf = config;
-  *window = win;
-  return 1;
-}
-
-
-int
-main (int argc, char* argv[])
-{
-  struct timespec tp_start, tp_stop;
-  int res;
-
-  Display *dpy;
-  Window win;
-  Atom atom_fs, atom_state;
-
-  EGLDisplay egl_dpy;
-  EGLConfig config;
-  EGLint egl_maj, egl_min;
-
-  int i;
-  int nframes = 60*2;
-  unsigned int width = 300, height = 300;
-  int fullscreen = 0;
-
-
-  // Get the clock resolution
-  res = clock_getres (CLOCK, &tp_start);
-  if (res < 0) {
-    perror ("clock_getres");
-    return 1;
-  }
-  printf ("clock %d resolution: %lds %ldns\n",
-	  CLOCK, tp_start.tv_sec, tp_start.tv_nsec);
-
-  // Setup X11
-  dpy = XOpenDisplay (NULL);
-  if (dpy == NULL) {
-    fprintf (stderr, "could not open X display\n");
-    return 1;
-  }
-
-  // Setup EGL
-  egl_dpy = eglGetDisplay ((EGLNativeDisplayType) dpy);
-  if (egl_dpy == EGL_NO_DISPLAY) {
-    fprintf (stderr, "could not get an EGL display\n");
-    return 1;
-  }
-  if (! eglInitialize (egl_dpy, &egl_maj, &egl_min)) {
-    fprintf (stderr, "could not init the EGL display\n");
-    return 1;
-  }
-  printf ("EGL version %d.%d\n", egl_maj, egl_min);
-
-  // Create a system window
-  int ret = make_x_window (dpy, egl_dpy, width, height, argv[0],
-			   &win, &config);
-  if (ret == 0)
-    return 1;
-
   XMapWindow (dpy, win);
-  printf ("Mapping window\n");
+  XFree (xvinfo);
+#endif
 
   // Make the window fullscreen
+#if 0
   if (fullscreen) {
     Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
     Atom fs_atm = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
@@ -164,6 +126,70 @@ main (int argc, char* argv[])
     xev.xclient.data.l[2] = 0;
     XSendEvent (dpy, DefaultRootWindow (dpy), False, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
   }
+#endif
+
+  *conf = config;
+  return 1;
+}
+
+
+int
+main (int argc, char* argv[])
+{
+  int res;
+
+  EGLNativeDisplayType nat_dpy;
+  EGLNativeWindowType nat_win;
+
+  EGLDisplay egl_dpy;
+  EGLConfig config;
+  EGLint egl_maj, egl_min;
+
+  int i;
+  int nframes = 60*1;
+  unsigned int width = 300, height = 300;
+
+#ifdef _WIN32
+#else
+  struct timespec tp_start, tp_stop;
+
+  // Get the clock resolution
+  res = clock_getres (CLOCK, &tp_start);
+  if (res < 0) {
+    perror ("clock_getres");
+    return 1;
+  }
+  printf ("clock %d resolution: %lds %ldns\n",
+	  CLOCK, tp_start.tv_sec, tp_start.tv_nsec);
+#endif
+
+  // Setup X11
+  nat_dpy = open_native_display (NULL);
+#if 0
+  if (dpy == NULL) {
+    fprintf (stderr, "could not open X display\n");
+    return 1;
+  }
+#endif
+
+  // Setup EGL
+  egl_dpy = eglGetDisplay (nat_dpy);
+  if (egl_dpy == EGL_NO_DISPLAY) {
+    fprintf (stderr, "could not get an EGL display\n");
+    return 1;
+  }
+  if (! eglInitialize (egl_dpy, &egl_maj, &egl_min)) {
+    fprintf (stderr, "could not init the EGL display\n");
+    return 1;
+  }
+  printf ("EGL version %d.%d\n", egl_maj, egl_min);
+
+  // Create a system window
+  int ret = make_native_window (nat_dpy, egl_dpy,
+				width, height, argv[0],
+				&nat_win, &config);
+  if (ret == 0)
+    return 1;
 
   eglBindAPI(EGL_OPENGL_ES_API);
 
@@ -186,7 +212,7 @@ main (int argc, char* argv[])
 
   // Create the EGL surface associated with the window
   EGLSurface sur = eglCreateWindowSurface (egl_dpy, config,
-			 (EGLNativeWindowType) win, NULL);
+					   nat_win, NULL);
   if (sur == EGL_NO_SURFACE) {
     fprintf (stderr, "could not create an EGL surface\n");
     return 1;
@@ -276,11 +302,14 @@ main (int argc, char* argv[])
     return 1;
   }
 
+#ifdef _WIN32
+#else
   // Mark the beginning time
   res = clock_gettime (CLOCK, &tp_start);
+#endif
 
-    glEnableVertexAttribArray (ppos);
-    glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+  glEnableVertexAttribArray (ppos);
+  glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
 
   for (i = 0; i < nframes; i++) {
     glClear (GL_COLOR_BUFFER_BIT);
@@ -290,6 +319,8 @@ main (int argc, char* argv[])
     eglSwapBuffers (egl_dpy, sur);
   }
 
+#ifdef _WIN32
+#else
   // Mark the end time
   res = clock_gettime (CLOCK, &tp_stop);
 
@@ -298,13 +329,19 @@ main (int argc, char* argv[])
 	  tp_start.tv_sec, tp_start.tv_nsec);
   printf ("stop:  %lds %ldns\n",
 	  tp_stop.tv_sec, tp_stop.tv_nsec);
+#endif
 
   // Cleanup
   eglDestroyContext (egl_dpy, ctx);
   eglDestroySurface (egl_dpy, sur);
   eglTerminate (egl_dpy);
-  XDestroyWindow (dpy, win);
+
+#ifdef _WIN32
+#else
+  Display *dpy = (Display*) nat_dpy;
+  XDestroyWindow (dpy, (Window) nat_win);
   XCloseDisplay (dpy);
+#endif
 
   return 0;
 }
