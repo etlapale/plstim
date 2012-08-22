@@ -15,8 +15,14 @@
 #endif
 
 #include <EGL/egl.h>
-
 #include <GLES2/gl2.h>
+
+
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
+using namespace std;
 
 
 // If possible, use a clock not sensible to adjtime or ntp
@@ -229,12 +235,18 @@ main (int argc, char* argv[])
 	  glGetString (GL_EXTENSIONS));
 
   glClearColor (0.1, 0.1, 0.1, 1.0);
-  glViewport (0, 0, width, height);
+  //glViewport (0, 0, width, height);
 
-  // Create a fragment shader for uniform colour
+  // Load a texture
+
+  // Create a fragment shader for the texture
+  stringstream ss;
   static const char *fshader_txt = 
+    //"varying lowp vec2 tex_coord;\n"
+    //"uniform sampler2D texture;\n"
     "void main() {\n"
     "  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+    //"  gl_FragColor = tex2d(texture, tex_coord);\n"
     "}\n";
   GLuint fshader = glCreateShader (GL_FRAGMENT_SHADER);
   if (fshader == 0) {
@@ -252,17 +264,32 @@ main (int argc, char* argv[])
   }
 
   // Create an identity vertex shader
+  ss.str("");
+  ss << fixed << setprecision(12)
+     << "const mat4 proj_matrix = mat4("
+     << (2.0/width) << ", 0.0, 0.0, -1.0," << endl
+     << "0.0, " << -(2.0/height) << ", 0.0, 1.0," << endl
+     << "0.0, 0.0, -1.0, 0.0," << endl
+     << "0.0, 0.0, 0.0, 1.0);" << endl
+     << "attribute vec2 ppos;" << endl
+     << "void main () {" << endl
+     << "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
+     << "}" << endl;
+  auto vshader_str = ss.str();
+#if 0
   static const char *vshader_txt =
     "attribute vec2 ppos;\n"
     "void main() {\n"
     "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);\n"
     "}\n";
+#endif
   GLuint vshader = glCreateShader (GL_VERTEX_SHADER);
   if (vshader == 0) {
     fprintf (stderr, "could not create a vertex shader (0x%x)\n",
 	     glGetError ());
     return 1;
   }
+  const char* vshader_txt = vshader_str.c_str();
   glShaderSource (vshader, 1, (const char **) &vshader_txt, NULL);
   glCompileShader (vshader);
   glGetShaderiv (vshader, GL_COMPILE_STATUS, &stat);
@@ -302,12 +329,29 @@ main (int argc, char* argv[])
 #endif
 
   // Create the vertex buffer
-  GLfloat vertices[] = {
+#if 0
+  static GLfloat vertices[] = {
     0,0.5,
     -0.5,-0.5,
     0.5,-0.5
   };
-
+#endif
+  static GLfloat vertices[] = {
+#if 0
+    width/2.0f, height/4.0f,
+    width/4.0f, 3.0f*height/4.0f,
+    3.0f*width/4.0f, 3.0f*height/4.0f
+#else
+    4, 4,
+    100, 4,
+    4, 12
+#endif
+  };
+  /*GLuint vbuf;
+  glGenBuffers (1, &vbuf);
+  glBindBuffer (GL_ARRAY_BUFFER, vbuf);
+  glBufferData (GL_ARRAY_BUFFER, sizeof (vertices), vertices, GL_STATIC_DRAW);
+*/
   glEnableVertexAttribArray (ppos);
   glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glClear (GL_COLOR_BUFFER_BIT);
