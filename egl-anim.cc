@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <errno.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,9 @@
 
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+
+
+#include <png.h>
 
 
 #include <iomanip>
@@ -42,6 +47,121 @@ open_native_display (void* param)
 #else
   return (EGLNativeDisplayType) XOpenDisplay ((char*) param);
 #endif
+}
+
+static bool
+load_png_image (const char* path, int* width, int* height,
+		GLint* tex_type, GLubyte** data)
+{
+  // Open the input file
+  FILE* fp = fopen (path, "rb");
+  if (! fp) {
+    fprintf (stderr, "could not open the input frame ‘%s’: %s\n",
+	     path, strerror (errno));
+    return false;
+  }
+
+  // Make sure it’s a PNG
+  png_byte magic[8];
+  fread (magic, 1, sizeof (magic), fp);
+  if (! png_check_sig (magic, sizeof (magic))) {
+    fprintf (stderr, "‘%s’ is not a valid PNG\n", path);
+    fclose (fp);
+    return false;
+  }
+
+  // Initialise PNG structures
+  auto png_ptr = png_create_read_struct (PNG_LIBPNG_VER_STRING,
+					 NULL, NULL, NULL);
+  if (! png_ptr) {
+    fprintf (stderr, "could not initialise libpng reader\n");
+    fclose (fp);
+    return false;
+  }
+  auto info_ptr = png_create_info_struct (png_ptr);
+  if (! info_ptr) {
+    fprintf (stderr, "could not initialise libpng info\n");
+    png_destroy_read_struct (&png_ptr, NULL, NULL);
+    fclose (fp);
+    return false;
+  }
+
+  // Declare allocated arrays to delete them on error
+  GLubyte* pixels = NULL;
+  png_bytep* row_pointers = NULL;
+
+  // Error handling
+  if (setjmp (png_jmpbuf (png_ptr))) {
+    fprintf (stderr, "error while processing the PNG\n");
+    if (pixels != NULL)
+      delete [] pixels;
+    if (row_pointers != NULL)
+      delete [] row_pointers;
+    png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
+    fclose (fp);
+    return false;
+  }
+
+  // Start reading the PNG
+  png_init_io (png_ptr, fp);
+  png_set_sig_bytes (png_ptr, sizeof (magic));
+  png_read_info (png_ptr, info_ptr);
+
+  // Check info
+  int depth = png_get_bit_depth (png_ptr, info_ptr);
+  int type = png_get_color_type (png_ptr, info_ptr);
+  printf ("  Image depth: %d, type: %d\n", depth, type);
+  if (type == PNG_COLOR_MASK_PALETTE)
+    png_set_palette_to_rgb (png_ptr);
+  /*if (type == PNG_COLOR_TYPE_GRAY && depth < 8)
+    png_set_gray_1*/
+  if (png_get_valid (png_ptr, info_ptr, PNG_INFO_tRNS))
+    png_set_tRNS_to_alpha (png_ptr);
+  png_read_update_info (png_ptr, info_ptr);
+
+  // Read image info
+  png_uint_32 pwidth, pheight;
+  png_get_IHDR (png_ptr, info_ptr,
+		(png_uint_32*) &pwidth,
+		(png_uint_32*) &pheight,
+		&depth, &type,
+		NULL, NULL, NULL);
+  int bpp;
+  GLint gltype;
+  switch (type) {
+  case PNG_COLOR_TYPE_RGB:
+    bpp = 3;
+    gltype = GL_RGB;
+    break;
+  case PNG_COLOR_TYPE_RGBA:
+    bpp = 4;
+    gltype = GL_RGBA;
+    break;
+  default:
+    fprintf (stderr, "unknown color type\n");
+    png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
+    return false;
+  }
+
+  // Read the pixels
+  pixels = new GLubyte[pwidth*pheight*bpp];
+  row_pointers = new png_bytep[pheight];
+  for (png_uint_32 i = 0; i < pheight; i++)
+    row_pointers[i] = pixels + i*pwidth*bpp;
+  png_read_image (png_ptr, row_pointers);
+
+  // Cleanup
+  delete [] row_pointers;
+  png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
+  fclose (fp);
+
+  // Store the results
+  *width = pwidth;
+  *height = pheight;
+  *tex_type = gltype;
+  *data = pixels;
+
+  return true;
 }
 
 static int
@@ -152,7 +272,6 @@ main (int argc, char* argv[])
   EGLint egl_maj, egl_min;
 
   int i;
-  int nframes = 60*1;
   unsigned int width = 300, height = 300;
 
 #ifdef _WIN32
@@ -237,16 +356,55 @@ main (int argc, char* argv[])
   glClearColor (0.1, 0.1, 0.1, 1.0);
   //glViewport (0, 0, width, height);
 
-  // Load a texture
+  // Load the frames as textures
+  int nframes = argc - 1;
+  printf ("Creating %d texture frames\n", nframes);
+  auto tframes = new GLuint[nframes];
+  glGenTextures (nframes, tframes);
+  // ...
+  for (int i = 0; i < nframes; i++) {
+    // Load the image as a PNG file
+    GLubyte* data;
+    int twidth, theight;
+    GLint gltype;
+    if (! load_png_image (argv[i+1], &twidth, &theight,
+			  &gltype, &data))
+      return 1;
+
+    glBindTexture (GL_TEXTURE_2D, tframes[i]);
+    cout << "texture size: " << twidth << "×" << theight << endl;
+    glTexImage2D (GL_TEXTURE_2D, 0, gltype, twidth, theight,
+		  0, gltype, GL_UNSIGNED_BYTE, data);
+    auto err = glGetError ();
+    if (err != GL_NO_ERROR) {
+      cerr << "could not set texture data (0x"
+	   << hex << err << ')' << endl;
+      return 1;
+    }
+
+    // Dump the pixels content
+    cout << "GL type: " << hex << gltype << dec << endl;
+    auto of = fopen ("pixels.raw", "wb");
+    if (gltype == GL_RGBA)
+      fwrite (data, 1, twidth*theight*4, of);
+    fclose (of);
+    
+    // TODO: erase the memory
+
+    // Make the texture accessible from the shaders
+    glUniform1i (tframes[i], i);
+  }
+
 
   // Create a fragment shader for the texture
   stringstream ss;
   static const char *fshader_txt = 
-    //"varying lowp vec2 tex_coord;\n"
-    //"uniform sampler2D texture;\n"
+    "varying mediump vec2 tex_coord;\n"
+    "uniform sampler2D texture;\n"
     "void main() {\n"
-    "  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    //"  gl_FragColor = tex2d(texture, tex_coord);\n"
+    //"  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+    //"  gl_FragColor = texture2D(texture, tex_coord);\n"
+    "  gl_FragColor = vec4(tex_coord.y, 0, 0, 1);\n"
     "}\n";
   GLuint fshader = glCreateShader (GL_FRAGMENT_SHADER);
   if (fshader == 0) {
@@ -259,21 +417,31 @@ main (int argc, char* argv[])
   GLint stat;
   glGetShaderiv (fshader, GL_COMPILE_STATUS, &stat);
   if (stat == 0) {
-    fprintf (stderr, "could not compile the fragment shader\n");
+    GLsizei len;
+    char log[1024];
+    glGetShaderInfoLog (fshader, 1024, &len, log);
+    cerr << "could not compile the fragment shader:" << endl
+         << log << endl;
     return 1;
   }
 
   // Create an identity vertex shader
   ss.str("");
   ss << fixed << setprecision(12)
+     // This projection matrix maps OpenGL coordinates
+     // to device coordinates (pixels)
      << "const mat4 proj_matrix = mat4("
      << (2.0/width) << ", 0.0, 0.0, -1.0," << endl
      << "0.0, " << -(2.0/height) << ", 0.0, 1.0," << endl
      << "0.0, 0.0, -1.0, 0.0," << endl
      << "0.0, 0.0, 0.0, 1.0);" << endl
      << "attribute vec2 ppos;" << endl
+     << "varying vec2 tex_coord;" << endl
      << "void main () {" << endl
      << "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
+     //<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);" << endl
+     //<< "  tex_coord = vec2(ppos.x, ppos.y);" << endl
+     << "  tex_coord = gl_Position.xy;" << endl
      << "}" << endl;
   auto vshader_str = ss.str();
 #if 0
@@ -294,7 +462,11 @@ main (int argc, char* argv[])
   glCompileShader (vshader);
   glGetShaderiv (vshader, GL_COMPILE_STATUS, &stat);
   if (stat == 0) {
-    fprintf (stderr, "could not compile the vertex shader\n");
+    GLsizei len;
+    char log[1024];
+    glGetShaderInfoLog (vshader, 1024, &len, log);
+    cerr << "could not compile the vertex shader:" << endl
+         << log << endl;
     return 1;
   }
 
@@ -331,22 +503,31 @@ main (int argc, char* argv[])
   // Create the vertex buffer
 #if 0
   static GLfloat vertices[] = {
-    0,0.5,
-    -0.5,-0.5,
-    0.5,-0.5
+    -1, -1,
+    -1,  1,
+     1,  1,
+
+     1,  1,
+    -1, -1,
+     1, -1
   };
-#endif
+#else
   static GLfloat vertices[] = {
-#if 0
-    width/2.0f, height/4.0f,
-    width/4.0f, 3.0f*height/4.0f,
-    3.0f*width/4.0f, 3.0f*height/4.0f
+#if 1
+    0, 0,
+    0, (GLfloat) height,
+    (GLfloat) width, (GLfloat) height,
+
+    (GLfloat) width, (GLfloat) height,
+    0, 0,
+    (GLfloat) width, 0
 #else
     4, 4,
     100, 4,
     4, 12
 #endif
   };
+#endif
   /*GLuint vbuf;
   glGenBuffers (1, &vbuf);
   glBindBuffer (GL_ARRAY_BUFFER, vbuf);
@@ -356,8 +537,8 @@ main (int argc, char* argv[])
   glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glClear (GL_COLOR_BUFFER_BIT);
 
-  for (i = 0; i < nframes; i++) {
-    glDrawArrays (GL_TRIANGLES, 0, 3);
+  for (i = 0; i < 100*nframes; i++) {
+    glDrawArrays (GL_TRIANGLES, 0, 6);
     eglSwapBuffers (egl_dpy, sur);
   }
 
