@@ -39,6 +39,19 @@ using namespace std;
 //#define CLOCK CLOCK_MONOTONIC
 
 
+static bool
+assert_gl_error (const std::string& msg)
+{
+  auto ret = glGetError ();
+  if (ret != GL_NO_ERROR) {
+    cerr << "could not " << msg
+	 << " (" << hex << ret << dec << ')' << endl;
+    exit(1);
+  }
+  return true;
+}
+
+
 static EGLNativeDisplayType
 open_native_display (void* param)
 {
@@ -129,6 +142,10 @@ load_png_image (const char* path, int* width, int* height,
   int bpp;
   GLint gltype;
   switch (type) {
+  case PNG_COLOR_TYPE_GRAY:
+    bpp = 1;
+    gltype = GL_LUMINANCE;
+    break;
   case PNG_COLOR_TYPE_RGB:
     bpp = 3;
     gltype = GL_RGB;
@@ -272,7 +289,7 @@ main (int argc, char* argv[])
   EGLint egl_maj, egl_min;
 
   int i;
-  unsigned int width = 300, height = 300;
+  unsigned int width = 512, height = 512;
 
 #ifdef _WIN32
 #else
@@ -353,7 +370,8 @@ main (int argc, char* argv[])
 	  glGetString (GL_RENDERER),
 	  glGetString (GL_EXTENSIONS));
 
-  glClearColor (0.1, 0.1, 0.1, 1.0);
+  //glClearColor (0.1, 0.1, 0.1, 1.0);
+  glClearColor (1, 1, 1, 1);
   //glViewport (0, 0, width, height);
 
   // Load the frames as textures
@@ -361,6 +379,7 @@ main (int argc, char* argv[])
   printf ("Creating %d texture frames\n", nframes);
   auto tframes = new GLuint[nframes];
   glGenTextures (nframes, tframes);
+  assert_gl_error ("generate textures");
   // ...
   for (int i = 0; i < nframes; i++) {
     // Load the image as a PNG file
@@ -372,27 +391,17 @@ main (int argc, char* argv[])
       return 1;
 
     glBindTexture (GL_TEXTURE_2D, tframes[i]);
-    cout << "texture size: " << twidth << "×" << theight << endl;
+    assert_gl_error ("bind a texture");
+    cout << "texture size: " << twidth << "×" << theight << endl
+         << "texture type: " << hex << gltype << dec << endl;
     glTexImage2D (GL_TEXTURE_2D, 0, gltype, twidth, theight,
 		  0, gltype, GL_UNSIGNED_BYTE, data);
-    auto err = glGetError ();
-    if (err != GL_NO_ERROR) {
-      cerr << "could not set texture data (0x"
-	   << hex << err << ')' << endl;
-      return 1;
-    }
+    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    assert_gl_error ("set texture data");
 
-    // Dump the pixels content
-    cout << "GL type: " << hex << gltype << dec << endl;
-    auto of = fopen ("pixels.raw", "wb");
-    if (gltype == GL_RGBA)
-      fwrite (data, 1, twidth*theight*4, of);
-    fclose (of);
-    
-    // TODO: erase the memory
-
-    // Make the texture accessible from the shaders
-    glUniform1i (tframes[i], i);
+    // Erase the memory, OpenGL has its own copy
+    delete [] data;
   }
 
 
@@ -403,10 +412,11 @@ main (int argc, char* argv[])
     "uniform sampler2D texture;\n"
     "void main() {\n"
     //"  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    //"  gl_FragColor = texture2D(texture, tex_coord);\n"
-    "  gl_FragColor = vec4(tex_coord.y, 0, 0, 1);\n"
+    "  gl_FragColor = texture2D(texture, tex_coord);\n"
+    //"  gl_FragColor = vec4(tex_coord.x, tex_coord.y, 0, 1);\n"
     "}\n";
   GLuint fshader = glCreateShader (GL_FRAGMENT_SHADER);
+  assert_gl_error ("create a fragment shader");
   if (fshader == 0) {
     fprintf (stderr, "could not create a fragment shader (0x%x)\n",
 	     glGetError ());
@@ -441,7 +451,7 @@ main (int argc, char* argv[])
      << "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
      //<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);" << endl
      //<< "  tex_coord = vec2(ppos.x, ppos.y);" << endl
-     << "  tex_coord = gl_Position.xy;" << endl
+     << "  tex_coord = vec2((gl_Position.x+1.0)/2.0, (-gl_Position.y+1.0)/2.0);" << endl
      << "}" << endl;
   auto vshader_str = ss.str();
 #if 0
@@ -457,6 +467,8 @@ main (int argc, char* argv[])
 	     glGetError ());
     return 1;
   }
+  assert_gl_error ("create a vertex shader");
+
   const char* vshader_txt = vshader_str.c_str();
   glShaderSource (vshader, 1, (const char **) &vshader_txt, NULL);
   glCompileShader (vshader);
@@ -472,8 +484,8 @@ main (int argc, char* argv[])
 
   // Add the fragment shader to the current program
   GLuint program = glCreateProgram ();
-  glAttachShader (program, vshader);
   glAttachShader (program, fshader);
+  glAttachShader (program, vshader);
   glLinkProgram (program);
   glGetProgramiv (program, GL_LINK_STATUS, &stat);
   if (stat == 0) {
@@ -484,9 +496,8 @@ main (int argc, char* argv[])
 	     "could not link the shaders:\n%s\n", log);
     return 1;
   }
-
-  glValidateProgram (program);
   glUseProgram (program);
+  assert_gl_error ("use the shaders program");
 
   int ppos = glGetAttribLocation (program, "ppos");
   if (ppos == -1) {
@@ -514,6 +525,7 @@ main (int argc, char* argv[])
 #else
   static GLfloat vertices[] = {
 #if 1
+#if 1
     0, 0,
     0, (GLfloat) height,
     (GLfloat) width, (GLfloat) height,
@@ -521,6 +533,15 @@ main (int argc, char* argv[])
     (GLfloat) width, (GLfloat) height,
     0, 0,
     (GLfloat) width, 0
+#else
+    10.0f, 10.0f,
+    10.0f, (GLfloat) height - 10.0f,
+    (GLfloat) width - 10.0f, (GLfloat) height - 10.0f,
+
+    (GLfloat) width - 10.0f, (GLfloat) height - 10.0f,
+    10.0f, 10.0f,
+    (GLfloat) width - 10.0f, 10.0f
+#endif
 #else
     4, 4,
     100, 4,
@@ -537,7 +558,21 @@ main (int argc, char* argv[])
   glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glClear (GL_COLOR_BUFFER_BIT);
 
-  for (i = 0; i < 100*nframes; i++) {
+  glActiveTexture (GL_TEXTURE0);
+
+  int texloc = glGetUniformLocation (program, "texture");
+  if (texloc == -1) {
+    cerr << "could not get location of ‘texture’" << endl;
+    return 1;
+  }
+  assert_gl_error ("get location of uniform ‘texture’");
+
+  int repeat = 60;
+  for (i = 0; i < repeat*nframes; i++) {
+
+    glBindTexture (GL_TEXTURE_2D, tframes[i/repeat]);
+    glUniform1i (texloc, 0);
+
     glDrawArrays (GL_TRIANGLES, 0, 6);
     eglSwapBuffers (egl_dpy, sur);
   }
