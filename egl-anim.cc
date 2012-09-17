@@ -403,6 +403,7 @@ main (int argc, char* argv[])
     // Erase the memory, OpenGL has its own copy
     delete [] data;
   }
+  cout << nframes << " frames loaded" << endl;
 
 
   // Create a fragment shader for the texture
@@ -505,12 +506,6 @@ main (int argc, char* argv[])
     return 1;
   }
 
-#ifdef _WIN32
-#else
-  // Mark the beginning time
-  res = clock_gettime (CLOCK, &tp_start);
-#endif
-
   // Create the vertex buffer
 #if 0
   static GLfloat vertices[] = {
@@ -567,10 +562,16 @@ main (int argc, char* argv[])
   }
   assert_gl_error ("get location of uniform ‘texture’");
 
-  int repeat = 60;
-  for (i = 0; i < repeat*nframes; i++) {
+  cout << "Starting" << endl;
+#ifdef _WIN32
+#else
+  // Mark the beginning time
+  res = clock_gettime (CLOCK, &tp_start);
+#endif
 
-    glBindTexture (GL_TEXTURE_2D, tframes[i/repeat]);
+
+  for (i = 0; i < nframes; i++) {
+    glBindTexture (GL_TEXTURE_2D, tframes[i%nframes]);
     glUniform1i (texloc, 0);
 
     glDrawArrays (GL_TRIANGLES, 0, 6);
