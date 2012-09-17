@@ -144,7 +144,7 @@ main (int argc, char* argv[])
     auto filename = new char[buflen];
 
     // Bar geometry
-    float orient = radians (70);
+    float orient = radians (110);
     int bx = (int) (ll*cos(orient));
     int by = (int) (ll*sin(orient));
     cout << bx << " " << by << endl;
@@ -155,8 +155,8 @@ main (int argc, char* argv[])
     int spacing = setup.deg2pix (1);
 
     // Motion
-    bool control = true;
-    bool up = false;
+    bool control = false;
+    bool up = true;
 
     float direction = fmod (orient
       + (orient < M_PI/2 ? -1 : +1) * (M_PI/2)	// Orientation
@@ -172,7 +172,7 @@ main (int argc, char* argv[])
     cout << "Line speed is 6.5 deg/s, or "
 	 << speed << " px/frame ("
 	 << (dx >= 0 ? "+" : "") << dx
-	 << (dy >= 0 ? "-" : "") << dy
+	 << (dy >= 0 ? "+" : "") << dy
 	 << ")" << endl;
     exit (42);
 
