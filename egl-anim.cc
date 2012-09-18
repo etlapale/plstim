@@ -26,8 +26,10 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-
 using namespace std;
+
+// Command line parsing
+#include <tclap/CmdLine.h>
 
 
 // If possible, use a clock not sensible to adjtime or ntp
@@ -254,7 +256,8 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
 #endif
 
   // Make the window fullscreen
-#if 0
+#if 1
+  bool fullscreen = true;
   if (fullscreen) {
     Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
     Atom fs_atm = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
@@ -289,7 +292,47 @@ main (int argc, char* argv[])
   EGLint egl_maj, egl_min;
 
   int i;
-  unsigned int width = 512, height = 512;
+  unsigned int width, height;
+
+  std::vector<std::string> images;
+  EGLint swap_interval;
+
+  try {
+    // Setup the command line parser
+    TCLAP::CmdLine cmd ("Display and record stimuli", ' ', "0.1");
+    TCLAP::ValueArg<string> arg_geom ("g", "geometry",
+	"Stimulus dimension in pixels", true, "", "WIDTHxHEIGHT");
+    cmd.add (arg_geom);
+    TCLAP::ValueArg<int> arg_swap ("s", "swap-interval",
+	"Swap interval in frames", false, 1, "INTERVAL");
+    cmd.add (arg_swap);
+    TCLAP::UnlabeledMultiArg<string> arg_images ("images",
+						 "list of images",
+						 true, "IMAGE");
+    cmd.add (arg_images);
+    // Parser the command line arguments
+    cmd.parse (argc, argv);
+
+    // Parse the geometry
+    auto geom = arg_geom.getValue ();
+    size_t sep = geom.find ('x');
+    if (sep == geom.npos) {
+      cerr << "error: invalid stimulus dimension: " << geom << endl;
+      return 1;
+    }
+    width = atof (geom.c_str ());
+    height = atof (geom.c_str () + sep + 1);
+    if (width == 0 || height == 0) {
+      cerr << "error: invalid stimulus dimension: " << geom << endl;
+      return 1;
+    }
+
+    images = arg_images.getValue ();
+    swap_interval = arg_swap.getValue ();
+  } catch (TCLAP::ArgException& e) {
+    cerr << "error: could not parse argument "
+         << e.argId () << ": " << e.error () << endl;
+  }
 
 #ifdef _WIN32
 #else
@@ -375,7 +418,7 @@ main (int argc, char* argv[])
   //glViewport (0, 0, width, height);
 
   // Load the frames as textures
-  int nframes = argc - 1;
+  int nframes = images.size ();
   printf ("Creating %d texture frames\n", nframes);
   auto tframes = new GLuint[nframes];
   glGenTextures (nframes, tframes);
@@ -386,7 +429,7 @@ main (int argc, char* argv[])
     GLubyte* data;
     int twidth, theight;
     GLint gltype;
-    if (! load_png_image (argv[i+1], &twidth, &theight,
+    if (! load_png_image (images[i].c_str (), &twidth, &theight,
 			  &gltype, &data))
       return 1;
 
@@ -561,6 +604,10 @@ main (int argc, char* argv[])
     return 1;
   }
   assert_gl_error ("get location of uniform ‘texture’");
+
+  // Set the swap interval
+  if (swap_interval != 1)
+    eglSwapInterval (egl_dpy, swap_interval);
 
   cout << "Starting" << endl;
 #ifdef _WIN32

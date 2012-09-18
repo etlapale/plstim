@@ -74,6 +74,8 @@ main (int argc, char* argv[])
     // Store the setup configuration
     if (! setup.load (setup_arg.getValue ()))
       return 1;
+    if (freq_arg.getValue () != 0.0f)
+      setup.refresh = freq_arg.getValue ();
     
     // Debug the configuration out
     cout << "Refresh rate: " << setup.refresh << " Hz" << endl
@@ -99,12 +101,12 @@ main (int argc, char* argv[])
     float lw = setup.deg2pix (lw_deg);
     cout << "Line width is " << lw_deg << " degrees, or "
          << lw << " pixels" << endl;
-    float bg_cd = 12;
+    float bg_cd = 20;
     float bg = setup.lum2px (bg_cd);
     cout << "Background luminance is " << bg_cd << " cd/m², or "
          << bg << " in [0,1]" << endl;
     // C%→L: C₁₂→13.44, C₂₅→15, C₃₉→16.68, C₅₂→18.24, C₇₀→20.4
-    float fg_cd = 100;//16.68;
+    float fg_cd = 150;//16.68;
     float fg = setup.lum2px (fg_cd);
     cout << "Foreground luminance is " << fg_cd << " cd/m², or "
          << fg << " in [0,1]" << endl;
@@ -136,9 +138,19 @@ main (int argc, char* argv[])
          << " degrees, or " << width << "×" << height << " pixels"
 	 << endl;
 
+    // Compute power of two size
+    int lgw = 1 << ((int) log2f (width));
+    int lgh = 1 << ((int) log2f (height));
+    if (lgw < width)
+      lgw <<= 1;
+    if (lgh < width)
+      lgh <<= 1;
+    cout << "Power of 2 dimensions: " << lgw << "×" << lgh << endl;
+    int offx = (lgw-width)/2;
+    int offy = (lgh-height)/2;
+
     // Create a Cairo image
-    auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
-				     width, height);
+    auto sur = ImageSurface::create (Cairo::FORMAT_RGB24, lgw, lgh);
 
     auto buflen = output_pattern.size () + 11;
     auto filename = new char[buflen];
@@ -174,10 +186,13 @@ main (int argc, char* argv[])
 	 << (dx >= 0 ? "+" : "") << dx
 	 << (dy >= 0 ? "+" : "") << dy
 	 << ")" << endl;
-    exit (42);
+
+    float radius = (width < height ? width / 2 : height / 2) - 1;
 
     // Render each frame
     auto cr = Cairo::Context::create (sur);
+    cr->set_antialias (Cairo::ANTIALIAS_NONE);
+    cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
     for (int t = 0; t < nframes; t++) {
       // Background
       cr->set_source_rgb (bg, bg, bg);
@@ -186,13 +201,19 @@ main (int argc, char* argv[])
       // Lines
       cr->set_line_width (lw);
       cr->set_source_rgb (fg, fg, fg);
-      for (int x = t*dx; x < width; x+=sx+spacing) {
-	for (int y = t*dy; y < height; y+=sy+spacing) {
+      for (int x = offx+t*dx; x < width+sx+spacing; x+=sx+spacing) {
+	for (int y = offy+t*dy; y < height+sy+spacing; y+=sy+spacing) {
 	  cr->move_to (x, y);
 	  cr->rel_line_to (bx, by);
 	}
       }
       cr->stroke ();
+
+      // Aperture
+      cr->rectangle (0, 0, lgw, lgh);
+      cr->arc (lgw/2, lgh/2, radius, 0, 2*M_PI);
+      cr->set_source_rgb (0, 0, 0);
+      cr->fill ();
 
       // Write the frame on disk
       snprintf (filename, buflen, output_pattern.c_str (), t);
