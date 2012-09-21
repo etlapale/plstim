@@ -5,19 +5,11 @@
 
 #include <cmath>
 
+#include "utils.h"
+
 
 namespace plstim
 {
-  /// Convert an angle in radians to degrees
-  static inline float degrees (float rads) {
-    return 180 * rads / M_PI;
-  }
-
-  /// Convert an angle in degrees to radians
-  static inline float radians (float degs) {
-    return M_PI * degs / 180;
-  }
-
   class Setup
   {
   public:

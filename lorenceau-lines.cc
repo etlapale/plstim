@@ -21,25 +21,6 @@ using namespace plstim;
 using namespace Cairo;
 
 
-/**
- * Convert a distance in seconds to degrees of visual field.
- */
-static inline float
-sec2deg (float dst)
-{
-  return dst / 60;
-}
-
-/**
- * Return the object luminance to the specified contrast.
- */
-static inline float
-luminance_from_weber_contrast (float contrast, float background)
-{
-  return contrast * background + background;
-}
-
-
 int
 main (int argc, char* argv[])
 {
