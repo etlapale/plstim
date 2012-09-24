@@ -124,7 +124,7 @@ main (int argc, char* argv[])
     int lgh = 1 << ((int) log2f (height));
     if (lgw < width)
       lgw <<= 1;
-    if (lgh < width)
+    if (lgh < height)
       lgh <<= 1;
     cout << "Power of 2 dimensions: " << lgw << "×" << lgh << endl;
     int offx = (lgw-width)/2;
