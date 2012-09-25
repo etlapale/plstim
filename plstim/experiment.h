@@ -4,6 +4,7 @@
 #define __PLSTIM_EXPERIMENT_H
 
 #include <cmath>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -39,9 +40,11 @@ namespace plstim
     /// Location of the current texture
     int texloc;
 
-    int twidth;
+    /// Texture width (2ⁿ)
+    int tex_width;
 
-    int theight;
+    /// Texture height (2ⁿ)
+    int tex_height;
 
   public:
     /// Number of trials in a session
@@ -50,8 +53,11 @@ namespace plstim
     /// Number of frames per trial
     int nframes;
 
-    /// Frames as OpenGL textures
+    /// Trial frames as OpenGL textures
     GLuint* tframes;
+
+    /// Special frames required by the protocol
+    std::map<std::string,GLuint> special_frames;
 
   protected:
     void error (const std::string& msg);
@@ -59,11 +65,11 @@ namespace plstim
   public:
 
     Experiment ();
+    virtual ~Experiment ();
 
-    bool egl_init (int width, int height, bool fullscreen,
-		   const std::string& title,
-		   int nframes,
-		   int texture_width, int texture_height);
+    virtual bool egl_init (int width, int height, bool fullscreen,
+			   const std::string& title,
+			   int texture_width, int texture_height);
  
 
     void egl_cleanup ();
@@ -79,6 +85,9 @@ namespace plstim
     /// Show the frames loaded in ‘tframes’
     bool show_frames ();
 
+    /// Show a special frame
+    bool show_frame (const std::string& frame_name);
+
     /// Clear the screen
     bool clear_screen ();
 
@@ -86,8 +95,8 @@ namespace plstim
     bool wait_any_key ();
 
     /// Wait for a key press in a given set
-    bool wait_for_key (const std::vector<int>& accepted_keys,
-		       int* pressed_key);
+    bool wait_for_key (const std::vector<KeySym>& accepted_keys,
+		       KeySym* pressed_key);
   };
 }
 

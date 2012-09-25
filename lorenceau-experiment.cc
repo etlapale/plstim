@@ -47,7 +47,13 @@ protected:
   /// Associated hardware setup
   Setup* setup;
 
-  std::vector<int> answer_keys;
+  std::vector<KeySym> answer_keys;
+
+  /// Desired monitor refresh rate in Hertz
+  float wanted_frequency;
+
+  /// Trial duration in milliseconds
+  float dur_ms;
 
   /// Foreground colour
   float fg;
@@ -58,11 +64,10 @@ protected:
   /// Line width
   float lw;
 
-  float sx;
-  float sy;
+  /// Diameter of the aperture through which lines are moving
+  float aperture_diam;
+
   float spacing;
-  int bx;
-  int by;
 
   /// Aperture radius
   float radius;
@@ -77,16 +82,35 @@ protected:
   bool control;
 
 public:
-  LorenceauExperiment (Setup* s);
+  LorenceauExperiment (Setup* s,
+		       int win_width, int win_height, bool fullscreen,
+		       const std::string& win_title,
+		       int aperture_diameter);
+  virtual ~LorenceauExperiment ();
   virtual bool run_trial ();
   virtual bool make_frames ();
 };
 
 
-LorenceauExperiment::LorenceauExperiment (Setup* s)
-  : setup (s)
+LorenceauExperiment::LorenceauExperiment (Setup* s,
+    int win_width, int win_height, bool fullscreen,
+    const std::string& win_title, int aperture_diameter)
+  : setup (s), wanted_frequency (30), dur_ms (332),
+    aperture_diam (aperture_diameter)
 {
   ntrials = 400;
+
+  // Compute the required number of frames in a trial
+  int coef = (int) nearbyintf (setup->refresh / wanted_frequency);
+  if ((setup->refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
+    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
+    exit (1);
+  }
+
+  nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
+  cout << "Setting the number of frames to" << nframes << endl;
+
+  // Possible answers in a trial
   answer_keys.push_back (XK_Up);
   answer_keys.push_back (XK_Down);
 
@@ -109,15 +133,16 @@ LorenceauExperiment::LorenceauExperiment (Setup* s)
   cout << "Foreground luminance is " << fg_cd << " cd/m², or "
        << fg << " in [0,1]" << endl;
 
-  // Line geometry
-  float orient = radians (cw ? 110 : 70);
-  bx = (int) (ll*cos(orient));
-  by = (int) (ll*sin(orient));
-  sx = abs (bx);
-  sy = abs (by);
-
   // Set the bar positions
   spacing = setup->deg2pix (1);
+
+  // Initialise the graphic system
+  egl_init (win_width, win_height, fullscreen, win_title,
+	    aperture_diameter, aperture_diameter);
+}
+
+LorenceauExperiment::~LorenceauExperiment ()
+{
 }
 
 
@@ -129,6 +154,7 @@ LorenceauExperiment::run_trial ()
   make_frames ();
 
   // Wait for a key press before running the trial
+  show_frame ("fixation");
   if (! wait_any_key ())
     return false;
 
@@ -152,7 +178,7 @@ LorenceauExperiment::run_trial ()
   // Wait for a key press at the end of the trial
   if (! clear_screen ())
     return false;
-  int pressed_key;
+  KeySym pressed_key;
   if (! wait_for_key (answer_keys, &pressed_key))
     return false;
 
@@ -163,26 +189,24 @@ LorenceauExperiment::run_trial ()
 bool
 LorenceauExperiment::make_frames ()
 {
+  int offx = (tex_width-aperture_diam)/2;
+  int offy = (tex_height-aperture_diam)/2;
   // Create a Cairo context to draw the frames
   auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
-				   twidth, theight);
+				   tex_width, tex_height);
   auto cr = Cairo::Context::create (sur);
 
-  radius = (twidth < theight ? twidth / 2 : theight / 2) - 1;
-
-  // Make sure texture dimensions are power of 2
-  int lgw = 1 << ((int) log2f (twidth));
-  int lgh = 1 << ((int) log2f (theight));
-  if (lgw < twidth)
-    lgw <<= 1;
-  if (lgh < theight)
-    lgh <<= 1;
-  cout << "Power of 2 dimensions: " << lgw << "×" << lgh << endl;
-  int offx = (lgw-twidth)/2;
-  int offy = (lgh-theight)/2;
+  radius = aperture_diam/2;
 
   // Line speed and direction
+  cout << "Clockwise: " << cw << endl
+       << "Control: " << control << endl
+       << "Up: " << up << endl;
   float orient = radians (cw ? 110 : 70);
+  int bx = (int) (ll*cos(orient));
+  int by = (int) (ll*sin(orient));
+  int sx = abs (bx);
+  int sy = abs (by);
   float direction = fmod (orient
     + (orient < M_PI/2 ? -1 : +1) * (M_PI/2)	// Orientation
     + (up ? 0 : 1) * M_PI			// Up/down
@@ -197,6 +221,7 @@ LorenceauExperiment::make_frames ()
     << (dx >= 0 ? "+" : "") << dx
     << (dy >= 0 ? "+" : "") << dy
     << ")" << endl;
+  cout << "sx+spacing: " << sx << "+" << spacing << endl;
 
   // Render each frame
   cr->set_antialias (Cairo::ANTIALIAS_NONE);
@@ -210,8 +235,8 @@ LorenceauExperiment::make_frames ()
     // Lines
     cr->set_line_width (lw);
     cr->set_source_rgb (fg, fg, fg);
-    for (int x = offx+i*dx - (sx+spacing); x < twidth+sx+spacing; x+=sx+spacing) {
-      for (int y = offy+i*dy; y < theight+sy+spacing; y+=sy+spacing) {
+    for (int x = offx+i*dx - (sx+spacing); x < tex_width+sx+spacing; x+=sx+spacing) {
+      for (int y = offy+i*dy; y < tex_height+sy+spacing; y+=sy+spacing) {
 	cr->move_to (x, y);
 	cr->rel_line_to (bx, by);
       }
@@ -219,15 +244,18 @@ LorenceauExperiment::make_frames ()
     cr->stroke ();
 
     // Aperture
-    cr->translate (-offx, -offy);
-    cr->rectangle (0, 0, lgw, lgh);
-    cr->arc (lgw/2, lgh/2, radius, 0, 2*M_PI);
-    cr->set_source_rgb (1, 0, 0);
+    cr->rectangle (0, 0, tex_width, tex_height);
+    cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
+    cr->set_source_rgb (0, 0, 0);
     cr->fill ();
-    cr->translate (offx, offy);
 
     // Save the frame as PNG
-    //sur->write_to_png ("output.png");
+#if 0
+    char buf[20];
+    const char* pat = "output-%04d.png";
+    snprintf (buf, 20, pat, i);
+    sur->write_to_png (buf);
+#endif
 
     // Create an OpenGL texture for the frame
     glBindTexture (GL_TEXTURE_2D, tframes[i]);
@@ -236,7 +264,7 @@ LorenceauExperiment::make_frames ()
       return false;
     }
     GLint gltype = GL_RGBA;
-    glTexImage2D (GL_TEXTURE_2D, 0, gltype, twidth, theight,
+    glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
 		  0, gltype, GL_UNSIGNED_BYTE, sur->get_data ());
     glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -248,6 +276,38 @@ LorenceauExperiment::make_frames ()
 
   cout << nframes << " frames loaded" << endl;
 
+
+  // Create the fake frames
+  
+  // Pre-tiral fixation frame
+  float fix_radius = setup->deg2pix (2./60);
+  cr->set_source_rgb (bg, bg, bg);
+  cr->paint ();
+  cr->set_source_rgb (1, 0, 0);
+  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
+  cout << "Fixation point radius: " << fix_radius << endl;
+  cr->fill ();
+  // Aperture
+  cr->rectangle (0, 0, tex_width, tex_height);
+  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
+  cr->set_source_rgb (0, 0, 0);
+  cr->fill ();
+
+  glBindTexture (GL_TEXTURE_2D, special_frames["fixation"]);
+    if (glGetError () != GL_NO_ERROR) {
+      cerr << "error: could not bind a texture" << endl;
+      return false;
+    }
+    GLint gltype = GL_RGBA;
+    glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
+		  0, gltype, GL_UNSIGNED_BYTE, sur->get_data ());
+    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    if (glGetError () != GL_NO_ERROR) {
+      cerr << "error: could not set texture data" << endl;
+      return false;
+    }
+
   return true;
 }
 
@@ -257,10 +317,7 @@ main (int argc, char* argv[])
 {
   int res;
 
-  EGLint egl_maj, egl_min;
-
-  int i;
-  unsigned int width, height;
+  unsigned int win_width, win_height;
 
   std::vector<std::string> images;
   
@@ -288,8 +345,8 @@ main (int argc, char* argv[])
     // Parse the geometry
     auto geom = arg_geom.getValue ();
     if (geom.empty ()) {
-      width = setup.resolution[0];
-      height = setup.resolution[1];
+      win_width = setup.resolution[0];
+      win_height = setup.resolution[1];
       fullscreen = true;
     }
     else {
@@ -298,9 +355,9 @@ main (int argc, char* argv[])
 	cerr << "error: invalid stimulus dimension: " << geom << endl;
 	return 1;
       }
-      width = atof (geom.c_str ());
-      height = atof (geom.c_str () + sep + 1);
-      if (width == 0 || height == 0) {
+      win_width = atof (geom.c_str ());
+      win_height = atof (geom.c_str () + sep + 1);
+      if (win_width == 0 || win_height == 0) {
 	cerr << "error: invalid stimulus dimension: " << geom << endl;
 	return 1;
       }
@@ -321,23 +378,6 @@ main (int argc, char* argv[])
   cout << "Visual field: " << setup.pix2deg (setup.resolution[0])
        << "×" << setup.pix2deg (setup.resolution[1])
        << " degrees" << endl;
-
-  // Experiment
-  LorenceauExperiment xp (&setup);
-
-  // Get a swap interval for the desired frequency
-  float wanted_frequency = 30;	// Hz
-  int coef = (int) nearbyintf (setup.refresh / wanted_frequency);
-  if ((setup.refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
-    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
-    return 1;
-  }
-  float dur_ms = 332;
-  int nframes = (int) nearbyintf ((setup.refresh/coef)*(dur_ms/1000.));
-  cout << "Selected refresh rate: " << (setup.refresh/coef) << " Hz" << endl;
-  cout << "Duration: " << dur_ms << " ms, or " << nframes << " frames" << endl;
-
-
   // Get the clock resolution
   struct timespec tp;
   res = clock_getres (CLOCK, &tp);
@@ -345,25 +385,20 @@ main (int argc, char* argv[])
     perror ("clock_getres");
     return 1;
   }
-  printf ("clock %d resolution: %lds %ldns\n",
+  printf ("System clock %d resolution: %lds %ldns\n",
 	  CLOCK, tp.tv_sec, tp.tv_nsec);
-
-  float stim_size = 24;	// Degrees
-  int twidth = (int) ceilf (setup.deg2pix (stim_size));
-
-  // Initialise the graphic system
-  xp.egl_init (width, height, fullscreen, argv[0],
-	       nframes, twidth, twidth);
-
-
   cout << endl;
+
+
+  // Experiment
+  float diameter = 24;	// Degrees
+  int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
+  LorenceauExperiment xp (&setup,
+			  win_width, win_height, fullscreen,
+			  argv[0], aperture_diameter);
   // Run the session
   if (! xp.run_session ())
     return 1;
-
-
-  // Cleanup
-  xp.egl_cleanup ();
 
   return 0;
 }

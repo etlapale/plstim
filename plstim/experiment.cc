@@ -29,126 +29,6 @@ assert_gl_error (const std::string& msg)
 }
 
 
-
-static bool
-load_png_image (const char* path, int* width, int* height,
-		GLint* tex_type, GLubyte** data)
-{
-  // Open the input file
-  FILE* fp = fopen (path, "rb");
-  if (! fp) {
-    fprintf (stderr, "could not open the input frame ‘%s’: %s\n",
-	     path, strerror (errno));
-    return false;
-  }
-
-  // Make sure it’s a PNG
-  png_byte magic[8];
-  fread (magic, 1, sizeof (magic), fp);
-  if (! png_check_sig (magic, sizeof (magic))) {
-    fprintf (stderr, "‘%s’ is not a valid PNG\n", path);
-    fclose (fp);
-    return false;
-  }
-
-  // Initialise PNG structures
-  auto png_ptr = png_create_read_struct (PNG_LIBPNG_VER_STRING,
-					 NULL, NULL, NULL);
-  if (! png_ptr) {
-    fprintf (stderr, "could not initialise libpng reader\n");
-    fclose (fp);
-    return false;
-  }
-  auto info_ptr = png_create_info_struct (png_ptr);
-  if (! info_ptr) {
-    fprintf (stderr, "could not initialise libpng info\n");
-    png_destroy_read_struct (&png_ptr, NULL, NULL);
-    fclose (fp);
-    return false;
-  }
-
-  // Declare allocated arrays to delete them on error
-  GLubyte* pixels = NULL;
-  png_bytep* row_pointers = NULL;
-
-  // Error handling
-  if (setjmp (png_jmpbuf (png_ptr))) {
-    fprintf (stderr, "error while processing the PNG\n");
-    if (pixels != NULL)
-      delete [] pixels;
-    if (row_pointers != NULL)
-      delete [] row_pointers;
-    png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
-    fclose (fp);
-    return false;
-  }
-
-  // Start reading the PNG
-  png_init_io (png_ptr, fp);
-  png_set_sig_bytes (png_ptr, sizeof (magic));
-  png_read_info (png_ptr, info_ptr);
-
-  // Check info
-  int depth = png_get_bit_depth (png_ptr, info_ptr);
-  int type = png_get_color_type (png_ptr, info_ptr);
-  printf ("  Image depth: %d, type: %d\n", depth, type);
-  if (type == PNG_COLOR_MASK_PALETTE)
-    png_set_palette_to_rgb (png_ptr);
-  /*if (type == PNG_COLOR_TYPE_GRAY && depth < 8)
-    png_set_gray_1*/
-  if (png_get_valid (png_ptr, info_ptr, PNG_INFO_tRNS))
-    png_set_tRNS_to_alpha (png_ptr);
-  png_read_update_info (png_ptr, info_ptr);
-
-  // Read image info
-  png_uint_32 pwidth, pheight;
-  png_get_IHDR (png_ptr, info_ptr,
-		(png_uint_32*) &pwidth,
-		(png_uint_32*) &pheight,
-		&depth, &type,
-		NULL, NULL, NULL);
-  int bpp;
-  GLint gltype;
-  switch (type) {
-  case PNG_COLOR_TYPE_GRAY:
-    bpp = 1;
-    gltype = GL_LUMINANCE;
-    break;
-  case PNG_COLOR_TYPE_RGB:
-    bpp = 3;
-    gltype = GL_RGB;
-    break;
-  case PNG_COLOR_TYPE_RGBA:
-    bpp = 4;
-    gltype = GL_RGBA;
-    break;
-  default:
-    fprintf (stderr, "unknown color type\n");
-    png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
-    return false;
-  }
-
-  // Read the pixels
-  pixels = new GLubyte[pwidth*pheight*bpp];
-  row_pointers = new png_bytep[pheight];
-  for (png_uint_32 i = 0; i < pheight; i++)
-    row_pointers[i] = pixels + i*pwidth*bpp;
-  png_read_image (png_ptr, row_pointers);
-
-  // Cleanup
-  delete [] row_pointers;
-  png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
-  fclose (fp);
-
-  // Store the results
-  *width = pwidth;
-  *height = pheight;
-  *tex_type = gltype;
-  *data = pixels;
-
-  return true;
-}
-
 static int
 make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
 		    int width, int height, bool fullscreen,
@@ -176,7 +56,6 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
   // Get the default screen and root window
   Display *dpy = (Display*) nat_dpy;
   Window root = DefaultRootWindow (dpy);
-  Window scrnum = DefaultScreen (dpy);
 
   // Fetch visual information for the configuration
   EGLint vid;
@@ -259,10 +138,9 @@ Experiment::wait_any_key ()
 }
 
 bool
-Experiment::wait_for_key (const std::vector<int>& accepted_keys,
-			  int* pressed_key)
+Experiment::wait_for_key (const std::vector<KeySym>& accepted_keys,
+			  KeySym* pressed_key)
 {
-  bool answer_up;
   KeySym keysym;
   XComposeStatus compose;
   const int buflen = 10;
@@ -271,8 +149,7 @@ Experiment::wait_for_key (const std::vector<int>& accepted_keys,
   for (;;) {
     XNextEvent ((Display*) nat_dpy, &evt);
     if (evt.type == KeyPress) {
-      int count = XLookupString (&evt.xkey, buf, buflen,
-				 &keysym, &compose);
+       XLookupString (&evt.xkey, buf, buflen, &keysym, &compose);
       for (auto k : accepted_keys)
 	if (k == keysym) {
 	  *pressed_key = keysym;
@@ -281,6 +158,26 @@ Experiment::wait_for_key (const std::vector<int>& accepted_keys,
     }
   }
   return false;
+}
+
+bool
+Experiment::show_frame (const std::string& frame_name)
+{
+  // Set the current frame
+  glBindTexture (GL_TEXTURE_2D, special_frames[frame_name]);
+  glUniform1i (texloc, 0);
+
+  // Draw the frame with triangles
+  glDrawArrays (GL_TRIANGLES, 0, 6);
+  
+  // Set the swap interval
+  if (swap_interval != 1)
+    eglSwapInterval (egl_dpy, swap_interval);
+
+  // Swap
+  eglSwapBuffers (egl_dpy, sur);
+
+  return true;
 }
 
 bool
@@ -299,8 +196,9 @@ Experiment::show_frames ()
       eglSwapInterval (egl_dpy, swap_interval);
 
     // Swap
+    cout << "swap" << endl;
     eglSwapBuffers (egl_dpy, sur);
-    sleep (2);
+    //sleep (2);
   }
 
   return true;
@@ -324,13 +222,16 @@ open_native_display (void* param)
 
 
 bool
-Experiment::egl_init (int width, int height, bool fullscreen,
-		      const std::string& window_title,
-		      int num_frames,
-		      int texture_width, int texture_height)
+Experiment::egl_init (int win_width, int win_height, bool fullscreen,
+		      const std::string& win_title,
+		      int stim_width, int stim_height)
 {
-  twidth = texture_width;
-  theight = texture_height;
+  tex_width = 1 << ((int) log2f (stim_width));
+  tex_height = 1 << ((int) log2f (stim_height));
+  if (tex_width < stim_width)
+    tex_width <<= 1;
+  if (tex_height < stim_height)
+    tex_height <<= 1;
 
   // Setup X11
   nat_dpy = open_native_display (NULL);
@@ -351,8 +252,8 @@ Experiment::egl_init (int width, int height, bool fullscreen,
 
   // Create a system window
   int ret = make_native_window (nat_dpy, egl_dpy,
-				width, height, fullscreen,
-				window_title.c_str (),
+				win_width, win_height, fullscreen,
+				win_title.c_str (),
 				&nat_win, &config);
   if (ret == 0)
     return false;
@@ -365,14 +266,14 @@ Experiment::egl_init (int width, int height, bool fullscreen,
     EGL_NONE
   };
   ctx = eglCreateContext (egl_dpy, config,
-				     EGL_NO_CONTEXT, ctx_attribs);
+			  EGL_NO_CONTEXT, ctx_attribs);
   if (ctx == EGL_NO_CONTEXT) {
     error ("could not create an EGL context");
     return false;
   }
   {
     EGLint val;
-    eglQueryContext(egl_dpy, ctx, EGL_CONTEXT_CLIENT_VERSION, &val);
+    eglQueryContext (egl_dpy, ctx, EGL_CONTEXT_CLIENT_VERSION, &val);
     if (val != 2) {
       error ("EGL v2 required");
       return false;
@@ -381,7 +282,7 @@ Experiment::egl_init (int width, int height, bool fullscreen,
 
   // Create the EGL surface associated with the window
   sur = eglCreateWindowSurface (egl_dpy, config,
-					   nat_win, NULL);
+				nat_win, NULL);
   if (sur == EGL_NO_SURFACE) {
     error ("could not create an EGL surface");
     return false;
@@ -397,13 +298,9 @@ Experiment::egl_init (int width, int height, bool fullscreen,
 	  glGetString (GL_RENDERER),
 	  glGetString (GL_EXTENSIONS));
 
-  //glClearColor (0.1, 0.1, 0.1, 1.0);
   glClearColor (0, 0, 0, 0);
-  //glViewport (0, 0, width, height);
-
 
   // Frames as textures
-  nframes = num_frames;
   printf ("Creating %d texture frames\n", nframes);
   tframes = new GLuint[nframes];
   if (tframes == NULL) {
@@ -443,12 +340,12 @@ Experiment::egl_init (int width, int height, bool fullscreen,
     return 1;
   }
 
-  // Offset to center the stimulus
-  GLfloat offx = (width-texture_width)/2.0f;
-  GLfloat offy = (height-texture_height)/2.0f;
+  // Compute the offset to center the stimulus
+  GLfloat offx = (win_width-tex_width)/2.0f;
+  GLfloat offy = (win_height-tex_height)/2.0f;
 
-  float tx_conv = texture_width / (2.0f * width);
-  float ty_conv = texture_height / (2.0f * height);
+  float tx_conv = tex_width / (2.0f * win_width);
+  float ty_conv = tex_height / (2.0f * win_height);
 
   tx_conv = 1/2.0f;
   ty_conv = 1/2.0f;
@@ -459,16 +356,16 @@ Experiment::egl_init (int width, int height, bool fullscreen,
      // This projection matrix maps OpenGL coordinates
      // to device coordinates (pixels)
      << "const mat4 proj_matrix = mat4("
-     << (2.0/width) << ", 0.0, 0.0, -1.0," << endl
-     << "0.0, " << -(2.0/height) << ", 0.0, 1.0," << endl
+     << (2.0/win_width) << ", 0.0, 0.0, -1.0," << endl
+     << "0.0, " << -(2.0/win_height) << ", 0.0, 1.0," << endl
      << "0.0, 0.0, -1.0, 0.0," << endl
      << "0.0, 0.0, 0.0, 1.0);" << endl
      << "attribute vec2 ppos;" << endl
      << "varying vec2 tex_coord;" << endl
      << "void main () {" << endl
      << "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
-     << "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) texture_width 
-     << ", (ppos.y-" << offy << ")/" << (float) texture_height << " );" << endl
+     << "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
+     << ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
      << "}" << endl;
   auto vshader_str = ss.str();
   cout << "vertex shader:" << endl << vshader_str << endl;
@@ -517,14 +414,15 @@ Experiment::egl_init (int width, int height, bool fullscreen,
     return 1;
   }
 
+  // Rectangle covering the full texture
   static GLfloat vertices[] = {
     offx, offy,
-    offx, offy + texture_height,
-    offx + texture_width, offy + texture_height,
+    offx, offy + tex_width,
+    offx + tex_width, offy + tex_height,
 
-    offx + texture_width, offy + texture_height,
+    offx + tex_width, offy + tex_height,
     offx, offy,
-    offx + texture_width, offy
+    offx + tex_width, offy
   };
   glEnableVertexAttribArray (ppos);
   glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
@@ -566,4 +464,9 @@ Experiment::error (const std::string& msg)
 Experiment::Experiment ()
   : swap_interval (1)
 {
+}
+
+Experiment::~Experiment ()
+{
+  egl_cleanup ();
 }
