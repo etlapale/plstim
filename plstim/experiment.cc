@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 
@@ -286,7 +288,7 @@ Experiment::show_frames ()
 {
   for (int i = 0; i < nframes; i++) {
     // Set the current frame
-    glBindTexture (GL_TEXTURE_2D, tframes[i%nframes]);
+    glBindTexture (GL_TEXTURE_2D, tframes[i]);
     glUniform1i (texloc, 0);
 
     // Draw the frame with triangles
@@ -298,6 +300,7 @@ Experiment::show_frames ()
 
     // Swap
     eglSwapBuffers (egl_dpy, sur);
+    sleep (2);
   }
 
   return true;
@@ -323,8 +326,12 @@ open_native_display (void* param)
 bool
 Experiment::egl_init (int width, int height, bool fullscreen,
 		      const std::string& window_title,
+		      int num_frames,
 		      int texture_width, int texture_height)
 {
+  twidth = texture_width;
+  theight = texture_height;
+
   // Setup X11
   nat_dpy = open_native_display (NULL);
 
@@ -396,7 +403,13 @@ Experiment::egl_init (int width, int height, bool fullscreen,
 
 
   // Frames as textures
+  nframes = num_frames;
   printf ("Creating %d texture frames\n", nframes);
+  tframes = new GLuint[nframes];
+  if (tframes == NULL) {
+    error ("could not allocate memory for the texture identifiers");
+    return false;
+  }
   glGenTextures (nframes, tframes);
   assert_gl_error ("generate textures");
   
@@ -533,6 +546,8 @@ Experiment::egl_init (int width, int height, bool fullscreen,
 void
 Experiment::egl_cleanup ()
 {
+  delete [] tframes;
+
   eglDestroyContext (egl_dpy, ctx);
   eglDestroySurface (egl_dpy, sur);
   eglTerminate (egl_dpy);

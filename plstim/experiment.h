@@ -39,12 +39,17 @@ namespace plstim
     /// Location of the current texture
     int texloc;
 
+    int twidth;
+
+    int theight;
+
   public:
     /// Number of trials in a session
     int ntrials;
 
     /// Number of frames per trial
     int nframes;
+
     /// Frames as OpenGL textures
     GLuint* tframes;
 
@@ -57,13 +62,19 @@ namespace plstim
 
     bool egl_init (int width, int height, bool fullscreen,
 		   const std::string& title,
+		   int nframes,
 		   int texture_width, int texture_height);
  
 
     void egl_cleanup ();
 
     bool run_session ();
+
+    /// Run a single trial
     virtual bool run_trial () = 0;
+
+    /// Generate frames for a single trial
+    virtual bool make_frames () = 0;
 
     /// Show the frames loaded in ‘tframes’
     bool show_frames ();
