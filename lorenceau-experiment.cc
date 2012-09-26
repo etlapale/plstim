@@ -146,8 +146,61 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   egl_init (win_width, win_height, fullscreen, win_title,
 	    aperture_diameter, aperture_diameter);
 
+
+  radius = aperture_diam/2;
+
   // Initialise the special frames
   gen_frame ("fixation");
+  gen_frame ("question");
+
+  // Create the special frames
+  auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
+				   tex_width, tex_height);
+  auto cr = Cairo::Context::create (sur);
+  cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
+  
+  // Pre-trial fixation frame
+  cr->set_source_rgb (bg, bg, bg);
+  cr->paint ();
+  // Fixation point
+  cr->set_source_rgb (0, 0, 1);
+  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
+  cr->fill ();
+  // Aperture
+  cr->rectangle (0, 0, tex_width, tex_height);
+  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
+  cr->set_source_rgb (0, 0, 0);
+  cr->fill ();
+  // Copy into OpenGL texture
+  if (! copy_to_texture (sur->get_data (),
+			 special_frames["fixation"]))
+    return;
+  
+  // Question frame
+  float key_size = setup->deg2pix (2);
+  float cx = tex_width/2;
+  float cy = tex_height/2;
+  cr->set_source_rgb (bg, bg, bg);
+  cr->paint ();
+  // Up or down keys
+  cr->set_line_width (1.0);
+  cr->set_source_rgb (fg, fg, fg);
+  cr->rectangle (cx-2*key_size, cy-key_size/2, key_size, key_size);
+  cr->rectangle (cx+key_size, cy-key_size/2, key_size, key_size);
+  cr->move_to (cx-1.5*key_size, cy-0.25*key_size);
+  cr->rel_line_to (0, key_size/2);
+  cr->move_to (cx+1.5*key_size, cy-0.25*key_size);
+  cr->rel_line_to (0, key_size/2);
+  cr->stroke ();
+  // Aperture
+  cr->rectangle (0, 0, tex_width, tex_height);
+  cr->arc (cx, cy, radius, 0, 2*M_PI);
+  cr->set_source_rgb (0, 0, 0);
+  cr->fill ();
+  // Copy into OpenGL texture
+  if (! copy_to_texture (sur->get_data (),
+			 special_frames["question"]))
+    return;
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
@@ -185,8 +238,7 @@ LorenceauExperiment::run_trial ()
 	  tp_stop.tv_sec, tp_stop.tv_nsec);
 
   // Wait for a key press at the end of the trial
-  if (! clear_screen ())
-    return false;
+  show_frame ("question");
   KeySym pressed_key;
   if (! wait_for_key (answer_keys, &pressed_key))
     return false;
@@ -204,8 +256,6 @@ LorenceauExperiment::make_frames ()
   auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
 				   tex_width, tex_height);
   auto cr = Cairo::Context::create (sur);
-
-  radius = aperture_diam/2;
 
   // Line speed and direction
   cout << "Clockwise: " << cw << endl
@@ -277,28 +327,6 @@ LorenceauExperiment::make_frames ()
   }
 
   cout << nframes << " frames loaded" << endl;
-
-
-  // Create the special frames
-  
-  // Pre-tiral fixation frame
-  cr->set_source_rgb (bg, bg, bg);
-  cr->paint ();
-  // Fixation point
-  cr->set_source_rgb (0, 0, 1);
-  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
-  cr->fill ();
-  // Aperture
-  cr->rectangle (0, 0, tex_width, tex_height);
-  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
-  cr->set_source_rgb (0, 0, 0);
-  cr->fill ();
-
-
-  // Copy into OpenGL texture
-  if (! copy_to_texture (sur->get_data (),
-			 special_frames["fixation"]))
-    return false;
 
   return true;
 }
