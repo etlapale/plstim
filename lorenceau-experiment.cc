@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/utsname.h>
 
 #include <time.h>
 #include <unistd.h>
@@ -114,7 +115,9 @@ public:
   LorenceauExperiment (Setup* s, const std::string& output,
 		       int win_width, int win_height, bool fullscreen,
 		       const std::string& win_title,
-		       int aperture_diameter);
+		       int aperture_diameter,
+		       
+		       const std::string& subject);
   virtual ~LorenceauExperiment ();
   virtual bool run_trial ();
   virtual bool make_frames ();
@@ -124,7 +127,9 @@ public:
 LorenceauExperiment::LorenceauExperiment (Setup* s,
     const std::string& result_file,
     int win_width, int win_height, bool fullscreen,
-    const std::string& win_title, int aperture_diameter)
+    const std::string& win_title, int aperture_diameter,
+
+    const std::string& subject)
   : setup (s), 
     wanted_frequency (30), dur_ms (332),
     aperture_diam (aperture_diameter)
@@ -202,7 +207,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   // Copy into OpenGL texture
   if (! copy_to_texture (sur->get_data (),
 			 special_frames["fixation"]))
-    return;
+    exit (1);
   
   // Question frame
   float key_size = setup->deg2pix (2);
@@ -238,9 +243,13 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   // Copy into OpenGL texture
   if (! copy_to_texture (sur->get_data (),
 			 special_frames["question"]))
-    return;
+    exit (1);
 
   // Create an output result file
+  if (access (result_file.c_str (), F_OK) == 0) {
+    error ("result file already existing");
+    exit (1);
+  }
   hf = new H5File (result_file.c_str (), H5F_ACC_TRUNC);
   CompType session_type (sizeof (SessionResult));
   session_type.insertMember ("begin_sec",
@@ -266,6 +275,29 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   dset = hf->createDataSet ("session-1", session_type, dspace);
 
   // Save session metadata
+  StrType str_type (PredType::C_S1, subject.size ());
+  DataSpace scalar_space (H5S_SCALAR);
+  dset.createAttribute ("subject", str_type, scalar_space)
+    .write (str_type, subject.c_str ());
+  time_t now = time (NULL);
+  dset.createAttribute ("date", PredType::NATIVE_LONG, scalar_space)
+    .write (PredType::NATIVE_LONG, &now);
+  struct utsname ubuf;
+  if (uname (&ubuf) != 0) {
+    error ("cannot use uname()");
+    exit (1);
+  }
+  StrType sysname_type (PredType::C_S1, strlen (ubuf.sysname));
+  dset.createAttribute ("sysname", sysname_type, scalar_space)
+    .write (sysname_type, ubuf.sysname);
+  StrType nodename_type (PredType::C_S1, strlen (ubuf.nodename));
+  dset.createAttribute ("nodename", nodename_type, scalar_space)
+    .write (nodename_type, ubuf.nodename);
+  // Code commit
+  StrType commit_type (PredType::C_S1, 40);
+  dset.createAttribute ("commit", commit_type, scalar_space)
+    .write (commit_type, PLSTIM_COMMIT);
+  hf->flush (H5F_SCOPE_GLOBAL);
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
@@ -288,14 +320,14 @@ LorenceauExperiment::run_trial ()
 
   //cout << "Starting" << endl;
   // Mark the beginning time
-  int res = clock_gettime (CLOCK, &tp_start);
+  clock_gettime (CLOCK, &tp_start);
 
   // Display each frame of the trial
   if (! show_frames ())
     return false;
 
   // Mark the end time
-  res = clock_gettime (CLOCK, &tp_stop);
+  clock_gettime (CLOCK, &tp_stop);
 
   // Display the elapsed time
   printf ("start: %lds %ldns\n",
@@ -410,6 +442,7 @@ main (int argc, char* argv[])
   unsigned int win_width, win_height;
 
   std::string output;
+  std::string subject;
   
   // Physical setup configuration
   Setup setup;
@@ -423,10 +456,13 @@ main (int argc, char* argv[])
 	"Stimulus dimension in pixels", false, "", "WIDTHxHEIGHT");
     cmd.add (arg_geom);
     TCLAP::ValueArg<string> arg_output ("o", "output",
-	"Output file to write results", true, "",
+	"Output file to write results", false, "",
 	"PATH");
     cmd.add (arg_output);
-    TCLAP::ValueArg<std::string> setup_arg ("s", "setup",
+    TCLAP::ValueArg<string> arg_subject ("s", "subject",
+	"Subject initials", true, "", "SUBJECT");
+    cmd.add (arg_subject);
+    TCLAP::ValueArg<std::string> setup_arg ("S", "setup",
 	"Hardware setup configuration", false, Setup::default_source, "SETUP");
     cmd.add (setup_arg);
     // Parser the command line arguments
@@ -436,7 +472,10 @@ main (int argc, char* argv[])
     if (! setup.load (setup_arg.getValue ()))
       return 1;
 
+    // Generate a new HDF5 filename if none exists
     output = arg_output.getValue ();
+
+    subject = arg_subject.getValue ();
 
     // Parse the geometry
     auto geom = arg_geom.getValue ();
@@ -491,7 +530,9 @@ main (int argc, char* argv[])
   int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
   LorenceauExperiment xp (&setup, output,
 			  win_width, win_height, fullscreen,
-			  argv[0], aperture_diameter);
+			  argv[0], aperture_diameter,
+			  
+			  subject);
   // Run the session
   if (! xp.run_session ())
     return 1;
