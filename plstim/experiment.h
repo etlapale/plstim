@@ -13,7 +13,6 @@
 #include <GLES2/gl2.h>
 
 
-
 #include "utils.h"
 
 
@@ -62,6 +61,15 @@ namespace plstim
   protected:
     void error (const std::string& msg);
 
+    /**
+     * Copy a pixel surface into an OpenGL texture.
+     * The destination texture must have been already created
+     * with gen_frame(), and its size should match the other
+     * textures (tex_width×tex_height).  The source surface can be
+     * destroyed after calling this function.
+     */
+    bool copy_to_texture (const GLvoid* src, GLuint dest);
+
   public:
 
     Experiment ();
@@ -87,6 +95,9 @@ namespace plstim
 
     /// Show a special frame
     bool show_frame (const std::string& frame_name);
+
+    /// Define a special frame
+    bool gen_frame (const std::string& frame_name);
 
     /// Clear the screen
     bool clear_screen ();

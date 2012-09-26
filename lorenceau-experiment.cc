@@ -20,7 +20,7 @@ using namespace std;
 // Command line parsing
 #include <tclap/CmdLine.h>
 
-// Graphics library
+// Drawing library
 #include <cairommconfig.h>
 #include <cairomm/context.h>
 #include <cairomm/surface.h>
@@ -72,6 +72,9 @@ protected:
   /// Aperture radius
   float radius;
 
+  /// Fixation dot radius
+  float fix_radius;
+
   /// Orientation of the lines
   bool cw;
 
@@ -107,6 +110,9 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     exit (1);
   }
 
+  fix_radius = setup->deg2pix (3./60);
+  cout << "Fixation point radius: " << fix_radius << endl;
+
   nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
   cout << "Setting the number of frames to" << nframes << endl;
 
@@ -139,6 +145,9 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   // Initialise the graphic system
   egl_init (win_width, win_height, fullscreen, win_title,
 	    aperture_diameter, aperture_diameter);
+
+  // Initialise the special frames
+  gen_frame ("fixation");
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
@@ -242,6 +251,11 @@ LorenceauExperiment::make_frames ()
       }
     }
     cr->stroke ();
+    
+    // Fixation point
+    cr->set_source_rgb (0, 0, 1);
+    cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
+    cr->fill ();
 
     // Aperture
     cr->rectangle (0, 0, tex_width, tex_height);
@@ -257,35 +271,22 @@ LorenceauExperiment::make_frames ()
     sur->write_to_png (buf);
 #endif
 
-    // Create an OpenGL texture for the frame
-    glBindTexture (GL_TEXTURE_2D, tframes[i]);
-    if (glGetError () != GL_NO_ERROR) {
-      cerr << "error: could not bind a texture" << endl;
+    // Copy into OpenGL texture
+    if (! copy_to_texture (sur->get_data (), tframes[i]))
       return false;
-    }
-    GLint gltype = GL_RGBA;
-    glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
-		  0, gltype, GL_UNSIGNED_BYTE, sur->get_data ());
-    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    if (glGetError () != GL_NO_ERROR) {
-      cerr << "error: could not set texture data" << endl;
-      return false;
-    }
   }
 
   cout << nframes << " frames loaded" << endl;
 
 
-  // Create the fake frames
+  // Create the special frames
   
   // Pre-tiral fixation frame
-  float fix_radius = setup->deg2pix (2./60);
   cr->set_source_rgb (bg, bg, bg);
   cr->paint ();
-  cr->set_source_rgb (1, 0, 0);
+  // Fixation point
+  cr->set_source_rgb (0, 0, 1);
   cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
-  cout << "Fixation point radius: " << fix_radius << endl;
   cr->fill ();
   // Aperture
   cr->rectangle (0, 0, tex_width, tex_height);
@@ -293,20 +294,11 @@ LorenceauExperiment::make_frames ()
   cr->set_source_rgb (0, 0, 0);
   cr->fill ();
 
-  glBindTexture (GL_TEXTURE_2D, special_frames["fixation"]);
-    if (glGetError () != GL_NO_ERROR) {
-      cerr << "error: could not bind a texture" << endl;
-      return false;
-    }
-    GLint gltype = GL_RGBA;
-    glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
-		  0, gltype, GL_UNSIGNED_BYTE, sur->get_data ());
-    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    if (glGetError () != GL_NO_ERROR) {
-      cerr << "error: could not set texture data" << endl;
-      return false;
-    }
+
+  // Copy into OpenGL texture
+  if (! copy_to_texture (sur->get_data (),
+			 special_frames["fixation"]))
+    return false;
 
   return true;
 }

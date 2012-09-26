@@ -161,6 +161,35 @@ Experiment::wait_for_key (const std::vector<KeySym>& accepted_keys,
 }
 
 bool
+Experiment::gen_frame (const std::string& frame_name)
+{
+  glGenTextures (1, &special_frames[frame_name]);
+  assert_gl_error ("generate textures");
+  return true;
+}
+
+bool
+Experiment::copy_to_texture (const GLvoid* data, GLuint dest)
+{
+    // Create an OpenGL texture for the frame
+  glBindTexture (GL_TEXTURE_2D, dest);
+  if (glGetError () != GL_NO_ERROR) {
+    cerr << "error: could not bind a texture" << endl;
+    return false;
+  }
+  GLint gltype = GL_RGBA;
+  glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
+		0, gltype, GL_UNSIGNED_BYTE, data);
+  glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  if (glGetError () != GL_NO_ERROR) {
+    cerr << "error: could not set texture data" << endl;
+    return false;
+  }
+  return true;
+}
+
+bool
 Experiment::show_frame (const std::string& frame_name)
 {
   // Set the current frame
@@ -196,7 +225,6 @@ Experiment::show_frames ()
       eglSwapInterval (egl_dpy, swap_interval);
 
     // Swap
-    cout << "swap" << endl;
     eglSwapBuffers (egl_dpy, sur);
     //sleep (2);
   }
