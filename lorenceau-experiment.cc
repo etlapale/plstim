@@ -182,16 +182,26 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   float cy = tex_height/2;
   cr->set_source_rgb (bg, bg, bg);
   cr->paint ();
-  // Up or down keys
+  // Key
   cr->set_line_width (1.0);
   cr->set_source_rgb (fg, fg, fg);
   cr->rectangle (cx-2*key_size, cy-key_size/2, key_size, key_size);
   cr->rectangle (cx+key_size, cy-key_size/2, key_size, key_size);
-  cr->move_to (cx-1.5*key_size, cy-0.25*key_size);
-  cr->rel_line_to (0, key_size/2);
-  cr->move_to (cx+1.5*key_size, cy-0.25*key_size);
-  cr->rel_line_to (0, key_size/2);
   cr->stroke ();
+  // Arrows
+  cr->set_line_width (4.0);
+  cr->move_to (cx-1.5*key_size, cy);
+  cr->rel_line_to (0, 0.25*key_size);
+  cr->move_to (cx+1.5*key_size, cy);
+  cr->rel_line_to (0, -0.25*key_size);
+  cr->stroke ();
+  cr->move_to (cx-1.5*key_size, cy-0.25*key_size);
+  cr->rel_line_to (-key_size/8, 0.25*key_size);
+  cr->rel_line_to (key_size/4, 0);
+  cr->move_to (cx+1.5*key_size, cy+0.25*key_size);
+  cr->rel_line_to (-key_size/8, -0.25*key_size);
+  cr->rel_line_to (key_size/4, 0);
+  cr->fill ();
   // Aperture
   cr->rectangle (0, 0, tex_width, tex_height);
   cr->arc (cx, cy, radius, 0, 2*M_PI);
