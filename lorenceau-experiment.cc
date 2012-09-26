@@ -26,6 +26,10 @@ using namespace std;
 #include <cairomm/surface.h>
 using namespace Cairo;
 
+// Storage library
+#include <H5Cpp.h>
+using namespace H5;
+
 
 // Stimulus library
 #include <plstim/plstim.h>
@@ -41,11 +45,33 @@ using namespace plstim;
 //#define CLOCK CLOCK_MONOTONIC
 
 
+#define LORENCEAU_CONFIG_CW		(1<<0)
+#define LORENCEAU_CONFIG_CONTROL	(1<<1)
+#define LORENCEAU_CONFIG_UP		(1<<2)
+
+struct SessionResult
+{
+  time_t begin_sec;
+  long begin_nsec;
+  /// Bitfield of the configuration
+  uint8_t config;
+  /// Subject response (up or down)
+  uint8_t response;
+  time_t answer_sec;
+  long answer_nsec;
+};
+
 class LorenceauExperiment : public Experiment
 {
 protected:
   /// Associated hardware setup
   Setup* setup;
+
+  /// Result file
+  H5::H5File* hf;
+
+  /// Result dataset
+  H5::DataSet dset;
 
   std::vector<KeySym> answer_keys;
 
@@ -85,7 +111,7 @@ protected:
   bool control;
 
 public:
-  LorenceauExperiment (Setup* s,
+  LorenceauExperiment (Setup* s, const std::string& output,
 		       int win_width, int win_height, bool fullscreen,
 		       const std::string& win_title,
 		       int aperture_diameter);
@@ -96,9 +122,11 @@ public:
 
 
 LorenceauExperiment::LorenceauExperiment (Setup* s,
+    const std::string& result_file,
     int win_width, int win_height, bool fullscreen,
     const std::string& win_title, int aperture_diameter)
-  : setup (s), wanted_frequency (30), dur_ms (332),
+  : setup (s), 
+    wanted_frequency (30), dur_ms (332),
     aperture_diam (aperture_diameter)
 {
   ntrials = 400;
@@ -211,10 +239,38 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   if (! copy_to_texture (sur->get_data (),
 			 special_frames["question"]))
     return;
+
+  // Create an output result file
+  hf = new H5File (result_file.c_str (), H5F_ACC_TRUNC);
+  CompType session_type (sizeof (SessionResult));
+  session_type.insertMember ("begin_sec",
+			     HOFFSET (SessionResult, begin_sec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("begin_nsec",
+			     HOFFSET (SessionResult, begin_nsec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("config",
+			     HOFFSET (SessionResult, config),
+			     PredType::NATIVE_UINT8);
+  session_type.insertMember ("response",
+			     HOFFSET (SessionResult, response),
+			     PredType::NATIVE_UINT8);
+  session_type.insertMember ("answer_sec",
+			     HOFFSET (SessionResult, answer_sec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("answer_nsec",
+			     HOFFSET (SessionResult, answer_nsec),
+			     PredType::NATIVE_LONG);
+  hsize_t htrials = ntrials;
+  DataSpace dspace (1, &htrials);
+  dset = hf->createDataSet ("session-1", session_type, dspace);
+
+  // Save session metadata
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
 {
+  delete hf;
 }
 
 
@@ -254,6 +310,10 @@ LorenceauExperiment::run_trial ()
     return false;
 
   cout << "Answer: " << (pressed_key == XK_Up ? "up" : "down") << endl;
+
+  // Write the results
+  hf->flush (H5F_SCOPE_GLOBAL);
+  
   return true;
 }
 
@@ -349,7 +409,7 @@ main (int argc, char* argv[])
 
   unsigned int win_width, win_height;
 
-  std::vector<std::string> images;
+  std::string output;
   
   // Physical setup configuration
   Setup setup;
@@ -362,6 +422,10 @@ main (int argc, char* argv[])
     TCLAP::ValueArg<string> arg_geom ("g", "geometry",
 	"Stimulus dimension in pixels", false, "", "WIDTHxHEIGHT");
     cmd.add (arg_geom);
+    TCLAP::ValueArg<string> arg_output ("o", "output",
+	"Output file to write results", true, "",
+	"PATH");
+    cmd.add (arg_output);
     TCLAP::ValueArg<std::string> setup_arg ("s", "setup",
 	"Hardware setup configuration", false, Setup::default_source, "SETUP");
     cmd.add (setup_arg);
@@ -371,6 +435,8 @@ main (int argc, char* argv[])
     // Store the setup configuration
     if (! setup.load (setup_arg.getValue ()))
       return 1;
+
+    output = arg_output.getValue ();
 
     // Parse the geometry
     auto geom = arg_geom.getValue ();
@@ -423,7 +489,7 @@ main (int argc, char* argv[])
   // Experiment
   float diameter = 24;	// Degrees
   int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
-  LorenceauExperiment xp (&setup,
+  LorenceauExperiment xp (&setup, output,
 			  win_width, win_height, fullscreen,
 			  argv[0], aperture_diameter);
   // Run the session
