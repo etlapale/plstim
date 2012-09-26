@@ -45,6 +45,9 @@ namespace plstim
     /// Texture height (2ⁿ)
     int tex_height;
 
+    /// Current trial number
+    int current_trial;
+
   public:
     /// Number of trials in a session
     int ntrials;

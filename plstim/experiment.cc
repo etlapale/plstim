@@ -118,7 +118,7 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
 bool
 Experiment::run_session ()
 {
-  for (int i = 0; i < ntrials; i++)
+  for (current_trial = 0; current_trial < ntrials; current_trial++)
     if (! run_trial ())
       return false;
   return true;

@@ -52,14 +52,18 @@ using namespace plstim;
 
 struct SessionResult
 {
-  time_t begin_sec;
-  long begin_nsec;
+  time_t fixation_sec;
+  long fixation_nsec;
+  time_t frames_sec;
+  long frames_nsec;
+  time_t question_sec;
+  long question_nsec;
+  time_t answer_sec;
+  long answer_nsec;
   /// Bitfield of the configuration
   uint8_t config;
   /// Subject response (up or down)
   uint8_t response;
-  time_t answer_sec;
-  long answer_nsec;
 };
 
 class LorenceauExperiment : public Experiment
@@ -73,6 +77,8 @@ protected:
 
   /// Result dataset
   H5::DataSet dset;
+
+  H5::CompType session_type;
 
   std::vector<KeySym> answer_keys;
 
@@ -215,6 +221,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   float cy = tex_height/2;
   cr->set_source_rgb (bg, bg, bg);
   cr->paint ();
+#if 0
   // Key
   cr->set_line_width (1.0);
   cr->set_source_rgb (fg, fg, fg);
@@ -235,6 +242,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   cr->rel_line_to (-key_size/8, -0.25*key_size);
   cr->rel_line_to (key_size/4, 0);
   cr->fill ();
+#endif
   // Aperture
   cr->rectangle (0, 0, tex_width, tex_height);
   cr->arc (cx, cy, radius, 0, 2*M_PI);
@@ -251,12 +259,30 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     exit (1);
   }
   hf = new H5File (result_file.c_str (), H5F_ACC_TRUNC);
-  CompType session_type (sizeof (SessionResult));
-  session_type.insertMember ("begin_sec",
-			     HOFFSET (SessionResult, begin_sec),
+  session_type = CompType (sizeof (SessionResult));
+  session_type.insertMember ("fixation_sec",
+			     HOFFSET (SessionResult, fixation_sec),
 			     PredType::NATIVE_LONG);
-  session_type.insertMember ("begin_nsec",
-			     HOFFSET (SessionResult, begin_nsec),
+  session_type.insertMember ("fixation_nsec",
+			     HOFFSET (SessionResult, fixation_nsec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("frames_sec",
+			     HOFFSET (SessionResult, frames_sec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("frames_nsec",
+			     HOFFSET (SessionResult, frames_nsec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("question_sec",
+			     HOFFSET (SessionResult, question_sec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("question_nsec",
+			     HOFFSET (SessionResult, question_nsec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("answer_sec",
+			     HOFFSET (SessionResult, answer_sec),
+			     PredType::NATIVE_LONG);
+  session_type.insertMember ("answer_nsec",
+			     HOFFSET (SessionResult, answer_nsec),
 			     PredType::NATIVE_LONG);
   session_type.insertMember ("config",
 			     HOFFSET (SessionResult, config),
@@ -264,12 +290,6 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   session_type.insertMember ("response",
 			     HOFFSET (SessionResult, response),
 			     PredType::NATIVE_UINT8);
-  session_type.insertMember ("answer_sec",
-			     HOFFSET (SessionResult, answer_sec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("answer_nsec",
-			     HOFFSET (SessionResult, answer_nsec),
-			     PredType::NATIVE_LONG);
   hsize_t htrials = ntrials;
   DataSpace dspace (1, &htrials);
   dset = hf->createDataSet ("session-1", session_type, dspace);
@@ -287,6 +307,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     error ("cannot use uname()");
     exit (1);
   }
+  // Machine information
   StrType sysname_type (PredType::C_S1, strlen (ubuf.sysname));
   dset.createAttribute ("sysname", sysname_type, scalar_space)
     .write (sysname_type, ubuf.sysname);
@@ -309,41 +330,55 @@ LorenceauExperiment::~LorenceauExperiment ()
 bool
 LorenceauExperiment::run_trial ()
 {
-  struct timespec tp_start, tp_stop;
-
   make_frames ();
 
   // Wait for a key press before running the trial
+  struct timespec tp_fixation;
+  clock_gettime (CLOCK, &tp_fixation);
   show_frame ("fixation");
   if (! wait_any_key ())
     return false;
 
-  //cout << "Starting" << endl;
-  // Mark the beginning time
-  clock_gettime (CLOCK, &tp_start);
-
   // Display each frame of the trial
+  struct timespec tp_frames;
+  clock_gettime (CLOCK, &tp_frames);
   if (! show_frames ())
     return false;
 
-  // Mark the end time
-  clock_gettime (CLOCK, &tp_stop);
-
-  // Display the elapsed time
-  printf ("start: %lds %ldns\n",
-	  tp_start.tv_sec, tp_start.tv_nsec);
-  printf ("stop:  %lds %ldns\n",
-	  tp_stop.tv_sec, tp_stop.tv_nsec);
-
   // Wait for a key press at the end of the trial
+  struct timespec tp_question;
+  clock_gettime (CLOCK, &tp_question);
   show_frame ("question");
   KeySym pressed_key;
   if (! wait_for_key (answer_keys, &pressed_key))
     return false;
 
-  cout << "Answer: " << (pressed_key == XK_Up ? "up" : "down") << endl;
+  struct timespec tp_answer;
+  clock_gettime (CLOCK, &tp_answer);
 
-  // Write the results
+  // Prepare results
+  uint8_t config = 0;
+  if (cw) config |= LORENCEAU_CONFIG_CW;
+  if (control) config |= LORENCEAU_CONFIG_CONTROL;
+  if (up) config |= LORENCEAU_CONFIG_UP;
+  SessionResult result = {
+    tp_fixation.tv_sec, tp_fixation.tv_nsec,
+    tp_frames.tv_sec, tp_frames.tv_nsec,
+    tp_question.tv_sec, tp_question.tv_nsec,
+    tp_answer.tv_sec, tp_answer.tv_nsec,
+    config,
+    pressed_key == XK_Up,
+  };
+
+  // Write result slab
+  hsize_t one = 1;
+  DataSpace fspace = dset.getSpace();
+  hsize_t hframe = current_trial;
+  fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+  DataSpace mspace (1, &one);
+  dset.write (&result, session_type, mspace, fspace);
+
+  // Flush to commit trial
   hf->flush (H5F_SCOPE_GLOBAL);
   
   return true;
