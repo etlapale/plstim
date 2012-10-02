@@ -17,8 +17,6 @@ namespace plstim
     static const std::string default_source;
 
   public:
-    /// Monitor refresh rate
-    float refresh;
     /// Distance between the eye and the monitor
     float distance;
     /// Display resolution in pixels
@@ -30,6 +28,8 @@ namespace plstim
 
     /// Computed resolution [px/mm]
     float px_mm;
+
+    float refresh;
 
   public:
     Setup ();

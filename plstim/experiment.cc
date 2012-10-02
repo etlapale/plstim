@@ -1,7 +1,13 @@
+// plstim/experiment.cc – Base class for experimental stimuli
+
 #include <unistd.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+
+#ifdef HAVE_XRANDR
+#include <X11/extensions/Xrandr.h>
+#endif // HAVE_XRANDR
 
 #include <png.h>
 
@@ -29,11 +35,14 @@ assert_gl_error (const std::string& msg)
 }
 
 
-static int
-make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
-		    int width, int height, bool fullscreen,
-		    const char* title,
-		    EGLNativeWindowType *window, EGLConfig *conf)
+bool
+Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
+				EGLDisplay egl_dpy,
+				int width, int height,
+				bool fullscreen,
+				const char* title,
+				EGLNativeWindowType *window,
+				EGLConfig *conf)
 {
   // Required characteristics
   EGLint egl_attr[] = {
@@ -50,12 +59,135 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
       || num_egl_configs != 1
       || config == 0) {
     fprintf (stderr, "could not choose an EGL config\n");
-    return 0;
+    return false;
   }
 
   // Get the default screen and root window
   Display *dpy = (Display*) nat_dpy;
   Window root = DefaultRootWindow (dpy);
+
+#ifdef HAVE_XRANDR
+  int evt_base, err_base;
+  int maj, min;
+  if (! XRRQueryExtension (dpy, &evt_base, &err_base)
+      || ! XRRQueryVersion (dpy, &maj, &min)) {
+    cerr << "error: RandR extension missing" << endl;
+    return false;
+  }
+  if (maj < 1 || (maj == 1 && min < 3)) {
+    cerr << "error: at least version 1.3 of RandR is required, but "
+         << maj << '.' << min << " was found" << endl;
+    return false;
+  }
+  cout << "RandR version " << maj << '.' << min << endl;
+
+  int min_width, min_height, max_width, max_height;
+  XRRGetScreenSizeRange (dpy, root, &min_width, &min_height,
+			 &max_width, &max_height);
+  cout << "Screen sizes between " << min_width << "×" << min_height
+       << " and " << max_height << "×" << max_height << endl;
+
+  XRRScreenResources* res;
+  if (! (res = XRRGetScreenResources (dpy, root))) {
+    cerr << "error: could not get screen resources" << endl;
+    return false;
+  }
+
+  // Use the default output if none specified
+  RROutput rro;
+  XRROutputInfo* out_info;
+  if (routput.empty ()) {
+    // Use the primary output by default
+    rro = XRRGetOutputPrimary (dpy, root);
+    if (rro) {
+      cout << "Using primary output: " << (long) rro << endl;
+    }
+    // If no primary output is defined check for the first
+    // enabled output
+    else {
+      rro = res->outputs[0];
+      cout << "Using first output: " << (long) rro << endl;
+    }
+    // Fetch the selected output information
+    out_info = XRRGetOutputInfo (dpy, res, rro);
+  }
+  else {
+    bool found = false;
+    // Search for a matching output name
+    for (int i = 0; i < res->noutput; i++) {
+      rro = res->outputs[i];
+      out_info = XRRGetOutputInfo (dpy, res, rro);
+      if (strncmp (routput.c_str (),
+		   out_info->name, out_info->nameLen) == 0) {
+	found = true;
+	break;
+      }
+      XRRFreeOutputInfo (out_info);
+    }
+    // No output with given name
+    if (! found) {
+      cerr << "error: could not find specified output: "
+           << routput << endl;
+      return false;
+    }
+  }
+
+  // Make sure there is a monitor attached
+  if (! out_info->crtc) {
+    cerr << "error: no monitor attached to output " << routput << endl;
+    return false;
+  }
+
+  // Get the attached monitor information
+  auto crtc_info = XRRGetCrtcInfo (dpy, res, out_info->crtc);
+
+  // Search the current monitor mode
+  bool found = false;
+  float mon_rate;
+  for (int i = 0; i < res->nmode; i++) {
+    auto mode_info = res->modes[i];
+    if (mode_info.id == crtc_info->mode) {
+      if (mode_info.hTotal && mode_info.vTotal) {
+	mon_rate = ((float) mode_info.dotClock)
+	  / ((float) mode_info.hTotal * (float) mode_info.vTotal);
+	found = true;
+      }
+      break;
+    }
+  }
+  // Monitor refresh rate not found
+  if (! found) {
+    cerr << "error: refresh rate for output " << routput << " not found" << endl;
+    return false;
+  }
+
+  cout << "Selected CRTC:" << endl
+       << "  Refresh rate: " << mon_rate << " Hz" << endl
+       << "  Offset: " << crtc_info->x << " " << crtc_info->y << endl
+       << "  Size: " << crtc_info->width << "×" << crtc_info->height << endl;
+
+  // Wait for changes to be applied
+  XSync (dpy, False);
+
+  // Cleanup
+  XRRFreeCrtcInfo (crtc_info);
+  XRRFreeOutputInfo (out_info);
+  XRRFreeScreenResources (res);
+  
+#else	// ! HAVE_XRANDR
+  // Compute the required number of frames in a trial
+  int coef = (int) nearbyintf (setup->refresh / wanted_frequency);
+  if ((setup->refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
+    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
+    return false;
+  }
+
+  nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
+  swap_interval = coef;
+  cout << "Setting the number of frames to " << nframes
+       << " (frame changes every " << coef << " refresh)" << endl;
+#endif	// HAVE_XRANDR
+
 
   // Fetch visual information for the configuration
   EGLint vid;
@@ -63,7 +195,7 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
   if (! eglGetConfigAttrib (egl_dpy, config,
 			    EGL_NATIVE_VISUAL_ID, &vid)) {
     fprintf (stderr, "could not get native visual id\n");
-    return 0;
+    return false;
   }
   XVisualInfo xvis;
   XVisualInfo *xvinfo;
@@ -71,7 +203,7 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
   xvinfo = XGetVisualInfo (dpy, VisualIDMask, &xvis, &num_visuals);
   if (num_visuals == 0) {
     fprintf (stderr, "could not get the X visuals\n");
-    return 0;
+    return false;
   }
 
   // Set the window attributes
@@ -112,7 +244,7 @@ make_native_window (EGLNativeDisplayType nat_dpy, EGLDisplay egl_dpy,
   }
 
   *conf = config;
-  return 1;
+  return true;
 }
 
 bool
@@ -199,10 +331,6 @@ Experiment::show_frame (const std::string& frame_name)
   // Draw the frame with triangles
   glDrawArrays (GL_TRIANGLES, 0, 6);
   
-  // Set the swap interval
-  if (swap_interval != 1)
-    eglSwapInterval (egl_dpy, swap_interval);
-
   // Swap
   eglSwapBuffers (egl_dpy, sur);
 
@@ -213,20 +341,31 @@ bool
 Experiment::show_frames ()
 {
   for (int i = 0; i < nframes; i++) {
-    // Set the current frame
-    glBindTexture (GL_TEXTURE_2D, tframes[i]);
-    glUniform1i (texloc, 0);
-
-    // Draw the frame with triangles
-    glDrawArrays (GL_TRIANGLES, 0, 6);
-    
+#if BUGGY_EGL_SWAP_INTERVAL
+    // Simulate an eglSwapInterval()
+    for (int j = 0; j < swap_interval; j++) {
+#else
     // Set the swap interval
     if (swap_interval != 1)
+      //cout << "swap: " << swap_interval << endl;
+      //EGLint si = 2;
       eglSwapInterval (egl_dpy, swap_interval);
+#endif
+      glClear (GL_COLOR_BUFFER_BIT);
 
-    // Swap
-    eglSwapBuffers (egl_dpy, sur);
-    //sleep (2);
+      // Set the current frame
+      glBindTexture (GL_TEXTURE_2D, tframes[i]);
+      glUniform1i (texloc, 0);
+
+      // Draw the frame with triangles
+      glDrawArrays (GL_TRIANGLES, 0, 6);
+
+      // Swap
+      eglSwapBuffers (egl_dpy, sur);
+      //sleep (2);
+#if BUGGY_EGL_SWAP_INTERVAL
+    }
+#endif
   }
 
   return true;
@@ -287,6 +426,22 @@ Experiment::egl_init (int win_width, int win_height, bool fullscreen,
     return false;
 
   eglBindAPI(EGL_OPENGL_ES_API);
+
+  // Check for swap intervals
+  EGLint si;
+  if (! eglGetConfigAttrib (egl_dpy, config,
+			    EGL_MIN_SWAP_INTERVAL, &si)) {
+    fprintf (stderr, "could not get minimal swap interval\n");
+    return false;
+  }
+  cout << "Minimal swap interval: " << si << endl;
+  if (! eglGetConfigAttrib (egl_dpy, config,
+			    EGL_MAX_SWAP_INTERVAL, &si)) {
+    fprintf (stderr, "could not get maximal swap interval\n");
+    return false;
+  }
+  cout << "Maximal swap interval: " << si << endl;
+
 
   // Create an OpenGL ES 2 context
   static const EGLint ctx_attribs[] = {

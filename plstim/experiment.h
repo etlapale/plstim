@@ -29,6 +29,12 @@ namespace plstim
     EGLContext ctx;
     EGLSurface sur;
 
+    /// Output display to be used
+    std::string routput;
+
+    /// Desired monitor refresh rate in Hertz
+    float wanted_frequency;
+
     /**
      * Minimal number of buffer swaps between frames.
      *
@@ -62,6 +68,14 @@ namespace plstim
     std::map<std::string,GLuint> special_frames;
 
   protected:
+    bool make_native_window (EGLNativeDisplayType nat_dpy,
+			     EGLDisplay egl_dpy,
+			     int width, int height,
+			     bool fullscreen,
+			     const char* title,
+			     EGLNativeWindowType *window,
+			     EGLConfig *conf);
+
     void error (const std::string& msg);
 
     /**

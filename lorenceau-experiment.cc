@@ -1,4 +1,4 @@
-// lorenceau-experiment.cc – Experiment of Lorenceau et al (1993)
+// lorenceau-experiment.cc – Experiment of Lorenceau et al (1993) 
 
 #include <assert.h>
 #include <errno.h>
@@ -46,9 +46,12 @@ using namespace plstim;
 //#define CLOCK CLOCK_MONOTONIC
 
 
+// Condition masks
 #define LORENCEAU_CONFIG_CW		(1<<0)
 #define LORENCEAU_CONFIG_CONTROL	(1<<1)
 #define LORENCEAU_CONFIG_UP		(1<<2)
+#define LORENCEAU_CONFIG_CONTRAST	
+
 
 struct SessionResult
 {
@@ -62,6 +65,12 @@ struct SessionResult
   long answer_nsec;
   /// Bitfield of the configuration
   uint8_t config;
+  /// Line luminance
+  float line_luminance;
+  /// Line length
+  float line_length;
+  /// Stimulus duration (in ms)
+  int presentation_time;
   /// Subject response (up or down)
   uint8_t response;
 };
@@ -81,9 +90,6 @@ protected:
   H5::CompType session_type;
 
   std::vector<KeySym> answer_keys;
-
-  /// Desired monitor refresh rate in Hertz
-  float wanted_frequency;
 
   /// Trial duration in milliseconds
   float dur_ms;
@@ -117,9 +123,22 @@ protected:
   /// Control or test experiment
   bool control;
 
+  /// Available luminances
+  std::vector<float> luminances;
+
+  /// Random number generator
+  mt19937 twister;
+
+  /// Binary choice distribution
+  uniform_int_distribution<int> bin_dist;
+
+  /// Luminance choice distribution
+  uniform_int_distribution<int> lum_dist;
+
 public:
   LorenceauExperiment (Setup* s, const std::string& output,
 		       int win_width, int win_height, bool fullscreen,
+		       const std::string& routput,
 		       const std::string& win_title,
 		       int aperture_diameter,
 		       
@@ -133,37 +152,34 @@ public:
 LorenceauExperiment::LorenceauExperiment (Setup* s,
     const std::string& result_file,
     int win_width, int win_height, bool fullscreen,
+    const std::string& _routput,
     const std::string& win_title, int aperture_diameter,
 
     const std::string& subject)
-  : setup (s), 
-    wanted_frequency (30), dur_ms (332),
-    aperture_diam (aperture_diameter)
+  : setup (s),
+    dur_ms (332),
+    aperture_diam (aperture_diameter),
+    luminances ({30, 60, 90, 120, 150}),
+    bin_dist (0, 1),
+    lum_dist (0, luminances.size ()-1)
 {
-  ntrials = 400;
+  ntrials = 100;
+  routput = _routput;
+  wanted_frequency = 30;
 
-  // Compute the required number of frames in a trial
-  int coef = (int) nearbyintf (setup->refresh / wanted_frequency);
-  if ((setup->refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
-    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
-    exit (1);
-  }
+  // Initialise the random number generator
+  twister.seed (time (NULL));
+  for (int i = 0; i < 10000; i++)
+    (void) bin_dist (twister);
 
   fix_radius = setup->deg2pix (3./60);
   cout << "Fixation point radius: " << fix_radius << endl;
-
-  nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
-  cout << "Setting the number of frames to" << nframes << endl;
 
   // Possible answers in a trial
   answer_keys.push_back (XK_Up);
   answer_keys.push_back (XK_Down);
 
   // Stimulus configuration
-  float ll_deg = 2.7;
-  ll = setup->deg2pix (ll_deg);
-  cout << "Line length is " << ll_deg << " degrees, or "
-       << ll << " pixels" << endl;
   float lw_deg = sec2deg (1.02);
   lw = setup->deg2pix (lw_deg);
   cout << "Line width is " << lw_deg << " degrees, or "
@@ -172,21 +188,17 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   bg = setup->lum2px (bg_cd);
   cout << "Background luminance is " << bg_cd << " cd/m², or "
        << bg << " in [0,1]" << endl;
-  // C%→L: C₁₂→13.44, C₂₅→15, C₃₉→16.68, C₅₂→18.24, C₇₀→20.4
-  float fg_cd = 150;//16.68;
-  fg = setup->lum2px (fg_cd);
-  cout << "Foreground luminance is " << fg_cd << " cd/m², or "
-       << fg << " in [0,1]" << endl;
 
   // Set the bar positions
   spacing = setup->deg2pix (1);
 
-  // Initialise the graphic system
-  egl_init (win_width, win_height, fullscreen, win_title,
-	    aperture_diameter, aperture_diameter);
-
-
   radius = aperture_diam/2;
+
+  // Initialise the graphic system
+  bool ok = egl_init (win_width, win_height, fullscreen, win_title,
+		      aperture_diameter, aperture_diameter);
+  if (! ok)
+    exit (1);
 
   // Initialise the special frames
   gen_frame ("fixation");
@@ -216,12 +228,12 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     exit (1);
   
   // Question frame
-  float key_size = setup->deg2pix (2);
   float cx = tex_width/2;
   float cy = tex_height/2;
   cr->set_source_rgb (bg, bg, bg);
   cr->paint ();
 #if 0
+  float key_size = setup->deg2pix (2);
   // Key
   cr->set_line_width (1.0);
   cr->set_source_rgb (fg, fg, fg);
@@ -260,36 +272,26 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   }
   hf = new H5File (result_file.c_str (), H5F_ACC_TRUNC);
   session_type = CompType (sizeof (SessionResult));
-  session_type.insertMember ("fixation_sec",
-			     HOFFSET (SessionResult, fixation_sec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("fixation_nsec",
-			     HOFFSET (SessionResult, fixation_nsec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("frames_sec",
-			     HOFFSET (SessionResult, frames_sec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("frames_nsec",
-			     HOFFSET (SessionResult, frames_nsec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("question_sec",
-			     HOFFSET (SessionResult, question_sec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("question_nsec",
-			     HOFFSET (SessionResult, question_nsec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("answer_sec",
-			     HOFFSET (SessionResult, answer_sec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("answer_nsec",
-			     HOFFSET (SessionResult, answer_nsec),
-			     PredType::NATIVE_LONG);
-  session_type.insertMember ("config",
-			     HOFFSET (SessionResult, config),
-			     PredType::NATIVE_UINT8);
-  session_type.insertMember ("response",
-			     HOFFSET (SessionResult, response),
-			     PredType::NATIVE_UINT8);
+
+#define INSERT_MEMBER_TO_HDF_TYPE(name, type)			\
+  session_type.insertMember (#name,				\
+			     HOFFSET (SessionResult, name),	\
+			     PredType::type)
+
+  INSERT_MEMBER_TO_HDF_TYPE (fixation_sec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (fixation_nsec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (frames_sec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (frames_nsec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (question_sec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (question_nsec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (answer_sec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (answer_nsec, NATIVE_LONG);
+  INSERT_MEMBER_TO_HDF_TYPE (config, NATIVE_UINT8);
+  INSERT_MEMBER_TO_HDF_TYPE (response, NATIVE_UINT8);
+  INSERT_MEMBER_TO_HDF_TYPE (line_luminance, NATIVE_FLOAT);
+  INSERT_MEMBER_TO_HDF_TYPE (line_length, NATIVE_FLOAT);
+  INSERT_MEMBER_TO_HDF_TYPE (presentation_time, NATIVE_INT);
+
   hsize_t htrials = ntrials;
   DataSpace dspace (1, &htrials);
   dset = hf->createDataSet ("session-1", session_type, dspace);
@@ -326,20 +328,39 @@ LorenceauExperiment::~LorenceauExperiment ()
   delete hf;
 }
 
-
 bool
 LorenceauExperiment::run_trial ()
 {
+  // Set a random trial condition
+  up = bin_dist (twister);
+  cw = bin_dist (twister);
+  control = bin_dist (twister);
+  // Contrast
+  // C%→L: C₁₂→13.44, C₂₅→15, C₃₉→16.68, C₅₂→18.24, C₇₀→20.4
+  float fg_cd = luminances [lum_dist (twister)];
+  fg = setup->lum2px (fg_cd);
+  cout << "Foreground luminance is " << fg_cd << " cd/m², or "
+       << fg << " in [0,1], or "
+       << (int) (fg*255) << " in [0,255]" << endl;
+  // Line length
+  float ll_deg = 2.7;
+  ll = setup->deg2pix (ll_deg);
+  cout << "Line length is " << ll_deg << " degrees, or "
+       << ll << " pixels" << endl;
+
   make_frames ();
 
   // Wait for a key press before running the trial
   struct timespec tp_fixation;
   clock_gettime (CLOCK, &tp_fixation);
   show_frame ("fixation");
+#if !NO_INTERACTIVE
   if (! wait_any_key ())
     return false;
+#endif
 
   // Display each frame of the trial
+  clear_screen ();
   struct timespec tp_frames;
   clock_gettime (CLOCK, &tp_frames);
   if (! show_frames ())
@@ -348,10 +369,16 @@ LorenceauExperiment::run_trial ()
   // Wait for a key press at the end of the trial
   struct timespec tp_question;
   clock_gettime (CLOCK, &tp_question);
+  printf ("start: %lds %ldns\n",
+	  tp_frames.tv_sec, tp_frames.tv_nsec);
+  printf ("stop:  %lds %ldns\n",
+	  tp_question.tv_sec, tp_question.tv_nsec);
   show_frame ("question");
   KeySym pressed_key;
+#if !NO_INTERACTIVE
   if (! wait_for_key (answer_keys, &pressed_key))
     return false;
+#endif
 
   struct timespec tp_answer;
   clock_gettime (CLOCK, &tp_answer);
@@ -367,6 +394,9 @@ LorenceauExperiment::run_trial ()
     tp_question.tv_sec, tp_question.tv_nsec,
     tp_answer.tv_sec, tp_answer.tv_nsec,
     config,
+    fg_cd,
+    ll_deg,
+    (int) dur_ms ,
     pressed_key == XK_Up,
   };
 
@@ -478,6 +508,7 @@ main (int argc, char* argv[])
 
   std::string output;
   std::string subject;
+  std::string rout;
   
   // Physical setup configuration
   Setup setup;
@@ -490,27 +521,36 @@ main (int argc, char* argv[])
     TCLAP::ValueArg<string> arg_geom ("g", "geometry",
 	"Stimulus dimension in pixels", false, "", "WIDTHxHEIGHT");
     cmd.add (arg_geom);
-    TCLAP::ValueArg<string> arg_output ("o", "output",
-	"Output file to write results", false, "",
-	"PATH");
-    cmd.add (arg_output);
+#ifdef HAVE_XRANDR
+    TCLAP::ValueArg<string> arg_rout ("o", "output",
+	"RandR output", false, "", "OUTPUT");
+    cmd.add (arg_rout);
+#endif // HAVE_XRANDR
     TCLAP::ValueArg<string> arg_subject ("s", "subject",
 	"Subject initials", true, "", "SUBJECT");
     cmd.add (arg_subject);
     TCLAP::ValueArg<std::string> setup_arg ("S", "setup",
 	"Hardware setup configuration", false, Setup::default_source, "SETUP");
     cmd.add (setup_arg);
+    TCLAP::UnlabeledValueArg<string> arg_output ("results",
+	"File to write results", false, "", "PATH");
+    cmd.add (arg_output);
     // Parser the command line arguments
     cmd.parse (argc, argv);
+
+    // TODO: generate a new HDF5 filename if none exists
+    output = arg_output.getValue ();
+
+    subject = arg_subject.getValue ();
+
+#ifdef HAVE_XRANDR
+    // Get the RandR output to use
+    rout = arg_rout.getValue ();
+#endif // HAVE_XRANDR
 
     // Store the setup configuration
     if (! setup.load (setup_arg.getValue ()))
       return 1;
-
-    // Generate a new HDF5 filename if none exists
-    output = arg_output.getValue ();
-
-    subject = arg_subject.getValue ();
 
     // Parse the geometry
     auto geom = arg_geom.getValue ();
@@ -565,8 +605,8 @@ main (int argc, char* argv[])
   int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
   LorenceauExperiment xp (&setup, output,
 			  win_width, win_height, fullscreen,
+			  rout,
 			  argv[0], aperture_diameter,
-			  
 			  subject);
   // Run the session
   if (! xp.run_session ())
