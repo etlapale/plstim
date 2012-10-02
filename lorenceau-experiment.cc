@@ -91,9 +91,6 @@ protected:
 
   std::vector<KeySym> answer_keys;
 
-  /// Trial duration in milliseconds
-  float dur_ms;
-
   /// Foreground colour
   float fg;
   /// Background colour
@@ -157,7 +154,6 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
 
     const std::string& subject)
   : setup (s),
-    dur_ms (332),
     aperture_diam (aperture_diameter),
     luminances ({30, 60, 90, 120, 150}),
     bin_dist (0, 1),
@@ -166,6 +162,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
   ntrials = 100;
   routput = _routput;
   wanted_frequency = 30;
+  dur_ms = 332;
 
   // Initialise the random number generator
   twister.seed (time (NULL));

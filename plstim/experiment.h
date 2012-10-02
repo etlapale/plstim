@@ -35,6 +35,9 @@ namespace plstim
     /// Desired monitor refresh rate in Hertz
     float wanted_frequency;
 
+    /// Trial duration in ms
+    float dur_ms;
+
     /**
      * Minimal number of buffer swaps between frames.
      *

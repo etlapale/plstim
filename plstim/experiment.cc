@@ -166,6 +166,20 @@ Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
        << "  Offset: " << crtc_info->x << " " << crtc_info->y << endl
        << "  Size: " << crtc_info->width << "×" << crtc_info->height << endl;
 
+  // Place the window on the monitor
+  int win_x = crtc_info->x;
+  int win_y = crtc_info->y;
+  
+  // Compute the required number of frames in a trial
+  int coef = (int) nearbyintf (mon_rate / wanted_frequency);
+  if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01) {
+    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
+    return false;
+  }
+
+  nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
+  swap_interval = coef;
+
   // Wait for changes to be applied
   XSync (dpy, False);
 
@@ -175,6 +189,7 @@ Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
   XRRFreeScreenResources (res);
   
 #else	// ! HAVE_XRANDR
+  int win_x = 0, win_y = 0;
   // Compute the required number of frames in a trial
   int coef = (int) nearbyintf (setup->refresh / wanted_frequency);
   if ((setup->refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
@@ -184,9 +199,9 @@ Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
 
   nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
   swap_interval = coef;
+#endif	// HAVE_XRANDR
   cout << "Setting the number of frames to " << nframes
        << " (frame changes every " << coef << " refresh)" << endl;
-#endif	// HAVE_XRANDR
 
 
   // Fetch visual information for the configuration
@@ -216,7 +231,7 @@ Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
 				    xvinfo->visual, AllocNone);
   xattr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
   mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-  win = XCreateWindow (dpy, root, 0, 0, width, height, 0,
+  win = XCreateWindow (dpy, root, win_x, win_y, width, height, 0,
 			xvinfo->depth, InputOutput, xvinfo->visual,
 			mask, &xattr);
   *window = (EGLNativeWindowType) win;
