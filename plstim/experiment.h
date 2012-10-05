@@ -13,6 +13,7 @@
 #include <GLES2/gl2.h>
 
 
+#include "setup.h"
 #include "utils.h"
 
 
@@ -28,6 +29,10 @@ namespace plstim
     EGLConfig config;
     EGLContext ctx;
     EGLSurface sur;
+
+    /// Associated hardware setup
+    Setup* setup;
+
 
     /// Output display to be used
     std::string routput;

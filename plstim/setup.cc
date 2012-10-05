@@ -46,12 +46,19 @@ Setup::load (const std::string& filename)
   ss.clear ();
   ss.str (tmp);
   ss >> size[0] >> size[1];
+  auto node_lum = doc.FindValue ("luminance");
   doc["luminance"] >> tmp;
   ss.clear ();
   ss.str (tmp);
   ss >> luminance[0] >> luminance[1];
   doc["distance"] >> distance;
-  doc["refresh"] >> refresh;
+
+  auto node_refresh = doc.FindValue ("refresh");
+  if (node_refresh)
+    refresh = node_refresh->to<float> ();
+  else
+    refresh = 0;
+  cout << "Refresh rate: " << refresh << endl;
 
   // Compute vertical and horizontal resolutions
   float hres = resolution[0] / size[0];

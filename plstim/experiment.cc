@@ -166,6 +166,14 @@ Experiment::make_native_window (EGLNativeDisplayType nat_dpy,
        << "  Offset: " << crtc_info->x << " " << crtc_info->y << endl
        << "  Size: " << crtc_info->width << "×" << crtc_info->height << endl;
 
+  // Store the refresh rate in the setup
+  if (setup->refresh != 0 && setup->refresh != mon_rate) {
+    cerr << "error: refresh rate in setup file ("
+         << setup->refresh << " Hz) doest not match actual refresh rate (" << mon_rate << " Hz)" << endl;
+    return false;
+  }
+  setup->refresh = mon_rate;
+
   // Place the window on the monitor
   int win_x = crtc_info->x;
   int win_y = crtc_info->y;

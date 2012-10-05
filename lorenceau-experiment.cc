@@ -78,9 +78,6 @@ struct SessionResult
 class LorenceauExperiment : public Experiment
 {
 protected:
-  /// Associated hardware setup
-  Setup* setup;
-
   /// Result file
   H5::H5File* hf;
 
@@ -153,12 +150,12 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     const std::string& win_title, int aperture_diameter,
 
     const std::string& subject)
-  : setup (s),
-    aperture_diam (aperture_diameter),
+  : aperture_diam (aperture_diameter),
     luminances ({30, 60, 90, 120, 150}),
     bin_dist (0, 1),
     lum_dist (0, luminances.size ()-1)
 {
+  setup = s;
   ntrials = 100;
   routput = _routput;
   wanted_frequency = 30;
