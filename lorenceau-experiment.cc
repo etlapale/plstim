@@ -156,7 +156,7 @@ LorenceauExperiment::LorenceauExperiment (Setup* s,
     lum_dist (0, luminances.size ()-1)
 {
   setup = s;
-  ntrials = 100;
+  ntrials = 200;
   routput = _routput;
   wanted_frequency = 30;
   dur_ms = 332;
