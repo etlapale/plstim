@@ -49,7 +49,6 @@ namespace plstim
 
     /// Convert a duration in seconds to frames
     float sec2frm (float dur) const {
-      cout << dur << " " << refresh << endl;
       return dur * refresh;
     }
 

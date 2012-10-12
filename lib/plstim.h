@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "experiment.h"
+#include "qexperiment.h"
 #include "setup.h"
 #include "utils.h"
 
