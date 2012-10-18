@@ -223,29 +223,29 @@ lib/qexperiment.cc.s:
 	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/qexperiment.cc.s
 .PHONY : lib/qexperiment.cc.s
 
-lib/setup.o: lib/setup.cc.o
-.PHONY : lib/setup.o
+lib/utils.o: lib/utils.cc.o
+.PHONY : lib/utils.o
 
 # target to build an object file
-lib/setup.cc.o:
-	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/setup.cc.o
-.PHONY : lib/setup.cc.o
+lib/utils.cc.o:
+	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/utils.cc.o
+.PHONY : lib/utils.cc.o
 
-lib/setup.i: lib/setup.cc.i
-.PHONY : lib/setup.i
+lib/utils.i: lib/utils.cc.i
+.PHONY : lib/utils.i
 
 # target to preprocess a source file
-lib/setup.cc.i:
-	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/setup.cc.i
-.PHONY : lib/setup.cc.i
+lib/utils.cc.i:
+	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/utils.cc.i
+.PHONY : lib/utils.cc.i
 
-lib/setup.s: lib/setup.cc.s
-.PHONY : lib/setup.s
+lib/utils.s: lib/utils.cc.s
+.PHONY : lib/utils.s
 
 # target to generate assembly for a file
-lib/setup.cc.s:
-	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/setup.cc.s
-.PHONY : lib/setup.cc.s
+lib/utils.cc.s:
+	$(MAKE) -f CMakeFiles/plstim.dir/build.make CMakeFiles/plstim.dir/lib/utils.cc.s
+.PHONY : lib/utils.cc.s
 
 # Help Target
 help:
@@ -269,9 +269,9 @@ help:
 	@echo "... lib/qexperiment.o"
 	@echo "... lib/qexperiment.i"
 	@echo "... lib/qexperiment.s"
-	@echo "... lib/setup.o"
-	@echo "... lib/setup.i"
-	@echo "... lib/setup.s"
+	@echo "... lib/utils.o"
+	@echo "... lib/utils.i"
+	@echo "... lib/utils.s"
 .PHONY : help
 
 

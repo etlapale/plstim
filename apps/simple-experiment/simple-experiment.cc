@@ -18,9 +18,6 @@
 #include <sstream>
 using namespace std;
 
-// Command line parsing
-#include <tclap/CmdLine.h>
-
 // Stimulus library
 #include <plstim/plstim.h>
 using namespace plstim;
@@ -29,27 +26,14 @@ using namespace plstim;
 class LorenceauExperiment : public QExperiment
 {
 public:
-  LorenceauExperiment (int & argc, char** argv,
-		       Setup* s, const std::string& output,
-		       int win_width, int win_height, bool fullscreen,
-		       const std::string& routput,
-		       const std::string& win_title,
-		       int aperture_diameter,
-		       const std::string& subject);
+  LorenceauExperiment (int & argc, char** argv);
   virtual ~LorenceauExperiment ();
   virtual bool run_trial ();
   virtual bool make_frames ();
 };
 
 
-LorenceauExperiment::LorenceauExperiment (int & argc, char** argv,
-					  Setup* s,
-    const std::string& result_file,
-    int win_width, int win_height, bool fullscreen,
-    const std::string& _routput,
-    const std::string& win_title, int aperture_diameter,
-
-    const std::string& subject)
+LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   : QExperiment (argc, argv)
 {
   ntrials = 10;
@@ -319,81 +303,7 @@ LorenceauExperiment::make_frames ()
 int
 main (int argc, char* argv[])
 {
-  int res;
-
-  unsigned int win_width, win_height;
-
-  std::string output;
-  std::string subject;
-  std::string rout;
-  
-  // Physical setup configuration
-  Setup setup;
-  bool fullscreen = false;
-
-  try {
-    // Setup the command line parser
-    TCLAP::CmdLine cmd ("Generate, display and record stimuli",
-			' ', "0.1");
-    TCLAP::ValueArg<string> arg_geom ("g", "geometry",
-	"Stimulus dimension in pixels", false, "", "WIDTHxHEIGHT");
-    cmd.add (arg_geom);
-#ifdef HAVE_XRANDR
-    TCLAP::ValueArg<string> arg_rout ("o", "output",
-	"RandR output", false, "", "OUTPUT");
-    cmd.add (arg_rout);
-#endif // HAVE_XRANDR
-    TCLAP::ValueArg<string> arg_subject ("s", "subject",
-	"Subject initials", true, "", "SUBJECT");
-    cmd.add (arg_subject);
-    TCLAP::ValueArg<std::string> setup_arg ("S", "setup",
-	"Hardware setup configuration", false, Setup::default_source, "SETUP");
-    cmd.add (setup_arg);
-    TCLAP::UnlabeledValueArg<string> arg_output ("results",
-	"File to write results", false, "", "PATH");
-    cmd.add (arg_output);
-    // Parser the command line arguments
-    cmd.parse (argc, argv);
-
-    // TODO: generate a new HDF5 filename if none exists
-    output = arg_output.getValue ();
-
-    subject = arg_subject.getValue ();
-
-#ifdef HAVE_XRANDR
-    // Get the RandR output to use
-    rout = arg_rout.getValue ();
-#endif // HAVE_XRANDR
-
-    // Store the setup configuration
-    if (! setup.load (setup_arg.getValue ()))
-      return 1;
-
-    // Parse the geometry
-    auto geom = arg_geom.getValue ();
-    if (geom.empty ()) {
-      win_width = setup.resolution[0];
-      win_height = setup.resolution[1];
-      fullscreen = true;
-    }
-    else {
-      size_t sep = geom.find ('x');
-      if (sep == geom.npos) {
-	cerr << "error: invalid stimulus dimension: " << geom << endl;
-	return 1;
-      }
-      win_width = atof (geom.c_str ());
-      win_height = atof (geom.c_str () + sep + 1);
-      if (win_width == 0 || win_height == 0) {
-	cerr << "error: invalid stimulus dimension: " << geom << endl;
-	return 1;
-      }
-    }
-  } catch (TCLAP::ArgException& e) {
-    cerr << "error: could not parse argument "
-         << e.argId () << ": " << e.error () << endl;
-  }
-  
+#if 0
   // Debug the configuration out
   cout << "Refresh rate: " << setup.refresh << " Hz" << endl
        << "Viewing distance: " << setup.distance << " mm" << endl
@@ -405,22 +315,12 @@ main (int argc, char* argv[])
   cout << "Visual field: " << setup.pix2deg (setup.resolution[0])
        << "×" << setup.pix2deg (setup.resolution[1])
        << " degrees" << endl;
+#endif
 
-  // Experiment
-  float diameter = 24;	// Degrees
-  int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
-  LorenceauExperiment xp (argc, argv,
-			  &setup, output,
-			  win_width, win_height, fullscreen,
-			  rout,
-			  argv[0], aperture_diameter,
-			  subject);
-  // Run the session
-  xp.exec ();
-  //if (! xp.run_session ())
-    //return 1;
-
-  return 0;
+  //int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
+  
+  LorenceauExperiment xp (argc, argv);
+  return xp.exec ();
 }
 
 // vim:sw=2:

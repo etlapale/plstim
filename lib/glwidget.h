@@ -82,11 +82,52 @@ namespace plstim
 	     << log << endl;
 	exit (1);
       }
+
+#if 0
+      // Compute the offset to center the stimulus
+      GLfloat offx = (win_width-tex_width)/2.0f;
+      GLfloat offy = (win_height-tex_height)/2.0f;
+
+      float tx_conv = tex_width / (2.0f * win_width);
+      float ty_conv = tex_height / (2.0f * win_height);
+
+      tx_conv = 1/2.0f;
+      ty_conv = 1/2.0f;
+
+      // Create an identity vertex shader
+      ss.str("");
+      ss << fixed << setprecision(12)
+	// This projection matrix maps OpenGL coordinates
+	// to device coordinates (pixels)
+	<< "const mat4 proj_matrix = mat4("
+	<< (2.0/win_width) << ", 0.0, 0.0, -1.0," << endl
+	<< "0.0, " << -(2.0/win_height) << ", 0.0, 1.0," << endl
+	<< "0.0, 0.0, -1.0, 0.0," << endl
+	<< "0.0, 0.0, 0.0, 1.0);" << endl
+	<< "attribute vec2 ppos;" << endl
+	<< "varying vec2 tex_coord;" << endl
+	<< "void main () {" << endl
+	<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
+	<< "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
+	<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
+	<< "}" << endl;
+      auto vshader_str = ss.str();
+      cout << "vertex shader:" << endl << vshader_str << endl;
+
+      GLuint vshader = glCreateShader (GL_VERTEX_SHADER);
+      if (vshader == 0) {
+	fprintf (stderr, "could not create a vertex shader (0x%x)\n",
+		 glGetError ());
+	return 1;
+      }
+      assert_gl_error ("create a vertex shader");
+#endif
     }
 
     void resizeGL (int w, int h)
     {
       std::cout << "resizeGL(" << w << ", " << h << ")" << std::endl;
+      glClear (GL_COLOR_BUFFER_BIT);
     }
 
     void paintGL ()

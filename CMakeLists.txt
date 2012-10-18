@@ -1,6 +1,5 @@
 project (plstim)
 cmake_minimum_required (VERSION 2.8)
-include (FindPkgConfig)
 
 # General build setup
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
@@ -12,11 +11,8 @@ find_package (Qt4 REQUIRED)
 set ( QT_USE_QTOPENGL TRUE )
 include ( ${QT_USE_FILE} )
 
-# Search for other libraries
-pkg_check_modules (YAMLCPP REQUIRED yaml-cpp)
-
 # Shared library
-set (lib_src lib/qexperiment.cc lib/setup.cc)
+set (lib_src lib/qexperiment.cc lib/utils.cc)
 set (lib_hdr lib/qexperiment.h lib/glwidget.h)
 qt4_wrap_cpp (lib_moc ${lib_hdr})
 add_library (plstim SHARED ${lib_src} ${lib_moc})

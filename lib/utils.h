@@ -7,6 +7,8 @@
 
 namespace plstim
 {
+  bool initialise ();
+
   /// Convert an angle in radians to degrees
   static inline float degrees (float rads) {
     return 180 * rads / M_PI;
