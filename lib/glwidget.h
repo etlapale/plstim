@@ -36,6 +36,7 @@ namespace plstim
       using namespace std;
 
       std::cout << "initializeGL()" << std::endl;
+      initializeGLFunctions ();
 
       glClearColor (1, 0, 0, 0);
 
@@ -55,11 +56,11 @@ namespace plstim
       // Create a fragment shader for the texture
       stringstream ss;
       static const char *fshader_txt = 
-	"varying mediump vec2 tex_coord;\n"
-	"uniform sampler2D texture;\n"
+	//"varying mediump vec2 tex_coord;\n"
+	//"uniform sampler2D texture;\n"
 	"void main() {\n"
-	//"  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-	"  gl_FragColor = texture2D(texture, tex_coord);\n"
+	"  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+	//"  gl_FragColor = texture2D(texture, tex_coord);\n"
 	//"  gl_FragColor = vec4(tex_coord.x, tex_coord.y, 0, 1);\n"
 	"}\n";
       GLuint fshader = glCreateShader (GL_FRAGMENT_SHADER);
