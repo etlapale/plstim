@@ -509,7 +509,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setDepth (false);
   fmt.setSwapInterval (1);
   glwidget = new MyGLWidget (fmt, &win);
-  win.setCentralWidget (glwidget);
+  auto splitter = new QSplitter (&win);
+  win.setCentralWidget (splitter);
   cout << "OpenGL version " << glwidget->format ().majorVersion ()
        << '.' << glwidget->format ().minorVersion () << endl;
   if (! glwidget->format ().doubleBuffer ())
@@ -524,6 +525,52 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setShortcut(tr("Ctrl+Q"));
   action->setStatusTip(tr("&Quit the program"));
   connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
+
+  // Left toolbox
+  auto tbox = new QToolBox;
+  splitter->addWidget (tbox);
+  splitter->addWidget (glwidget);
+
+  // Experimental setup
+  auto setup_widget = new QWidget;
+  auto res_x_edit = new QLineEdit;
+  auto res_valid = new QIntValidator (1, 16384);
+  res_x_edit->setValidator (res_valid);
+  res_x_edit->setMaxLength (5);
+  auto res_y_edit = new QLineEdit;
+  res_y_edit->setValidator (res_valid);
+  res_y_edit->setMaxLength (5);
+  auto phy_width_edit = new QLineEdit;
+  phy_width_edit->setValidator (res_valid);
+  phy_width_edit->setMaxLength (5);
+  auto phy_height_edit = new QLineEdit;
+  phy_height_edit->setValidator (res_valid);
+  phy_height_edit->setMaxLength (5);
+  auto dst_edit = new QLineEdit;
+  dst_edit->setValidator (res_valid);
+  dst_edit->setMaxLength (5);
+  auto lum_min_edit = new QLineEdit;
+  auto lum_valid = new QDoubleValidator (0, 16384, 2);
+  lum_min_edit->setValidator (lum_valid);
+  lum_min_edit->setMaxLength (5);
+  auto lum_max_edit = new QLineEdit;
+  lum_max_edit->setValidator (lum_valid);
+  lum_max_edit->setMaxLength (5);
+  auto refresh_edit = new QLineEdit;
+  refresh_edit->setValidator (res_valid);
+  refresh_edit->setMaxLength (5);
+
+  auto flayout = new QFormLayout;
+  flayout->addRow ("Horizontal resolution", res_x_edit);
+  flayout->addRow ("Vertical resolution", res_y_edit);
+  flayout->addRow ("Physical width", phy_width_edit);
+  flayout->addRow ("Physical height", phy_height_edit);
+  flayout->addRow ("Distance", dst_edit);
+  flayout->addRow ("Minimum luminance", lum_min_edit);
+  flayout->addRow ("Maximum luminance", lum_max_edit);
+  flayout->addRow ("Refresh rate", refresh_edit);
+  setup_widget->setLayout (flayout);
+  tbox->addItem (setup_widget, "Setup");
 }
 
 QExperiment::~QExperiment ()
