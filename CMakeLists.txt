@@ -20,7 +20,8 @@ add_library (plstim SHARED ${lib_src} ${lib_moc})
 
 # Experiments
 set (se_src apps/simple-experiment/simple-experiment.cc)
-qt4_automoc (${se_src})
-add_executable (simple-experiment ${se_src})
+set (se_hdr apps/simple-experiment/simple-experiment.h)
+qt4_wrap_cpp (se_moc ${se_hdr})
+add_executable (simple-experiment ${se_src} ${se_moc})
 target_link_libraries (simple-experiment
   plstim ${QT_LIBRARIES} ${YAMLCPP_LIBRARIES})

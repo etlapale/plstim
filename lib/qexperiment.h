@@ -24,7 +24,7 @@
 
 namespace plstim
 {
-  class QExperiment : QObject
+  class QExperiment : public QObject
   {
   Q_OBJECT
   protected:
@@ -150,9 +150,15 @@ namespace plstim
     /*bool wait_for_key (const std::vector<KeySym>& accepted_keys,
 		       KeySym* pressed_key);*/
 
+    /// Convert a degrees distance to pixels
+    float deg2pix (float dst) const {
+      return 2*distance*tan(radians(dst)/2)*px_mm;
+    }
+
   protected slots:
     void setup_param_changed ();
     void update_setup ();
+    void update_converters ();
     void quit ();
 
   protected:
@@ -166,6 +172,12 @@ namespace plstim
     QLineEdit* lum_min_edit;
     QLineEdit* lum_max_edit;
     QLineEdit* refresh_edit;
+
+    float distance;
+    float px_mm;
+
+  signals:
+    void setup_updated ();
   };
 }
 

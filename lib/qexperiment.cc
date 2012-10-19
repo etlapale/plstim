@@ -631,6 +631,25 @@ QExperiment::QExperiment (int & argc, char** argv)
   }
 
   save_setup = true;
+
+  connect (this, SIGNAL (setup_updated ()),
+	   this, SLOT (update_converters ()));
+}
+
+void
+QExperiment::update_converters ()
+{
+  distance = dst_edit->text ().toFloat ();
+
+  float hres = res_x_edit->text ().toFloat ()
+    / phy_width_edit->text ().toFloat ();
+  float vres = res_y_edit->text ().toFloat ()
+    / phy_height_edit->text ().toFloat ();
+  float err = fabsf ((hres-vres) / (hres+vres));
+  if (err > 0.01)
+    qDebug () << "too much difference between horizontal and"
+      " vertical resolutions";
+  px_mm = (hres+vres)/2.0;
 }
 
 QExperiment::~QExperiment ()
@@ -671,6 +690,9 @@ QExperiment::setup_param_changed ()
   settings->setValue ("lmax", lum_max_edit->text ());
   settings->setValue ("rate", refresh_edit->text ());
   settings->endGroup ();
+
+  // Emit the signal
+  emit setup_updated ();
 }
 
 void
@@ -689,4 +711,6 @@ QExperiment::update_setup ()
   lum_max_edit->setText (settings->value ("lmax").toString ());
   refresh_edit->setText (settings->value ("rate").toString ());
   settings->endGroup ();
+
+  emit setup_updated ();
 }

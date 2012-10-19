@@ -18,19 +18,10 @@
 #include <sstream>
 using namespace std;
 
-// Stimulus library
-#include <plstim/plstim.h>
+#include <QtDebug>
+
+#include "simple-experiment.h"
 using namespace plstim;
-
-
-class LorenceauExperiment : public QExperiment
-{
-public:
-  LorenceauExperiment (int & argc, char** argv);
-  virtual ~LorenceauExperiment ();
-  virtual bool run_trial ();
-  virtual bool make_frames ();
-};
 
 
 LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
@@ -117,6 +108,21 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 			 special_frames["question"]))
     exit (1);
 #endif
+
+  connect (this, SIGNAL (setup_updated ()),
+	   this, SLOT (update_configuration ()));
+  emit setup_updated ();
+}
+
+void
+LorenceauExperiment::update_configuration ()
+{
+  qDebug () << "update_configuration()";
+
+  // Aperture size
+  float ap_diam_degs = 24;
+  int ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
+  qDebug () << "aperture size:" << ap_diam_px << "pixels";
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
@@ -316,8 +322,6 @@ main (int argc, char* argv[])
        << "×" << setup.pix2deg (setup.resolution[1])
        << " degrees" << endl;
 #endif
-
-  //int aperture_diameter = (int) ceilf (setup.deg2pix (diameter));
   
   LorenceauExperiment xp (argc, argv);
   return xp.exec ();

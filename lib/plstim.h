@@ -6,7 +6,6 @@
 #include <cmath>
 
 #include "qexperiment.h"
-#include "setup.h"
 #include "utils.h"
 
 #endif // __PLSTIM_PLSTIM_H

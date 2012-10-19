@@ -42,11 +42,6 @@ namespace plstim
       return degrees (2 * atan2 (dst, 2*distance*px_mm));
     }
 
-    /// Convert a degrees distance to pixels
-    float deg2pix (float dst) const {
-      return 2*distance*tan(radians(dst)/2)*px_mm;
-    }
-
     /// Convert a duration in seconds to frames
     float sec2frm (float dur) const {
       return dur * refresh;
