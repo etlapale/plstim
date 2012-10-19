@@ -38,7 +38,7 @@ namespace plstim
       std::cout << "initializeGL()" << std::endl;
       initializeGLFunctions ();
 
-      glClearColor (1, 0, 0, 0);
+      glClearColor (0, 0, 0, 0);
 
       // Create textures for the main frames
       std::cout << "  creating " << nframes << " textures" << endl;

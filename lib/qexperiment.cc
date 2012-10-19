@@ -14,6 +14,8 @@ using namespace plstim;
 
 
 #include <QMenuBar>
+#include <QHostInfo>
+#include <QtDebug>
 
 
 
@@ -484,7 +486,8 @@ QExperiment::quit ()
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     win (),
-    swap_interval (1)
+    swap_interval (1),
+    save_setup (false)
 {
   if (! plstim::initialise ())
     error ("could not initialise plstim");
@@ -533,34 +536,52 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Experimental setup
   auto setup_widget = new QWidget;
-  auto res_x_edit = new QLineEdit;
+  setup_cbox = new QComboBox;
+  res_x_edit = new QLineEdit;
   auto res_valid = new QIntValidator (1, 16384);
   res_x_edit->setValidator (res_valid);
   res_x_edit->setMaxLength (5);
-  auto res_y_edit = new QLineEdit;
+  connect (res_x_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  res_y_edit = new QLineEdit;
   res_y_edit->setValidator (res_valid);
   res_y_edit->setMaxLength (5);
-  auto phy_width_edit = new QLineEdit;
+  connect (res_y_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  phy_width_edit = new QLineEdit;
   phy_width_edit->setValidator (res_valid);
   phy_width_edit->setMaxLength (5);
-  auto phy_height_edit = new QLineEdit;
+  connect (phy_width_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  phy_height_edit = new QLineEdit;
   phy_height_edit->setValidator (res_valid);
   phy_height_edit->setMaxLength (5);
-  auto dst_edit = new QLineEdit;
+  connect (phy_height_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  dst_edit = new QLineEdit;
   dst_edit->setValidator (res_valid);
   dst_edit->setMaxLength (5);
-  auto lum_min_edit = new QLineEdit;
+  connect (dst_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  lum_min_edit = new QLineEdit;
   auto lum_valid = new QDoubleValidator (0, 16384, 2);
   lum_min_edit->setValidator (lum_valid);
   lum_min_edit->setMaxLength (5);
-  auto lum_max_edit = new QLineEdit;
+  connect (lum_min_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  lum_max_edit = new QLineEdit;
   lum_max_edit->setValidator (lum_valid);
   lum_max_edit->setMaxLength (5);
-  auto refresh_edit = new QLineEdit;
+  connect (lum_max_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
+  refresh_edit = new QLineEdit;
   refresh_edit->setValidator (res_valid);
   refresh_edit->setMaxLength (5);
+  connect (refresh_edit, SIGNAL (textChanged (const QString&)),
+	   this, SLOT (setup_param_changed ()));
 
   auto flayout = new QFormLayout;
+  flayout->addRow ("Setup name", setup_cbox);
   flayout->addRow ("Horizontal resolution", res_x_edit);
   flayout->addRow ("Vertical resolution", res_y_edit);
   flayout->addRow ("Physical width", phy_width_edit);
@@ -571,12 +592,101 @@ QExperiment::QExperiment (int & argc, char** argv)
   flayout->addRow ("Refresh rate", refresh_edit);
   setup_widget->setLayout (flayout);
   tbox->addItem (setup_widget, "Setup");
+
+  // Try to fetch back setup
+  settings = new QSettings;
+  auto groups = settings->childGroups ();
+
+  // No setup previously defined, infer a new one
+  if (groups.empty ()) {
+    auto hostname = QHostInfo::localHostName ();
+    qDebug () << "creating a new setup for" << hostname;
+    setup_cbox->addItem (hostname);
+
+    // Search for a secondary screen
+    QDesktopWidget dsk;
+    int i;
+    for (i = 0; i < dsk.screenCount (); i++)
+      if (i != dsk.primaryScreen ())
+	break;
+
+    // Get screen geometry
+    auto geom = dsk.screenGeometry ();
+    qDebug () << "screen geometry: " << geom.width () << "x"
+              << geom.height () << "+" << geom.x () << "+" << geom.y ();
+    res_x_edit->setText (QString::number (geom.width ()));
+    res_y_edit->setText (QString::number (geom.height ()));
+  }
+
+  // Use an existing setup
+  else {
+    // Add all the setups to the combo box
+    for (auto g : groups)
+      setup_cbox->addItem (g);
+
+    // TODO: check if there was a ‘last’ setup
+    
+    // Restore setup
+    update_setup ();
+  }
+
+  save_setup = true;
 }
 
 QExperiment::~QExperiment ()
 {
+  delete settings;
+
+  delete setup_cbox;
+  delete res_x_edit;
+  delete res_y_edit;
+  delete phy_width_edit;
+  delete phy_height_edit;
+  delete dst_edit;
+  delete lum_min_edit;
+  delete lum_max_edit;
+  delete refresh_edit;
+
   delete glwidget;
 #if 0
   egl_cleanup ();
 #endif
+}
+
+void
+QExperiment::setup_param_changed ()
+{
+  if (! save_setup)
+    return;
+
+  qDebug () << "changing setup param value";
+
+  settings->beginGroup (setup_cbox->currentText ());
+  settings->setValue ("res_x", res_x_edit->text ());
+  settings->setValue ("res_y", res_y_edit->text ());
+  settings->setValue ("phy_w", phy_width_edit->text ());
+  settings->setValue ("phy_h", phy_height_edit->text ());
+  settings->setValue ("dst", dst_edit->text ());
+  settings->setValue ("lmin", lum_min_edit->text ());
+  settings->setValue ("lmax", lum_max_edit->text ());
+  settings->setValue ("rate", refresh_edit->text ());
+  settings->endGroup ();
+}
+
+void
+QExperiment::update_setup ()
+{
+  auto sname = setup_cbox->currentText ();
+  qDebug () << "restoring setup for" << sname;
+
+  settings->beginGroup (sname);
+  res_x_edit->setText (settings->value ("res_x").toString ());
+  res_y_edit->setText (settings->value ("res_y").toString ());
+  phy_width_edit->setText (settings->value ("phy_w").toString ());
+  phy_height_edit->setText (settings->value ("phy_h").toString ());
+  dst_edit->setText (settings->value ("dst").toString ());
+  lum_min_edit->setText (settings->value ("lmin").toString ());
+  lum_max_edit->setText (settings->value ("lmax").toString ());
+  refresh_edit->setText (settings->value ("rate").toString ());
+  settings->endGroup ();
 }

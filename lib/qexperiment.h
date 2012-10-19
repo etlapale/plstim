@@ -19,7 +19,6 @@
 
 
 #include "glwidget.h"
-#include "setup.h"
 #include "utils.h"
 
 
@@ -44,9 +43,8 @@ namespace plstim
     QMainWindow win;
     MyGLWidget* glwidget;
 
-    /// Associated hardware setup
-    Setup* setup;
-
+    /// Application settings
+    QSettings* settings;
 
     /// Output display to be used
     std::string routput;
@@ -152,8 +150,22 @@ namespace plstim
     /*bool wait_for_key (const std::vector<KeySym>& accepted_keys,
 		       KeySym* pressed_key);*/
 
-  public slots:
+  protected slots:
+    void setup_param_changed ();
+    void update_setup ();
     void quit ();
+
+  protected:
+    bool save_setup;
+    QComboBox* setup_cbox;
+    QLineEdit* res_x_edit;
+    QLineEdit* res_y_edit;
+    QLineEdit* phy_width_edit;
+    QLineEdit* phy_height_edit;
+    QLineEdit* dst_edit;
+    QLineEdit* lum_min_edit;
+    QLineEdit* lum_max_edit;
+    QLineEdit* refresh_edit;
   };
 }
 
