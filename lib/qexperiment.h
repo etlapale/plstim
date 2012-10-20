@@ -24,6 +24,20 @@
 
 namespace plstim
 {
+  class Message {
+  public:
+    enum Type {
+      WARNING,
+      ERROR
+    };
+  public:
+    Message (Type t, const QString& msg);
+  public:
+    Type t;
+    QString msg;
+    QList<QWidget*> widgets;
+  };
+
   class QExperiment : public QObject
   {
   Q_OBJECT
@@ -45,6 +59,11 @@ namespace plstim
 
     /// Application settings
     QSettings* settings;
+
+    /// List of current messages
+    QList<Message*> messages;
+
+    Message* res_msg;
 
     /// Output display to be used
     std::string routput;
@@ -108,6 +127,10 @@ namespace plstim
      * destroyed after calling this function.
      */
     //bool copy_to_texture (const GLvoid* src, GLuint dest);
+    
+    void add_message (Message* msg);
+
+    void remove_message (Message* msg);
 
   public:
 

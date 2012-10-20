@@ -492,6 +492,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   if (! plstim::initialise ())
     error ("could not initialise plstim");
 
+  res_msg = NULL;
+
   // Get the experimental setup
 
   // Check for OpenGL
@@ -636,6 +638,11 @@ QExperiment::QExperiment (int & argc, char** argv)
 	   this, SLOT (update_converters ()));
 }
 
+Message::Message (Type type, const QString& str)
+  : t(type), msg (str)
+{
+}
+
 void
 QExperiment::update_converters ()
 {
@@ -646,10 +653,67 @@ QExperiment::update_converters ()
   float vres = res_y_edit->text ().toFloat ()
     / phy_height_edit->text ().toFloat ();
   float err = fabsf ((hres-vres) / (hres+vres));
-  if (err > 0.01)
-    qDebug () << "too much difference between horizontal and"
-      " vertical resolutions";
+
+  // Create an error message if necessary
+  if (res_msg == NULL) {
+    res_msg = NULL;
+    auto label = "too much difference between "
+      "horizontal and vertical resolutions";
+    if (err > 0.1)
+      res_msg = new Message (Message::Type::ERROR, label);
+    else if (err > 0.01)
+      res_msg = new Message (Message::Type::WARNING, label);
+    if (res_msg) {
+      res_msg->widgets << res_x_edit << phy_width_edit
+		       << res_y_edit << phy_height_edit;
+      add_message (res_msg);
+    }
+  }
+
+  // Remove or change message if possible
+  else {
+    // Remove message
+    if (err < 0.01) {
+      remove_message (res_msg);
+      res_msg = NULL;
+    }
+    // Lower message importance
+    else if (res_msg->t == Message::Type::ERROR && err < 0.1) {
+      remove_message (res_msg);
+      res_msg->t = Message::Type::WARNING;
+      add_message (res_msg);
+    }
+  }
+
   px_mm = (hres+vres)/2.0;
+}
+
+void
+QExperiment::add_message (Message* msg)
+{
+  // Store the message
+  messages << msg;
+
+  // Mark associated widgets
+  for (auto w : msg->widgets) {
+    auto p = w->palette ();
+    p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
+    w->setPalette (p);
+  }
+
+  qDebug () << msg->msg;
+}
+
+void
+QExperiment::remove_message (Message* msg)
+{
+  messages.removeOne (msg);
+
+  for (auto w : msg->widgets) {
+    auto p = w->palette ();
+    p.setColor (QPalette::Base, QColor (0xff, 0xff, 0xff));
+    w->setPalette (p);
+  }
 }
 
 QExperiment::~QExperiment ()
