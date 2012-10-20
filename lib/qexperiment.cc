@@ -638,8 +638,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 	   this, SLOT (update_converters ()));
 }
 
-Message::Message (Type type, const QString& str)
-  : t(type), msg (str)
+Message::Message (Type t, const QString& str)
+  : type(t), msg (str)
 {
 }
 
@@ -678,9 +678,9 @@ QExperiment::update_converters ()
       res_msg = NULL;
     }
     // Lower message importance
-    else if (res_msg->t == Message::Type::ERROR && err < 0.1) {
+    else if (res_msg->type == Message::Type::ERROR && err < 0.1) {
       remove_message (res_msg);
-      res_msg->t = Message::Type::WARNING;
+      res_msg->type = Message::Type::WARNING;
       add_message (res_msg);
     }
   }
@@ -697,7 +697,10 @@ QExperiment::add_message (Message* msg)
   // Mark associated widgets
   for (auto w : msg->widgets) {
     auto p = w->palette ();
-    p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
+    if (msg->type == Message::Type::WARNING)
+      p.setColor (QPalette::Base, QColor (0xfe, 0xc9, 0x7d));
+    else
+      p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
     w->setPalette (p);
   }
 
@@ -709,6 +712,8 @@ QExperiment::remove_message (Message* msg)
 {
   messages.removeOne (msg);
 
+  // TODO: restore to the previous colour
+  // TODO: make sure no other message changed the colour
   for (auto w : msg->widgets) {
     auto p = w->palette ();
     p.setColor (QPalette::Base, QColor (0xff, 0xff, 0xff));

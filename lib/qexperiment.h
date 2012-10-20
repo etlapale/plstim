@@ -33,7 +33,7 @@ namespace plstim
   public:
     Message (Type t, const QString& msg);
   public:
-    Type t;
+    Type type;
     QString msg;
     QList<QWidget*> widgets;
   };
