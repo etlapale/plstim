@@ -58,14 +58,6 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 #endif
 
 #if 0
-  // Initialise the graphic system
-  bool ok = egl_init (win_width, win_height, fullscreen, win_title,
-		      aperture_diameter, aperture_diameter);
-  if (! ok)
-    exit (1);
-#endif
-
-#if 0
   // Initialise the special frames
   gen_frame ("fixation");
   gen_frame ("question");
@@ -125,11 +117,12 @@ LorenceauExperiment::update_configuration ()
   qDebug () << "aperture size:" << ap_diam_px << "pixels";
 
   int tex_width = 1 << ((int) log2f (ap_diam_px));
-  int tex_height = tex_width;
   if (tex_width < ap_diam_px)
     tex_width <<= 1;
-  if (tex_height < ap_diam_px)
-    tex_height <<= 1;
+  int tex_height = tex_width;
+  qDebug () << "texture size:" << tex_width << "x" << tex_height;
+
+  glwidget->update_size (tex_width, tex_height);
 }
 
 LorenceauExperiment::~LorenceauExperiment ()

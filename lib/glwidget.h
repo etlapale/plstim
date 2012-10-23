@@ -21,7 +21,13 @@ namespace plstim
     MyGLWidget (const QGLFormat& format, QWidget* parent)
       : QGLWidget (format, parent),
 	nframes (3)
-    {}
+    {
+    }
+
+    void update_size (int tex_width, int tex_height) {
+      setMinimumSize (tex_width, tex_height);
+    }
+
   protected:
     void assert_gl_error (const std::string& msg)
     {

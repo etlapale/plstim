@@ -507,6 +507,9 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Experimental setup
   auto setup_widget = new QWidget;
   setup_cbox = new QComboBox;
+  screen_sbox = new QSpinBox;
+  connect (screen_sbox, SIGNAL (valueChanged (int)),
+	   this, SLOT (setup_param_changed ()));
   res_x_edit = new QLineEdit;
   auto res_valid = new QIntValidator (1, 16384);
   res_x_edit->setValidator (res_valid);
@@ -552,6 +555,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   auto flayout = new QFormLayout;
   flayout->addRow ("Setup name", setup_cbox);
+  flayout->addRow ("Screen", screen_sbox);
   flayout->addRow ("Horizontal resolution", res_x_edit);
   flayout->addRow ("Vertical resolution", res_y_edit);
   flayout->addRow ("Physical width", phy_width_edit);
@@ -567,6 +571,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   settings = new QSettings;
   auto groups = settings->childGroups ();
 
+  QDesktopWidget dsk;
   // No setup previously defined, infer a new one
   if (groups.empty ()) {
     auto hostname = QHostInfo::localHostName ();
@@ -574,7 +579,6 @@ QExperiment::QExperiment (int & argc, char** argv)
     setup_cbox->addItem (hostname);
 
     // Search for a secondary screen
-    QDesktopWidget dsk;
     int i;
     for (i = 0; i < dsk.screenCount (); i++)
       if (i != dsk.primaryScreen ())
@@ -584,6 +588,7 @@ QExperiment::QExperiment (int & argc, char** argv)
     auto geom = dsk.screenGeometry ();
     qDebug () << "screen geometry: " << geom.width () << "x"
               << geom.height () << "+" << geom.x () << "+" << geom.y ();
+    screen_sbox->setValue (i);
     res_x_edit->setText (QString::number (geom.width ()));
     res_y_edit->setText (QString::number (geom.height ()));
   }
@@ -599,6 +604,10 @@ QExperiment::QExperiment (int & argc, char** argv)
     // Restore setup
     update_setup ();
   }
+
+  // Constrain the screen selector
+  screen_sbox->setMinimum (0);
+  screen_sbox->setMaximum (dsk.screenCount () - 1);
 
   save_setup = true;
 
@@ -726,6 +735,7 @@ QExperiment::setup_param_changed ()
   qDebug () << "changing setup param value";
 
   settings->beginGroup (setup_cbox->currentText ());
+  settings->setValue ("scr", screen_sbox->value ());
   settings->setValue ("res_x", res_x_edit->text ());
   settings->setValue ("res_y", res_y_edit->text ());
   settings->setValue ("phy_w", phy_width_edit->text ());
@@ -747,6 +757,7 @@ QExperiment::update_setup ()
   qDebug () << "restoring setup for" << sname;
 
   settings->beginGroup (sname);
+  screen_sbox->setValue (settings->value ("scr").toInt ());
   res_x_edit->setText (settings->value ("res_x").toString ());
   res_y_edit->setText (settings->value ("res_y").toString ());
   phy_width_edit->setText (settings->value ("phy_w").toString ());

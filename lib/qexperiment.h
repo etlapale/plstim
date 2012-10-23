@@ -179,6 +179,7 @@ namespace plstim
     }
 
   protected slots:
+    //void screen_param_changed ();
     void setup_param_changed ();
     void update_setup ();
     void update_converters ();
@@ -187,6 +188,7 @@ namespace plstim
   protected:
     bool save_setup;
     QComboBox* setup_cbox;
+    QSpinBox* screen_sbox;
     QLineEdit* res_x_edit;
     QLineEdit* res_y_edit;
     QLineEdit* phy_width_edit;
