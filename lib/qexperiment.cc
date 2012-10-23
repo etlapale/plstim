@@ -461,6 +461,7 @@ QExperiment::QExperiment (int & argc, char** argv)
     error ("could not initialise plstim");
 
   res_msg = NULL;
+  match_res_msg = NULL;
 
   // Get the experimental setup
 
@@ -571,7 +572,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   settings = new QSettings;
   auto groups = settings->childGroups ();
 
-  QDesktopWidget dsk;
   // No setup previously defined, infer a new one
   if (groups.empty ()) {
     auto hostname = QHostInfo::localHostName ();
@@ -585,7 +585,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 	break;
 
     // Get screen geometry
-    auto geom = dsk.screenGeometry ();
+    auto geom = dsk.screenGeometry (i);
     qDebug () << "screen geometry: " << geom.width () << "x"
               << geom.height () << "+" << geom.x () << "+" << geom.y ();
     screen_sbox->setValue (i);
@@ -669,6 +669,28 @@ QExperiment::update_converters ()
   }
 
   px_mm = (hres+vres)/2.0;
+
+
+  // TODO: put that somewhere else
+  // Check that configured resolution match current one
+  auto geom = dsk.screenGeometry (screen_sbox->value ());
+  bool matching_size = geom.width () == res_x_edit->text ().toInt ()
+      && geom.height () == res_y_edit->text ().toInt ();
+
+  if (match_res_msg == NULL && ! matching_size) {
+    match_res_msg = new Message (Message::Type::ERROR,
+       "configured resolution does not match current one");
+    // TODO: modify current msg on continuing error
+    if (geom.width () != res_x_edit->text ().toInt ())
+      match_res_msg->widgets << screen_sbox << res_x_edit;
+    else
+      match_res_msg->widgets << screen_sbox << res_y_edit;
+    add_message (match_res_msg);
+  }
+  else if (match_res_msg != NULL && matching_size) {
+    remove_message (match_res_msg);
+    match_res_msg = NULL;
+  }
 }
 
 void

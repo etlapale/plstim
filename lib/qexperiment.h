@@ -60,10 +60,13 @@ namespace plstim
     /// Application settings
     QSettings* settings;
 
+    QDesktopWidget dsk;
+
     /// List of current messages
     QList<Message*> messages;
 
     Message* res_msg;
+    Message* match_res_msg;
 
     /// Output display to be used
     std::string routput;
