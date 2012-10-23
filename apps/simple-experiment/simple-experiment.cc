@@ -122,6 +122,14 @@ LorenceauExperiment::update_configuration ()
   int tex_height = tex_width;
   qDebug () << "texture size:" << tex_width << "x" << tex_height;
 
+  // Make sure the new size is acceptable on the target screen
+  auto geom = dsk.screenGeometry (screen_sbox->value ());
+  if (tex_width > geom.width () || tex_height > geom.height ()) {
+    // TODO: use the message GUI logging facilities
+    qDebug () << "texture too big for the screen";
+    return;
+  }
+
   glwidget->update_size (tex_width, tex_height);
 }
 
