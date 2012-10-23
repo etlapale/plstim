@@ -123,6 +123,13 @@ LorenceauExperiment::update_configuration ()
   float ap_diam_degs = 24;
   int ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
   qDebug () << "aperture size:" << ap_diam_px << "pixels";
+
+  int tex_width = 1 << ((int) log2f (ap_diam_px));
+  int tex_height = tex_width;
+  if (tex_width < ap_diam_px)
+    tex_width <<= 1;
+  if (tex_height < ap_diam_px)
+    tex_height <<= 1;
 }
 
 LorenceauExperiment::~LorenceauExperiment ()
@@ -309,20 +316,6 @@ LorenceauExperiment::make_frames ()
 int
 main (int argc, char* argv[])
 {
-#if 0
-  // Debug the configuration out
-  cout << "Refresh rate: " << setup.refresh << " Hz" << endl
-       << "Viewing distance: " << setup.distance << " mm" << endl
-       << "Resolution: " << setup.resolution[0] << "×" << setup.resolution[1] << " px" << endl
-       << "Size: " << setup.size[0] << "×" << setup.size[1] << " mm" << endl
-       << "Luminance: " << setup.luminance[0] << "–" << setup.luminance[1] << " cd/m²" << endl;
-  // Debug calculus
-  cout << "Average resolution: " << setup.px_mm << " px/mm" << endl;
-  cout << "Visual field: " << setup.pix2deg (setup.resolution[0])
-       << "×" << setup.pix2deg (setup.resolution[1])
-       << " degrees" << endl;
-#endif
-  
   LorenceauExperiment xp (argc, argv);
   return xp.exec ();
 }

@@ -350,38 +350,6 @@ QExperiment::egl_init (int win_width, int win_height, bool fullscreen,
 		      int stim_width, int stim_height)
 {
 #if 0
-  tex_width = 1 << ((int) log2f (stim_width));
-  tex_height = 1 << ((int) log2f (stim_height));
-  if (tex_width < stim_width)
-    tex_width <<= 1;
-  if (tex_height < stim_height)
-    tex_height <<= 1;
-
-  // Setup X11
-  nat_dpy = open_native_display (NULL);
-
-  // Setup EGL
-  egl_dpy = eglGetDisplay (nat_dpy);
-  if (egl_dpy == EGL_NO_DISPLAY) {
-    error ("could not get and EGL display");
-    return false;
-  }
-
-  int egl_maj, egl_min;
-  if (! eglInitialize (egl_dpy, &egl_maj, &egl_min)) {
-    error ("could not initialise the EGL display");
-    return 1;
-  }
-  cout << "EGL version " << egl_maj << '.' << egl_min << endl;
-
-  // Create a system window
-  int ret = make_native_window (nat_dpy, egl_dpy,
-				win_width, win_height, fullscreen,
-				win_title.c_str (),
-				&nat_win, &config);
-  if (ret == 0)
-    return false;
-
   ...
 
 
@@ -673,14 +641,20 @@ QExperiment::update_converters ()
   // Remove or change message if possible
   else {
     // Remove message
-    if (err < 0.01) {
+    if (err <= 0.01) {
       remove_message (res_msg);
       res_msg = NULL;
     }
     // Lower message importance
-    else if (res_msg->type == Message::Type::ERROR && err < 0.1) {
+    else if (res_msg->type == Message::Type::ERROR && err <= 0.1) {
       remove_message (res_msg);
       res_msg->type = Message::Type::WARNING;
+      add_message (res_msg);
+    }
+    // Raise message importance
+    else if (res_msg->type == Message::Type::WARNING && err > 0.01) {
+      remove_message (res_msg);
+      res_msg->type = Message::Type::ERROR;
       add_message (res_msg);
     }
   }
@@ -704,7 +678,9 @@ QExperiment::add_message (Message* msg)
     w->setPalette (p);
   }
 
-  qDebug () << msg->msg;
+  qDebug ()
+    << (msg->type == Message::Type::ERROR ? "error:" : "warning:" )
+    << msg->msg;
 }
 
 void
