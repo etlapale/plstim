@@ -130,7 +130,7 @@ LorenceauExperiment::update_configuration ()
     return;
   }
 
-  glwidget->update_size (tex_width, tex_height);
+  glwidget->update_texture_size (tex_width, tex_height);
 }
 
 LorenceauExperiment::~LorenceauExperiment ()

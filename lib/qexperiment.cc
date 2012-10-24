@@ -351,38 +351,6 @@ QExperiment::egl_init (int win_width, int win_height, bool fullscreen,
 {
 #if 0
   ...
-
-
-  const char* vshader_txt = vshader_str.c_str();
-  glShaderSource (vshader, 1, (const char **) &vshader_txt, NULL);
-  glCompileShader (vshader);
-  glGetShaderiv (vshader, GL_COMPILE_STATUS, &stat);
-  if (stat == 0) {
-    GLsizei len;
-    char log[1024];
-    glGetShaderInfoLog (vshader, 1024, &len, log);
-    cerr << "could not compile the vertex shader:" << endl
-         << log << endl;
-    return 1;
-  }
-
-  // Add the fragment shader to the current program
-  GLuint program = glCreateProgram ();
-  glAttachShader (program, fshader);
-  glAttachShader (program, vshader);
-  glLinkProgram (program);
-  glGetProgramiv (program, GL_LINK_STATUS, &stat);
-  if (stat == 0) {
-    GLsizei len;
-    char log[1024];
-    glGetProgramInfoLog (program, 1024, &len, log);
-    fprintf (stderr,
-	     "could not link the shaders:\n%s\n", log);
-    return 1;
-  }
-  glUseProgram (program);
-  assert_gl_error ("use the shaders program");
-
   int ppos = glGetAttribLocation (program, "ppos");
   if (ppos == -1) {
     fprintf (stderr, "could not get attribute ‘ppos’\n");
