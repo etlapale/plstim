@@ -344,67 +344,6 @@ open_native_display (void* param)
 #endif
 
 
-bool
-QExperiment::egl_init (int win_width, int win_height, bool fullscreen,
-		      const std::string& win_title,
-		      int stim_width, int stim_height)
-{
-#if 0
-  ...
-  int ppos = glGetAttribLocation (program, "ppos");
-  if (ppos == -1) {
-    fprintf (stderr, "could not get attribute ‘ppos’\n");
-    return 1;
-  }
-
-  // Rectangle covering the full texture
-  static GLfloat vertices[] = {
-    offx, offy,
-    offx, offy + tex_width,
-    offx + tex_width, offy + tex_height,
-
-    offx + tex_width, offy + tex_height,
-    offx, offy,
-    offx + tex_width, offy
-  };
-  glEnableVertexAttribArray (ppos);
-  glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
-  glClear (GL_COLOR_BUFFER_BIT);
-
-  glActiveTexture (GL_TEXTURE0);
-
-  texloc = glGetUniformLocation (program, "texture");
-  if (texloc == -1) {
-    cerr << "could not get location of ‘texture’" << endl;
-    return 1;
-  }
-  assert_gl_error ("get location of uniform ‘texture’");
-
-  
-  return true;
-
-#endif
-
-  cerr << "NYI" << endl;
-  return false;
-}
-
-void
-QExperiment::egl_cleanup ()
-{
-#if 0
-  delete [] tframes;
-
-  eglDestroyContext (egl_dpy, ctx);
-  eglDestroySurface (egl_dpy, sur);
-  eglTerminate (egl_dpy);
-
-  Display *dpy = (Display*) nat_dpy;
-  XDestroyWindow (dpy, (Window) nat_win);
-  XCloseDisplay (dpy);
-#endif
-}
-
 void
 QExperiment::error (const std::string& msg)
 {

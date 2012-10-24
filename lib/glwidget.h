@@ -52,10 +52,9 @@ namespace plstim
       tex_width = twidth;
       tex_height = theight;
 
-#if 0
-      setMinimumSize (tex_width, tex_height);
+      //setMinimumSize (tex_width, tex_height);
+      setMinimumSize (tex_width/2, tex_height/2);
       update_shaders ();
-#endif
     }
 
     void update_shaders () {
@@ -132,6 +131,38 @@ namespace plstim
       }
       glUseProgram (program);
       assert_gl_error ("use the shaders program");
+
+
+      int ppos = glGetAttribLocation (program, "ppos");
+      if (ppos == -1) {
+	fprintf (stderr, "could not get attribute ‘ppos’\n");
+	exit (1);
+      }
+
+      // Rectangle covering the full texture
+      static GLfloat vertices[] = {
+	offx, offy,
+	offx, offy + tex_width,
+	offx + tex_width, offy + tex_height,
+
+	offx + tex_width, offy + tex_height,
+	offx, offy,
+	offx + tex_width, offy
+      };
+      glEnableVertexAttribArray (ppos);
+      glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+      glClear (GL_COLOR_BUFFER_BIT);
+
+      /*
+      glActiveTexture (GL_TEXTURE0);
+
+      texloc = glGetUniformLocation (program, "texture");
+      if (texloc == -1) {
+	cerr << "could not get location of ‘texture’" << endl;
+	return 1;
+      }
+      assert_gl_error ("get location of uniform ‘texture’");
+      */
     }
 
   protected:
@@ -248,6 +279,10 @@ namespace plstim
     void paintGL ()
     {
       std::cout << "paintGL()" << std::endl;
+
+      glClear (GL_COLOR_BUFFER_BIT);
+      glDrawArrays (GL_TRIANGLES, 0, 6);
+      swapBuffers ();
     }
   };
 }

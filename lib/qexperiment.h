@@ -8,12 +8,6 @@
 #include <string>
 #include <vector>*/
 
-// OpenGL ES 2.0 through EGL 2.0
-#if 0
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
-#endif
-
 #include <QApplication>
 #include <QMainWindow>
 
@@ -42,16 +36,6 @@ namespace plstim
   {
   Q_OBJECT
   protected:
-#if 0
-    EGLNativeDisplayType nat_dpy;
-    EGLNativeWindowType nat_win;
-
-    EGLDisplay egl_dpy;
-    EGLConfig config;
-    EGLContext ctx;
-    EGLSurface sur;
-#endif
-
     /// Associated Qt application
     QApplication app;
     QMainWindow win;
@@ -110,15 +94,6 @@ namespace plstim
     //std::map<std::string,GLuint> special_frames;
 
   protected:
-#if 0
-    bool make_native_window (EGLNativeDisplayType nat_dpy,
-			     EGLDisplay egl_dpy,
-			     int width, int height,
-			     bool fullscreen,
-			     const char* title,
-			     EGLNativeWindowType *window,
-			     EGLConfig *conf);
-#endif
 
     void error (const std::string& msg);
 
@@ -139,13 +114,6 @@ namespace plstim
 
     QExperiment (int& argc, char** argv);
     virtual ~QExperiment ();
-
-    virtual bool egl_init (int width, int height, bool fullscreen,
-			   const std::string& title,
-			   int texture_width, int texture_height);
- 
-
-    void egl_cleanup ();
 
     bool exec ();
 
