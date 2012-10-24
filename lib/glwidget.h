@@ -113,11 +113,14 @@ namespace plstim
       // Add the fragment shader to the current program
       if (vshader_attached)
 	glDetachShader (program, vshader);
+      else
+	vshader_attached = true;
       glAttachShader (program, vshader);
+      assert_gl_error ("use attach the vertex shader");
 
       // Link the updated shaders in the program
       glLinkProgram (program);
-      assert_gl_error ("use the shaders program");
+      assert_gl_error ("use link the program");
       glGetProgramiv (program, GL_LINK_STATUS, &stat);
       if (stat == 0) {
 	GLsizei len;
