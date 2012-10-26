@@ -229,39 +229,10 @@ QExperiment::wait_for_key (const std::vector<KeySym>& accepted_keys,
 #endif
 
 bool
-QExperiment::gen_frame (const std::string& frame_name)
+QExperiment::add_frame (const std::string& name, const QImage& img)
 {
-#if 0
-  glGenTextures (1, &special_frames[frame_name]);
-  assert_gl_error ("generate textures");
-  return true;
-#endif
-  cerr << "NYI" << endl;
-  return false;
+  return glwidget->add_frame (name, img);
 }
-
-#if 0
-bool
-QExperiment::copy_to_texture (const GLvoid* data, GLuint dest)
-{
-    // Create an OpenGL texture for the frame
-  glBindTexture (GL_TEXTURE_2D, dest);
-  if (glGetError () != GL_NO_ERROR) {
-    cerr << "error: could not bind a texture" << endl;
-    return false;
-  }
-  GLint gltype = GL_RGBA;
-  glTexImage2D (GL_TEXTURE_2D, 0, gltype, tex_width, tex_height,
-		0, gltype, GL_UNSIGNED_BYTE, data);
-  glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  if (glGetError () != GL_NO_ERROR) {
-    cerr << "error: could not set texture data" << endl;
-    return false;
-  }
-  return true;
-}
-#endif
 
 bool
 QExperiment::show_frame (const std::string& frame_name)
@@ -334,16 +305,6 @@ QExperiment::clear_screen ()
   return false;
 }
 
-
-#if 0
-static EGLNativeDisplayType
-open_native_display (void* param)
-{
-  return (EGLNativeDisplayType) XOpenDisplay ((char*) param);
-}
-#endif
-
-
 void
 QExperiment::error (const std::string& msg)
 {
@@ -362,7 +323,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     win (),
     swap_interval (1),
-    save_setup (false)
+    save_setup (false),
+    glwidget_initialised (false)
 {
   if (! plstim::initialise ())
     error ("could not initialise plstim");
@@ -520,6 +482,15 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   connect (this, SIGNAL (setup_updated ()),
 	   this, SLOT (update_converters ()));
+  connect (glwidget, SIGNAL (gl_initialised ()),
+	   this, SLOT (glwidget_gl_initialised ()));
+}
+
+void
+QExperiment::glwidget_gl_initialised ()
+{
+  glwidget_initialised = true;
+  emit setup_updated ();
 }
 
 Message::Message (Type t, const QString& str)

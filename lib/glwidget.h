@@ -5,6 +5,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <sstream>
 
 #include <QtOpenGL>
@@ -31,6 +32,12 @@ namespace plstim
     GLuint vshader;
     GLuint program;
     bool vshader_attached;
+    std::map<std::string,GLuint> named_frames;
+    GLint texloc;
+
+  signals:
+    void gl_initialised ();
+
   public:
     MyGLWidget (const QGLFormat& format, QWidget* parent)
       : QGLWidget (format, parent),
@@ -40,6 +47,23 @@ namespace plstim
 	fshader (0), vshader (0), program (0),
 	vshader_attached (false)
     {
+      //setMinimumSize (1024, 1024);
+      setMinimumSize (512, 512);
+    }
+
+    bool add_frame (const std::string& name, const QImage& img) {
+
+      // Delete existing texture
+      if (named_frames.find (name) != named_frames.end ())
+	deleteTexture (named_frames[name]);
+
+
+      QPixmap pixmap = QPixmap("output.png");
+      auto image = pixmap.toImage ();
+      named_frames[name] = bindTexture (img);
+
+      //named_frames[name] = bindTexture (img);
+      return true;
     }
 
     void update_texture_size (int twidth, int theight) {
@@ -53,7 +77,6 @@ namespace plstim
       tex_height = theight;
 
       //setMinimumSize (tex_width, tex_height);
-      setMinimumSize (tex_width/2, tex_height/2);
       update_shaders ();
     }
 
@@ -63,16 +86,11 @@ namespace plstim
 	  || gl_width == 0 || gl_height == 0)
 	return;
 
+      cout << "update_shaders ()" << endl;
       // Compute the offset to center the stimulus
       GLfloat offx = gl_width < tex_width ? 0 : (gl_width-tex_width)/2.0f;
       GLfloat offy = gl_height < tex_height ? 0 : (gl_height-tex_height)/2.0f;
-      qDebug () << tex_width << tex_height << gl_width << gl_height;
-
-      float tx_conv = tex_width / (2.0f * gl_width);
-      float ty_conv = tex_height / (2.0f * gl_height);
-
-      tx_conv = 1/2.0f;
-      ty_conv = 1/2.0f;
+      qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
 
       // Create an identity vertex shader
       stringstream ss;
@@ -87,9 +105,11 @@ namespace plstim
 	<< "attribute vec2 ppos;" << endl
 	<< "varying vec2 tex_coord;" << endl
 	<< "void main () {" << endl
-	<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
-	<< "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
-	<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
+	//<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
+	<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);" << endl
+	<< "  tex_coord = vec2((ppos.x-1.0-" << offx << ")/2.0, (ppos.y-1.0-" << offy << ")/2.0);" << endl
+	//<< "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
+	//<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
 	<< "}" << endl;
       auto vshader_str = ss.str();
       cout << "vertex shader:" << endl << vshader_str << endl;
@@ -132,6 +152,17 @@ namespace plstim
       glUseProgram (program);
       assert_gl_error ("use the shaders program");
 
+      cout << "program linked and used" << endl;
+
+      glActiveTexture (GL_TEXTURE0);
+      texloc = glGetUniformLocation (program, "texture");
+      if (texloc == -1) {
+	cerr << "could not get location of ‘texture’" << endl;
+	//exit (1);
+      }
+      qDebug () << "texture location:" << texloc;
+      assert_gl_error ("get location of uniform ‘texture’");
+
 
       int ppos = glGetAttribLocation (program, "ppos");
       if (ppos == -1) {
@@ -139,30 +170,31 @@ namespace plstim
 	exit (1);
       }
 
+      qDebug () << "offset:" << offx << offy;
+      qDebug () << "tw/th:" << tex_width << tex_height;
+
       // Rectangle covering the full texture
       static GLfloat vertices[] = {
-	offx, offy,
-	offx, offy + tex_width,
-	offx + tex_width, offy + tex_height,
+	//offx, offy,
+	//offx, offy + tex_width,
+	//offx + tex_width, offy + tex_height,
+	-1, -1,
+	 1, -1,
+	-1,  1,
 
-	offx + tex_width, offy + tex_height,
-	offx, offy,
-	offx + tex_width, offy
+	-1,  1,
+	 1, -1,
+	 1,  1,
+
+	//offx + tex_width, offy + tex_height,
+	//offx, offy,
+	//offx + tex_width, offy
       };
       glEnableVertexAttribArray (ppos);
       glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
       glClear (GL_COLOR_BUFFER_BIT);
 
-      /*
-      glActiveTexture (GL_TEXTURE0);
-
-      texloc = glGetUniformLocation (program, "texture");
-      if (texloc == -1) {
-	cerr << "could not get location of ‘texture’" << endl;
-	return 1;
-      }
-      assert_gl_error ("get location of uniform ‘texture’");
-      */
+      paintGL ();
     }
 
   protected:
@@ -225,11 +257,11 @@ namespace plstim
       stringstream ss;
       static const char *fshader_txt = 
 	//"varying mediump vec2 tex_coord;\n"
-	//"uniform sampler2D texture;\n"
+	"varying vec2 tex_coord;\n"
+	"uniform sampler2D texture;\n"
 	"void main() {\n"
-	"  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-	//"  gl_FragColor = texture2D(texture, tex_coord);\n"
-	//"  gl_FragColor = vec4(tex_coord.x, tex_coord.y, 0, 1);\n"
+	"  gl_FragColor = texture2D(texture, tex_coord);\n"
+	//"  gl_FragColor = vec4(0.9, 0.8, 0.7, 1.0);\n"
 	"}\n";
       fshader = glCreateShader (GL_FRAGMENT_SHADER);
       assert_gl_error ("create a fragment shader");
@@ -264,6 +296,10 @@ namespace plstim
       }
 
       glAttachShader (program, fshader);
+
+      glEnable (GL_TEXTURE_2D);
+
+      emit gl_initialised ();
     }
 
     void resizeGL (int w, int h)
@@ -281,7 +317,12 @@ namespace plstim
       std::cout << "paintGL()" << std::endl;
 
       glClear (GL_COLOR_BUFFER_BIT);
+
+      glBindTexture (GL_TEXTURE_2D, named_frames["fixation"]);
+      glUniform1i (texloc, 0);
+
       glDrawArrays (GL_TRIANGLES, 0, 6);
+
       swapBuffers ();
     }
   };

@@ -57,50 +57,6 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   radius = aperture_diam/2;
 #endif
 
-#if 0
-  // Initialise the special frames
-  gen_frame ("fixation");
-  gen_frame ("question");
-
-  // Create the special frames
-  auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
-				   tex_width, tex_height);
-  auto cr = Cairo::Context::create (sur);
-  cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
-  
-  // Pre-trial fixation frame
-  cr->set_source_rgb (bg, bg, bg);
-  cr->paint ();
-  // Fixation point
-  cr->set_source_rgb (0, 0, 1);
-  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
-  cr->fill ();
-  // Aperture
-  cr->rectangle (0, 0, tex_width, tex_height);
-  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
-  cr->set_source_rgb (0, 0, 0);
-  cr->fill ();
-  // Copy into OpenGL texture
-  if (! copy_to_texture (sur->get_data (),
-			 special_frames["fixation"]))
-    exit (1);
-  
-  // Question frame
-  float cx = tex_width/2;
-  float cy = tex_height/2;
-  cr->set_source_rgb (bg, bg, bg);
-  cr->paint ();
-  // Aperture
-  cr->rectangle (0, 0, tex_width, tex_height);
-  cr->arc (cx, cy, radius, 0, 2*M_PI);
-  cr->set_source_rgb (0, 0, 0);
-  cr->fill ();
-  // Copy into OpenGL texture
-  if (! copy_to_texture (sur->get_data (),
-			 special_frames["question"]))
-    exit (1);
-#endif
-
   connect (this, SIGNAL (setup_updated ()),
 	   this, SLOT (update_configuration ()));
   emit setup_updated ();
@@ -113,7 +69,7 @@ LorenceauExperiment::update_configuration ()
 
   // Aperture size
   float ap_diam_degs = 24;
-  int ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
+  ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
   qDebug () << "aperture size:" << ap_diam_px << "pixels";
 
   int tex_width = 1 << ((int) log2f (ap_diam_px));
@@ -129,6 +85,48 @@ LorenceauExperiment::update_configuration ()
     qDebug () << "texture too big for the screen";
     return;
   }
+
+  if (! glwidget_initialised)
+    return;
+
+#if 0
+  // Create the special frames
+  cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
+  
+  // Fixation point
+  cr->set_source_rgb (0, 0, 1);
+  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
+  cr->fill ();
+  // Aperture
+  cr->rectangle (0, 0, tex_width, tex_height);
+  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
+  cr->set_source_rgb (0, 0, 0);
+#endif
+
+  // Aperture mask path
+  QPainterPath ape_path;
+  ape_path.addRect (0, 0, tex_width, tex_height);
+  ape_path.addEllipse ((int) (tex_width/2 - ap_diam_px/2),
+		 (int) (tex_height/2 - ap_diam_px/2),
+		 (int) ap_diam_px, (int) ap_diam_px);
+
+  auto img = new QImage (tex_width, tex_height, QImage::Format_RGB32);
+
+  // Fixation frame
+  QPainter p (img);
+  p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
+  p.setBrush (Qt::red);
+  int fix_radius = (int) nearbyint (deg2pix (3./60));
+  qDebug () << "Fixation radius:" << fix_radius;
+  p.drawEllipse (tex_width/2 - fix_radius, tex_height/2 - fix_radius,
+		 2*fix_radius, 2*fix_radius);
+  p.setBrush (Qt::black);
+  p.drawPath (ape_path);
+  p.end ();
+  add_frame ("fixation", *img);
+
+  img->save ("output.png");
+  delete img;
 
   glwidget->update_texture_size (tex_width, tex_height);
 }
@@ -318,7 +316,8 @@ int
 main (int argc, char* argv[])
 {
   LorenceauExperiment xp (argc, argv);
-  return xp.exec ();
+  cout << xp.exec () << endl;
+  return 0;
 }
 
 // vim:sw=2:

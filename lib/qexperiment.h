@@ -149,12 +149,16 @@ namespace plstim
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
+  protected:
+    bool add_frame (const std::string& name, const QImage& img);
+
   protected slots:
     //void screen_param_changed ();
     void setup_param_changed ();
     void update_setup ();
     void update_converters ();
     void quit ();
+    void glwidget_gl_initialised ();
 
   protected:
     bool save_setup;
@@ -171,6 +175,8 @@ namespace plstim
 
     float distance;
     float px_mm;
+
+    bool glwidget_initialised;
 
   signals:
     void setup_updated ();
