@@ -353,6 +353,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setSwapInterval (1);
   glwidget = new MyGLWidget (fmt, &win);
   auto splitter = new QSplitter (&win);
+  win.setCentralWidget (splitter);
   cout << "OpenGL version " << glwidget->format ().majorVersion ()
        << '.' << glwidget->format ().minorVersion () << endl;
   if (! glwidget->format ().doubleBuffer ())
@@ -370,13 +371,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Left toolbox
   auto tbox = new QToolBox;
-#if 0
-  win.setCentralWidget (splitter);
   splitter->addWidget (tbox);
   splitter->addWidget (glwidget);
-#else
-  win.setCentralWidget (glwidget);
-#endif
 
   // Experimental setup
   auto setup_widget = new QWidget;

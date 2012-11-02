@@ -228,50 +228,9 @@ namespace plstim
       GLfloat tym = 0;
       GLfloat tyM = 2.0f * (GLfloat) tex_height/gl_height;
 
-      //txM = tyM = 0.333333333333333f;
-
       qDebug () << "txM/tyM:" << txM << tyM;
 
-      // Rectangle covering the full texture
-#if 0
-      static GLfloat vertices[] = {
-	//offx, offy,
-	//offx, offy + tex_width,
-	//offx + tex_width, offy + tex_height,
-	
-#if 1
-	txm, tym,
-	txM, tym,
-	txm, tyM,
-
-	txm, tyM,
-	txM, tym,
-	txM, tyM,
-#else
-#if 1
-	0, 0,
-	(GLfloat) tex_width, 0,
-	0, (GLfloat) tex_height,
-
-	0, (GLfloat) tex_height,
-	(GLfloat) tex_width, 0,
-	(GLfloat) tex_width, (GLfloat) tex_height,
-#else
-	-1, -1,
-	 1, -1,
-	-1,  1,
-
-	-1,  1,
-	 1, -1,
-	 1,  1,
-#endif
-#endif
-
-	//offx + tex_width, offy + tex_height,
-	//offx, offy,
-	//offx + tex_width, offy
-      };
-#endif
+      // Triangle covering half the texture
       vertices[0] = txm;
       vertices[1] = tym;
       vertices[2] = txM;
@@ -279,6 +238,7 @@ namespace plstim
       vertices[4] = txm;
       vertices[5] = tyM;
 
+      // Other half triangle
       vertices[6] = txm;
       vertices[7] = tyM;
       vertices[8] = txM;
