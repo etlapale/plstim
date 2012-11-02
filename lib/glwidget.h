@@ -35,8 +35,6 @@ namespace plstim
     std::map<std::string,GLuint> named_frames;
     GLint texloc;
 
-    bool first_vertices;
-
   protected:
     bool first_shader_update;
     float hratio;
@@ -57,29 +55,6 @@ namespace plstim
 	vshader_attached (false),
 	first_shader_update (true)
     {
-      first_vertices = true;
-      //setMinimumSize (1024, 1024);
-      setMinimumSize (400, 400);
-      setFocusPolicy (Qt::StrongFocus);
-    }
-
-    virtual void keyPressEvent (QKeyEvent* evt) {
-
-      if (evt->key () == Qt::Key_4) {
-	setMinimumSize (400, 400);
-	setMaximumSize (400, 400);
-      }
-      else if (evt->key () == Qt::Key_6) {
-	setMinimumSize (600, 600);
-	setMaximumSize (600, 600);
-      }
-      else if (evt->key () == Qt::Key_8) {
-	setMinimumSize (800, 800);
-	setMaximumSize (800, 800);
-      }
-      else {
-	QGLWidget::keyPressEvent (evt);
-      }
     }
 
     bool add_frame (const std::string& name, const QImage& img) {
@@ -104,13 +79,9 @@ namespace plstim
 
       qDebug () << "setting tex dims to" << twidth << theight;
 
-      //tex_width = twidth;
-      //tex_height = theight;
+      tex_width = 200;//twidth;
+      tex_height = 200;//theight;
 
-      tex_width = 100;
-      tex_height = 100;
-
-      //setMinimumSize (tex_width, tex_height);
       update_shaders ();
     }
 
@@ -223,10 +194,13 @@ namespace plstim
       qDebug () << "tw/th:" << tex_width << tex_height;
       qDebug () << "gw/gh:" << gl_width << gl_height;
 
-      GLfloat txm = 0;
-      GLfloat txM = 2.0f * (GLfloat) tex_width/gl_width;
-      GLfloat tym = 0;
-      GLfloat tyM = 2.0f * (GLfloat) tex_height/gl_height;
+      GLfloat ofx = tex_width > gl_width ? 0.0f : 1.0f - (GLfloat) tex_width / gl_width;
+      GLfloat ofy = tex_height > gl_height ? 0.0f : 1.0f - (GLfloat) tex_height / gl_height;
+
+      GLfloat txm = ofx;
+      GLfloat txM = ofx + 2.0f * (GLfloat) tex_width/gl_width;
+      GLfloat tym = ofy;
+      GLfloat tyM = ofy + 2.0f * (GLfloat) tex_height/gl_height;
 
       qDebug () << "txM/tyM:" << txM << tyM;
 
@@ -377,7 +351,7 @@ namespace plstim
       glBindTexture (GL_TEXTURE_2D, named_frames["fixation"]);
       glUniform1i (texloc, 0);
 
-      glDrawArrays (GL_TRIANGLES, 0, 3);
+      glDrawArrays (GL_TRIANGLES, 0, 6);
 
       swapBuffers ();
     }
