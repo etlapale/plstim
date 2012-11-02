@@ -35,6 +35,15 @@ namespace plstim
     std::map<std::string,GLuint> named_frames;
     GLint texloc;
 
+    bool first_vertices;
+
+  protected:
+    bool first_shader_update;
+    float hratio;
+    float vratio;
+
+    GLfloat vertices[12];
+
   signals:
     void gl_initialised ();
 
@@ -45,10 +54,32 @@ namespace plstim
 	gl_width (0), gl_height (0),
 	tex_width (0), tex_height (0),
 	fshader (0), vshader (0), program (0),
-	vshader_attached (false)
+	vshader_attached (false),
+	first_shader_update (true)
     {
+      first_vertices = true;
       //setMinimumSize (1024, 1024);
-      setMinimumSize (512, 512);
+      setMinimumSize (400, 400);
+      setFocusPolicy (Qt::StrongFocus);
+    }
+
+    virtual void keyPressEvent (QKeyEvent* evt) {
+
+      if (evt->key () == Qt::Key_4) {
+	setMinimumSize (400, 400);
+	setMaximumSize (400, 400);
+      }
+      else if (evt->key () == Qt::Key_6) {
+	setMinimumSize (600, 600);
+	setMaximumSize (600, 600);
+      }
+      else if (evt->key () == Qt::Key_8) {
+	setMinimumSize (800, 800);
+	setMaximumSize (800, 800);
+      }
+      else {
+	QGLWidget::keyPressEvent (evt);
+      }
     }
 
     bool add_frame (const std::string& name, const QImage& img) {
@@ -73,8 +104,11 @@ namespace plstim
 
       qDebug () << "setting tex dims to" << twidth << theight;
 
-      tex_width = twidth;
-      tex_height = theight;
+      //tex_width = twidth;
+      //tex_height = theight;
+
+      tex_width = 100;
+      tex_height = 100;
 
       //setMinimumSize (tex_width, tex_height);
       update_shaders ();
@@ -87,17 +121,30 @@ namespace plstim
 	return;
 
       cout << "update_shaders ()" << endl;
+
+      if (first_shader_update) {
+	hratio = (float) tex_width / gl_width;
+	vratio = (float) tex_height / gl_height;
+	cout << "Ratio at first shader update: " << hratio << " & " << vratio << endl;
+	first_shader_update = false;
+      }
+
       // Compute the offset to center the stimulus
-      GLfloat offx = gl_width < tex_width ? 0 : (gl_width-tex_width)/2.0f;
-      GLfloat offy = gl_height < tex_height ? 0 : (gl_height-tex_height)/2.0f;
+      /*GLfloat offx = gl_width < tex_width ? 0 : (gl_width-tex_width)/2.0f;
+      GLfloat offy = gl_height < tex_height ? 0 : (gl_height-tex_height)/2.0f;*/
+      GLfloat offx = 0, offy = 0;
       qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
 
       // Create an identity vertex shader
+      glViewport (0, 0, (GLint) gl_width, (GLint) gl_height);
+
       stringstream ss;
       ss << fixed << setprecision(12)
 	// This projection matrix maps OpenGL coordinates
 	// to device coordinates (pixels)
 	<< "const mat4 proj_matrix = mat4("
+	//<< (2.0/gl_width) << ", 0.0, 0.0, -1.0," << endl
+	//<< "0.0, " << -(2.0/gl_height) << ", 0.0, 1.0," << endl
 	<< (2.0/gl_width) << ", 0.0, 0.0, -1.0," << endl
 	<< "0.0, " << -(2.0/gl_height) << ", 0.0, 1.0," << endl
 	<< "0.0, 0.0, -1.0, 0.0," << endl
@@ -106,8 +153,9 @@ namespace plstim
 	<< "varying vec2 tex_coord;" << endl
 	<< "void main () {" << endl
 	//<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
-	<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);" << endl
-	<< "  tex_coord = vec2((ppos.x-1.0-" << offx << ")/2.0, (ppos.y-1.0-" << offy << ")/2.0);" << endl
+	//<< "  gl_Position = vec4(ppos.x*" << hratio << ", ppos.y*" << vratio << ", 0.0, 1.0);" << endl
+	<< "  gl_Position = vec4(ppos.x-1.0, ppos.y-1.0, 0.0, 1.0);" << endl
+	<< "  tex_coord = vec2((ppos.x-" << offx << ")/2.0, (ppos.y-" << offy << ")/2.0);" << endl
 	//<< "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
 	//<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
 	<< "}" << endl;
@@ -169,15 +217,46 @@ namespace plstim
 	fprintf (stderr, "could not get attribute ‘ppos’\n");
 	exit (1);
       }
+      qDebug () << "ppos: " << ppos;
 
       qDebug () << "offset:" << offx << offy;
       qDebug () << "tw/th:" << tex_width << tex_height;
+      qDebug () << "gw/gh:" << gl_width << gl_height;
+
+      GLfloat txm = 0;
+      GLfloat txM = 2.0f * (GLfloat) tex_width/gl_width;
+      GLfloat tym = 0;
+      GLfloat tyM = 2.0f * (GLfloat) tex_height/gl_height;
+
+      //txM = tyM = 0.333333333333333f;
+
+      qDebug () << "txM/tyM:" << txM << tyM;
 
       // Rectangle covering the full texture
+#if 0
       static GLfloat vertices[] = {
 	//offx, offy,
 	//offx, offy + tex_width,
 	//offx + tex_width, offy + tex_height,
+	
+#if 1
+	txm, tym,
+	txM, tym,
+	txm, tyM,
+
+	txm, tyM,
+	txM, tym,
+	txM, tyM,
+#else
+#if 1
+	0, 0,
+	(GLfloat) tex_width, 0,
+	0, (GLfloat) tex_height,
+
+	0, (GLfloat) tex_height,
+	(GLfloat) tex_width, 0,
+	(GLfloat) tex_width, (GLfloat) tex_height,
+#else
 	-1, -1,
 	 1, -1,
 	-1,  1,
@@ -185,11 +264,28 @@ namespace plstim
 	-1,  1,
 	 1, -1,
 	 1,  1,
+#endif
+#endif
 
 	//offx + tex_width, offy + tex_height,
 	//offx, offy,
 	//offx + tex_width, offy
       };
+#endif
+      vertices[0] = txm;
+      vertices[1] = tym;
+      vertices[2] = txM;
+      vertices[3] = tym;
+      vertices[4] = txm;
+      vertices[5] = tyM;
+
+      vertices[6] = txm;
+      vertices[7] = tyM;
+      vertices[8] = txM;
+      vertices[9] = tym;
+      vertices[10] = txM;
+      vertices[11] = tyM;
+
       glEnableVertexAttribArray (ppos);
       glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
       glClear (GL_COLOR_BUFFER_BIT);
@@ -260,8 +356,8 @@ namespace plstim
 	"varying vec2 tex_coord;\n"
 	"uniform sampler2D texture;\n"
 	"void main() {\n"
-	"  gl_FragColor = texture2D(texture, tex_coord);\n"
-	//"  gl_FragColor = vec4(0.9, 0.8, 0.7, 1.0);\n"
+	//"  gl_FragColor = texture2D(texture, tex_coord);\n"
+	"  gl_FragColor = vec4(0.9, 0.8, 0.7, 1.0);\n"
 	"}\n";
       fshader = glCreateShader (GL_FRAGMENT_SHADER);
       assert_gl_error ("create a fragment shader");
@@ -321,7 +417,7 @@ namespace plstim
       glBindTexture (GL_TEXTURE_2D, named_frames["fixation"]);
       glUniform1i (texloc, 0);
 
-      glDrawArrays (GL_TRIANGLES, 0, 6);
+      glDrawArrays (GL_TRIANGLES, 0, 3);
 
       swapBuffers ();
     }

@@ -89,20 +89,6 @@ LorenceauExperiment::update_configuration ()
   if (! glwidget_initialised)
     return;
 
-#if 0
-  // Create the special frames
-  cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
-  
-  // Fixation point
-  cr->set_source_rgb (0, 0, 1);
-  cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
-  cr->fill ();
-  // Aperture
-  cr->rectangle (0, 0, tex_width, tex_height);
-  cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
-  cr->set_source_rgb (0, 0, 0);
-#endif
-
   // Aperture mask path
   QPainterPath ape_path;
   ape_path.addRect (0, 0, tex_width, tex_height);
@@ -114,13 +100,14 @@ LorenceauExperiment::update_configuration ()
 
   // Fixation frame
   QPainter p (img);
-  p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
+  //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
+  p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 100));
   p.setBrush (Qt::red);
   int fix_radius = (int) nearbyint (deg2pix (3./60));
   qDebug () << "Fixation radius:" << fix_radius;
   p.drawEllipse (tex_width/2 - fix_radius, tex_height/2 - fix_radius,
 		 2*fix_radius, 2*fix_radius);
-  p.setBrush (Qt::black);
+  p.setBrush (Qt::green);
   p.drawPath (ape_path);
   p.end ();
   add_frame ("fixation", *img);
