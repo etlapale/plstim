@@ -400,7 +400,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Re-add the glwidget to the splitter when fullscreen ends
   connect (glwidget, SIGNAL (normal_screen ()),
-	   this, SLOT (normal_screen));
+	   this, SLOT (normal_screen ()));
 
   // Experimental setup
   auto setup_widget = new QWidget;
@@ -524,6 +524,7 @@ QExperiment::glwidget_gl_initialised ()
 void
 QExperiment::normal_screen ()
 {
+  cout << "Adding back the GL widget to the splitter" << endl;
   splitter->addWidget (glwidget);
 }
 

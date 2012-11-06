@@ -56,7 +56,19 @@ namespace plstim
 	vshader_attached (false),
 	first_shader_update (true)
     {
+      setFocusPolicy (Qt::StrongFocus);
     }
+
+  protected:
+    virtual void keyPressEvent (QKeyEvent* evt) {
+      cout << "Key press event" << endl;
+      if (evt->key () == Qt::Key_Escape) {
+	cout << "escape key!" << endl;
+	emit normal_screen ();
+      }
+    }
+
+  public:
 
     bool add_frame (const std::string& name, const QImage& img) {
 
