@@ -112,7 +112,7 @@ LorenceauExperiment::update_configuration ()
   p.end ();
   add_frame ("fixation", *img);
 
-  img->save ("output.png");
+  //img->save ("output.png");
   delete img;
 
   glwidget->update_texture_size (tex_width, tex_height);

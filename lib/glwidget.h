@@ -79,8 +79,8 @@ namespace plstim
 
       qDebug () << "setting tex dims to" << twidth << theight;
 
-      tex_width = 200;//twidth;
-      tex_height = 200;//theight;
+      tex_width = twidth;
+      tex_height = theight;
 
       update_shaders ();
     }
@@ -100,14 +100,22 @@ namespace plstim
 	first_shader_update = false;
       }
 
-      // Compute the offset to center the stimulus
-      /*GLfloat offx = gl_width < tex_width ? 0 : (gl_width-tex_width)/2.0f;
-      GLfloat offy = gl_height < tex_height ? 0 : (gl_height-tex_height)/2.0f;*/
-      GLfloat offx = 0, offy = 0;
       qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
 
       // Create an identity vertex shader
       glViewport (0, 0, (GLint) gl_width, (GLint) gl_height);
+
+      // Compute the offset to center the stimulus
+      GLfloat ofx = tex_width > gl_width ? 0.0f : 1.0f - (GLfloat) tex_width / gl_width;
+      GLfloat ofy = tex_height > gl_height ? 0.0f : 1.0f - (GLfloat) tex_height / gl_height;
+
+      GLfloat txm = ofx;
+      GLfloat txM = ofx + 2.0f * (GLfloat) tex_width/gl_width;
+      GLfloat tym = ofy;
+      GLfloat tyM = ofy + 2.0f * (GLfloat) tex_height/gl_height;
+
+      GLfloat tgw2_ratio = 2.0f * (GLfloat) tex_width/gl_width;
+      GLfloat tgh2_ratio = 2.0f * (GLfloat) tex_height/gl_height;
 
       stringstream ss;
       ss << fixed << setprecision(12)
@@ -126,7 +134,8 @@ namespace plstim
 	//<< "  gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0) * proj_matrix;" << endl
 	//<< "  gl_Position = vec4(ppos.x*" << hratio << ", ppos.y*" << vratio << ", 0.0, 1.0);" << endl
 	<< "  gl_Position = vec4(ppos.x-1.0, ppos.y-1.0, 0.0, 1.0);" << endl
-	<< "  tex_coord = vec2((ppos.x-" << offx << ")/2.0, (ppos.y-" << offy << ")/2.0);" << endl
+	<< "  tex_coord = vec2((ppos.x-" << ofx << ")/" << tgw2_ratio
+	<< ", (ppos.y-"<<ofy<<")/" << tgh2_ratio << ");" << endl
 	//<< "  tex_coord = vec2((ppos.x-" << offx << ")/" << (float) tex_width 
 	//<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
 	<< "}" << endl;
@@ -190,17 +199,8 @@ namespace plstim
       }
       qDebug () << "ppos: " << ppos;
 
-      qDebug () << "offset:" << offx << offy;
       qDebug () << "tw/th:" << tex_width << tex_height;
       qDebug () << "gw/gh:" << gl_width << gl_height;
-
-      GLfloat ofx = tex_width > gl_width ? 0.0f : 1.0f - (GLfloat) tex_width / gl_width;
-      GLfloat ofy = tex_height > gl_height ? 0.0f : 1.0f - (GLfloat) tex_height / gl_height;
-
-      GLfloat txm = ofx;
-      GLfloat txM = ofx + 2.0f * (GLfloat) tex_width/gl_width;
-      GLfloat tym = ofy;
-      GLfloat tyM = ofy + 2.0f * (GLfloat) tex_height/gl_height;
 
       qDebug () << "txM/tyM:" << txM << tyM;
 
@@ -290,8 +290,8 @@ namespace plstim
 	"varying vec2 tex_coord;\n"
 	"uniform sampler2D texture;\n"
 	"void main() {\n"
-	//"  gl_FragColor = texture2D(texture, tex_coord);\n"
-	"  gl_FragColor = vec4(0.9, 0.8, 0.7, 1.0);\n"
+	"  gl_FragColor = texture2D(texture, tex_coord);\n"
+	//"  gl_FragColor = vec4(0.9, 0.8, 0.7, 1.0);\n"
 	"}\n";
       fshader = glCreateShader (GL_FRAGMENT_SHADER);
       assert_gl_error ("create a fragment shader");
