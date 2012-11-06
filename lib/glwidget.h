@@ -76,6 +76,7 @@ namespace plstim
     void full_screen () {
       setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
       showFullScreen ();
+      paintGL ();
     }
 
     void update_texture_size (int twidth, int theight) {
