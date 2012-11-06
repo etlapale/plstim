@@ -177,6 +177,20 @@ QExperiment::exec ()
 bool
 QExperiment::run_session ()
 {
+  cout << "Run session!" << endl;
+
+  // Create a fullscreen window
+  //auto dlg = new QDialog (&win);
+  /*auto lay = new QHBoxLayout (dlg);
+  lay->setContentsMargins (0, 0, 0, 0);
+  lay->addWidget (glwidget);
+  dlg->setLayout (lay);*/
+  //dlg->showFullScreen ();
+  //int res = dlg->exec ();
+  //dlg->show ();
+  //
+  glwidget->full_screen ();
+
   for (current_trial = 0; current_trial < ntrials; current_trial++)
     if (! run_trial ())
       return false;
@@ -352,7 +366,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setDepth (false);
   fmt.setSwapInterval (1);
   glwidget = new MyGLWidget (fmt, &win);
-  auto splitter = new QSplitter (&win);
+  splitter = new QSplitter (&win);
   win.setCentralWidget (splitter);
   cout << "OpenGL version " << glwidget->format ().majorVersion ()
        << '.' << glwidget->format ().minorVersion () << endl;
@@ -364,15 +378,29 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Create a basic menu
   auto menu = win.menuBar ()->addMenu (QMenu::tr ("&Experiment"));
-  auto action = menu->addAction ("&Quit");
+  // Run the simulation in full screen
+  auto action = menu->addAction ("&Run");
+  action->setShortcut(tr("Ctrl+R"));
+  action->setStatusTip(tr("&Run the simulation"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
+  // Terminate the program
+  action = menu->addAction ("&Quit");
   action->setShortcut(tr("Ctrl+Q"));
   action->setStatusTip(tr("&Quit the program"));
   connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
+
+  // Top toolbar
+  //toolbar = new QToolBar ("Simulation");
+  //action = 
 
   // Left toolbox
   auto tbox = new QToolBox;
   splitter->addWidget (tbox);
   splitter->addWidget (glwidget);
+
+  // Re-add the glwidget to the splitter when fullscreen ends
+  connect (glwidget, SIGNAL (normal_screen ()),
+	   this, SLOT (normal_screen));
 
   // Experimental setup
   auto setup_widget = new QWidget;
@@ -491,6 +519,12 @@ QExperiment::glwidget_gl_initialised ()
 {
   glwidget_initialised = true;
   emit setup_updated ();
+}
+
+void
+QExperiment::normal_screen ()
+{
+  splitter->addWidget (glwidget);
 }
 
 Message::Message (Type t, const QString& str)

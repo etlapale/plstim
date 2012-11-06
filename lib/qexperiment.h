@@ -117,8 +117,6 @@ namespace plstim
 
     bool exec ();
 
-    bool run_session ();
-
     /// Run a single trial
     virtual bool run_trial () = 0;
 
@@ -149,6 +147,9 @@ namespace plstim
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
+  public slots:
+    bool run_session ();
+
   protected:
     bool add_frame (const std::string& name, const QImage& img);
 
@@ -159,9 +160,12 @@ namespace plstim
     void update_converters ();
     void quit ();
     void glwidget_gl_initialised ();
+    void normal_screen ();
 
   protected:
     bool save_setup;
+    QToolBar* toolbar;
+    QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
     QLineEdit* res_x_edit;

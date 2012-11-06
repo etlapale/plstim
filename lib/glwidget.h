@@ -44,6 +44,7 @@ namespace plstim
 
   signals:
     void gl_initialised ();
+    void normal_screen ();
 
   public:
     MyGLWidget (const QGLFormat& format, QWidget* parent)
@@ -70,6 +71,11 @@ namespace plstim
 
       //named_frames[name] = bindTexture (img);
       return true;
+    }
+
+    void full_screen () {
+      setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
+      showFullScreen ();
     }
 
     void update_texture_size (int twidth, int theight) {
