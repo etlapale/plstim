@@ -109,6 +109,7 @@ LorenceauExperiment::update_configuration ()
 		 2*fix_radius, 2*fix_radius);
   p.setBrush (Qt::green);
   p.drawPath (ape_path);
+  //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
   p.end ();
   add_frame ("fixation", *img);
 

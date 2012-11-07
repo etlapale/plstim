@@ -73,12 +73,7 @@ namespace plstim
       if (named_frames.find (name) != named_frames.end ())
 	deleteTexture (named_frames[name]);
 
-
-      QPixmap pixmap = QPixmap("output.png");
-      auto image = pixmap.toImage ();
       named_frames[name] = bindTexture (img);
-
-      //named_frames[name] = bindTexture (img);
       return true;
     }
 
