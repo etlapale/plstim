@@ -356,7 +356,7 @@ namespace plstim
 
     void resizeGL (int w, int h)
     {
-      std::cout << "resizeGL(" << w << ", " << h << ")" << std::endl;
+      //std::cout << "resizeGL(" << w << ", " << h << ")" << std::endl;
       gl_width = w;
       gl_height = h;
       update_shaders ();

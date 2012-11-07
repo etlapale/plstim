@@ -336,6 +336,7 @@ QExperiment::about_to_quit ()
   QSize sz = win.size ();
   settings->setValue ("gui_width", sz.width ());
   settings->setValue ("gui_height", sz.height ());
+  settings->setValue ("splitter", splitter->saveState ());
 }
 
 QExperiment::QExperiment (int & argc, char** argv)
@@ -515,6 +516,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   if (settings->contains ("gui_width"))
     win.resize (settings->value ("gui_width").toInt (),
 		settings->value ("gui_height").toInt ());
+  if (settings->contains ("splitter"))
+    splitter->restoreState (settings->value ("splitter").toByteArray ());
 
   // Constrain the screen selector
   screen_sbox->setMinimum (0);
