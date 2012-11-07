@@ -147,6 +147,10 @@ namespace plstim
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
+    void set_glformat (QGLFormat glformat);
+
+    void set_swap_interval (int swap_interval);
+
   public slots:
 
     /**

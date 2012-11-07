@@ -397,7 +397,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setDoubleBuffer (true);
   fmt.setVersion (3, 0);
   fmt.setDepth (false);
-  fmt.setSwapInterval (10);
+  fmt.setSwapInterval (1);
   glwidget = new MyGLWidget (fmt, &win);
   splitter = new QSplitter (&win);
   win.setCentralWidget (splitter);
@@ -430,10 +430,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   auto tbox = new QToolBox;
   splitter->addWidget (tbox);
   splitter->addWidget (glwidget);
-
-  // Re-add the glwidget to the splitter when fullscreen ends
-  connect (glwidget, SIGNAL (normal_screen_restored ()),
-	   this, SLOT (normal_screen_restored ()));
 
   // Experimental setup
   auto setup_widget = new QWidget;
@@ -554,10 +550,6 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   connect (this, SIGNAL (setup_updated ()),
 	   this, SLOT (update_converters ()));
-  connect (glwidget, SIGNAL (gl_initialised ()),
-	   this, SLOT (glwidget_gl_initialised ()));
-  connect (glwidget, SIGNAL (gl_resized (int, int)),
-	   this, SLOT (gl_resized (int, int)));
 
   // Close event termination
   connect (&app, SIGNAL (aboutToQuit ()),
@@ -576,6 +568,44 @@ QExperiment::normal_screen_restored ()
 {
   splitter->addWidget (glwidget);
   splitter->restoreState (splitter_state);
+}
+
+void
+QExperiment::set_glformat (QGLFormat glformat)
+{
+  auto old_widget = this->glwidget;
+  splitter_state = splitter->saveState ();
+
+  glwidget = new MyGLWidget (glformat, &win);
+  glwidget = glwidget;
+
+  splitter->addWidget (glwidget);
+
+  // Re-add the glwidget to the splitter when fullscreen ends
+  connect (glwidget, SIGNAL (normal_screen_restored ()),
+	   this, SLOT (normal_screen_restored ()));
+  connect (glwidget, SIGNAL (gl_initialised ()),
+	   this, SLOT (glwidget_gl_initialised ()));
+  connect (glwidget, SIGNAL (gl_resized (int, int)),
+	   this, SLOT (gl_resized (int, int)));
+
+  delete old_widget;
+  splitter->addWidget (glwidget);
+  splitter->restoreState (splitter_state);
+
+  cout << "new glwidget in place" << endl;
+}
+
+void
+QExperiment::set_swap_interval (int swap_interval)
+{
+  auto glformat = glwidget->format ();
+  auto current_si = glformat.swapInterval ();
+  if (current_si != swap_interval) {
+    cout << "updating swap interval" << endl;
+    glformat.setSwapInterval (swap_interval);
+    set_glformat (glformat);
+  }
 }
 
 Message::Message (Type t, const QString& str)

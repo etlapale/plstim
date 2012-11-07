@@ -123,6 +123,7 @@ namespace plstim
 	return;
 
       cout << "update_shaders ()" << endl;
+      cout << "    " << isValid () << endl;
 
       if (first_shader_update) {
 	hratio = (float) tex_width / gl_width;
