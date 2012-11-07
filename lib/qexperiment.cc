@@ -174,7 +174,36 @@ QExperiment::exec ()
   return app.exec () == 0;
 }
 
-bool
+void
+QExperiment::gl_resized (int w, int h)
+{
+  if (waiting_fullscreen) {
+
+    // Confirm that the resize event is a fullscreen event
+    if (w == res_x_edit->text ().toInt ()
+	&& h == res_y_edit->text ().toInt ()) {
+
+      waiting_fullscreen = false;
+
+      // Run the trials
+      for (current_trial = 0;
+	   current_trial < ntrials;
+	   current_trial++)
+	if (! run_trial ()) {
+	  cout << "could not run a trial!" << endl;
+	  break;
+	}
+    }
+
+    // Resize event received while expecting fullscreen
+    else {
+      cerr << "expecting fullscreen event, but got a simple resize"
+	   << endl;
+    }
+  }
+}
+
+void
 QExperiment::run_session ()
 {
   cout << "Run session!" << endl;
@@ -182,15 +211,11 @@ QExperiment::run_session ()
   // Save the splitter position
   splitter_state = splitter->saveState ();
 
+  // Notify that we want to run the trials
+  waiting_fullscreen = true;
+
   // Set the GL scene full screen
   glwidget->full_screen ();
-
-  // Run the trial
-  for (current_trial = 0; current_trial < ntrials; current_trial++)
-    if (! run_trial ())
-      return false;
-
-  return true;
 }
 
 bool
@@ -352,6 +377,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   res_msg = NULL;
   match_res_msg = NULL;
 
+  waiting_fullscreen = false;
+
   // Get the experimental setup
 
   // Check for OpenGL
@@ -370,7 +397,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setDoubleBuffer (true);
   fmt.setVersion (3, 0);
   fmt.setDepth (false);
-  fmt.setSwapInterval (1);
+  fmt.setSwapInterval (10);
   glwidget = new MyGLWidget (fmt, &win);
   splitter = new QSplitter (&win);
   win.setCentralWidget (splitter);
@@ -529,6 +556,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 	   this, SLOT (update_converters ()));
   connect (glwidget, SIGNAL (gl_initialised ()),
 	   this, SLOT (glwidget_gl_initialised ()));
+  connect (glwidget, SIGNAL (gl_resized (int, int)),
+	   this, SLOT (gl_resized (int, int)));
 
   // Close event termination
   connect (&app, SIGNAL (aboutToQuit ()),

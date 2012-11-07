@@ -98,10 +98,12 @@ LorenceauExperiment::update_configuration ()
 
   auto img = new QImage (tex_width, tex_height, QImage::Format_RGB32);
 
+  QColor bg (10, 10, 100);
+
   // Fixation frame
   QPainter p (img);
   //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
-  p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 100));
+  p.fillRect (0, 0, tex_width, tex_height, bg);
   p.setBrush (Qt::red);
   int fix_radius = (int) nearbyint (deg2pix (3./60));
   qDebug () << "Fixation radius:" << fix_radius;
@@ -112,6 +114,16 @@ LorenceauExperiment::update_configuration ()
   //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
   p.end ();
   add_frame ("fixation", *img);
+  
+  // Question frame
+  p.begin (img);
+  //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
+  p.fillRect (0, 0, tex_width, tex_height, bg);
+  p.setBrush (Qt::green);
+  p.drawPath (ape_path);
+  //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
+  p.end ();
+  add_frame ("question", *img);
 
   //img->save ("output.png");
   delete img;
@@ -150,7 +162,9 @@ LorenceauExperiment::run_trial ()
   // Wait for a key press before running the trial
   struct timespec tp_fixation;
   clock_gettime (CLOCK, &tp_fixation);
-  show_frame ("fixation");
+#endif
+  glwidget->show_frame ("fixation");
+#if 0
 #if !NO_INTERACTIVE
   if (! wait_any_key ())
     return false;
@@ -170,7 +184,9 @@ LorenceauExperiment::run_trial ()
 	  tp_frames.tv_sec, tp_frames.tv_nsec);
   printf ("stop:  %lds %ldns\n",
 	  tp_question.tv_sec, tp_question.tv_nsec);
-  show_frame ("question");
+#endif
+  glwidget->show_frame ("question");
+#if 0
   KeySym pressed_key;
 #if !NO_INTERACTIVE
   if (! wait_for_key (answer_keys, &pressed_key))

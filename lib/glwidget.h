@@ -44,6 +44,7 @@ namespace plstim
 
   signals:
     void gl_initialised ();
+    void gl_resized (int w, int h);
     void normal_screen_restored ();
 
   public:
@@ -77,10 +78,23 @@ namespace plstim
       return true;
     }
 
+    void show_frame (const std::string& name) {
+      cout << "SHOW FRAME" << endl;
+
+      glClear (GL_COLOR_BUFFER_BIT);
+
+      glBindTexture (GL_TEXTURE_2D, named_frames[name]);
+      glUniform1i (texloc, 0);
+
+      glDrawArrays (GL_TRIANGLES, 0, 6);
+      swapBuffers ();
+    }
+
     void full_screen () {
       setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
       setCursor (QCursor (Qt::BlankCursor));
       showFullScreen ();
+
       paintGL ();
     }
 
@@ -117,7 +131,7 @@ namespace plstim
 	first_shader_update = false;
       }
 
-      qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
+      //qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
 
       // Create an identity vertex shader
       glViewport (0, 0, (GLint) gl_width, (GLint) gl_height);
@@ -351,26 +365,27 @@ namespace plstim
 
     void resizeGL (int w, int h)
     {
-      //std::cout << "resizeGL(" << w << ", " << h << ")" << std::endl;
+      std::cout << "resizeGL(" << w << ", " << h << ")" << std::endl;
       gl_width = w;
       gl_height = h;
       update_shaders ();
 
       glClear (GL_COLOR_BUFFER_BIT);
+
+      emit gl_resized (w, h);
     }
 
     void paintGL ()
     {
-      std::cout << "paintGL()" << std::endl;
+      /*std::cout << "paintGL()" << std::endl;
 
       glClear (GL_COLOR_BUFFER_BIT);
 
-      glBindTexture (GL_TEXTURE_2D, named_frames["fixation"]);
+      glBindTexture (GL_TEXTURE_2D, named_frames["question"]);
       glUniform1i (texloc, 0);
-
       glDrawArrays (GL_TRIANGLES, 0, 6);
 
-      swapBuffers ();
+      swapBuffers ();*/
     }
   };
 }

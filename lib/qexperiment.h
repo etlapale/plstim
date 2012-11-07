@@ -148,7 +148,13 @@ namespace plstim
     }
 
   public slots:
-    bool run_session ();
+
+    /**
+     * Run a session of multiple trials.
+     * Sessions may run asynchronously, so this method may return
+     * before the session being finished.
+     */
+    void run_session ();
 
   protected:
     bool add_frame (const std::string& name, const QImage& img);
@@ -161,6 +167,7 @@ namespace plstim
     void about_to_quit ();
     void quit ();
     void glwidget_gl_initialised ();
+    void gl_resized (int w, int h);
     void normal_screen_restored ();
 
   protected:
@@ -184,6 +191,11 @@ namespace plstim
     bool glwidget_initialised;
 
     QByteArray splitter_state;
+
+    /**
+     * Waiting for a fullscreen event before starting the session.
+     */
+    bool waiting_fullscreen;
 
   signals:
     void setup_updated ();
