@@ -160,7 +160,7 @@ namespace plstim
     void update_converters ();
     void quit ();
     void glwidget_gl_initialised ();
-    void normal_screen ();
+    void normal_screen_restored ();
 
   protected:
     bool save_setup;
@@ -181,6 +181,8 @@ namespace plstim
     float px_mm;
 
     bool glwidget_initialised;
+
+    QByteArray splitter_state;
 
   signals:
     void setup_updated ();

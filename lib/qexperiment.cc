@@ -179,21 +179,17 @@ QExperiment::run_session ()
 {
   cout << "Run session!" << endl;
 
-  // Create a fullscreen window
-  //auto dlg = new QDialog (&win);
-  /*auto lay = new QHBoxLayout (dlg);
-  lay->setContentsMargins (0, 0, 0, 0);
-  lay->addWidget (glwidget);
-  dlg->setLayout (lay);*/
-  //dlg->showFullScreen ();
-  //int res = dlg->exec ();
-  //dlg->show ();
-  //
+  // Save the splitter position
+  splitter_state = splitter->saveState ();
+
+  // Set the GL scene full screen
   glwidget->full_screen ();
 
+  // Run the trial
   for (current_trial = 0; current_trial < ntrials; current_trial++)
     if (! run_trial ())
       return false;
+
   return true;
 }
 
@@ -399,8 +395,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   splitter->addWidget (glwidget);
 
   // Re-add the glwidget to the splitter when fullscreen ends
-  connect (glwidget, SIGNAL (normal_screen ()),
-	   this, SLOT (normal_screen ()));
+  connect (glwidget, SIGNAL (normal_screen_restored ()),
+	   this, SLOT (normal_screen_restored ()));
 
   // Experimental setup
   auto setup_widget = new QWidget;
@@ -522,10 +518,10 @@ QExperiment::glwidget_gl_initialised ()
 }
 
 void
-QExperiment::normal_screen ()
+QExperiment::normal_screen_restored ()
 {
-  cout << "Adding back the GL widget to the splitter" << endl;
   splitter->addWidget (glwidget);
+  splitter->restoreState (splitter_state);
 }
 
 Message::Message (Type t, const QString& str)

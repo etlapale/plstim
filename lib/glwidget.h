@@ -44,7 +44,7 @@ namespace plstim
 
   signals:
     void gl_initialised ();
-    void normal_screen ();
+    void normal_screen_restored ();
 
   public:
     MyGLWidget (const QGLFormat& format, QWidget* parent)
@@ -61,11 +61,8 @@ namespace plstim
 
   protected:
     virtual void keyPressEvent (QKeyEvent* evt) {
-      cout << "Key press event" << endl;
-      if (evt->key () == Qt::Key_Escape) {
-	cout << "escape key!" << endl;
-	emit normal_screen ();
-      }
+      if (evt->key () == Qt::Key_Escape)
+	normal_screen ();
     }
 
   public:
@@ -87,8 +84,14 @@ namespace plstim
 
     void full_screen () {
       setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
+      setCursor (QCursor (Qt::BlankCursor));
       showFullScreen ();
       paintGL ();
+    }
+
+    void normal_screen () {
+      unsetCursor ();
+      emit normal_screen_restored ();
     }
 
     void update_texture_size (int twidth, int theight) {
