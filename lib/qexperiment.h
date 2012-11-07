@@ -158,6 +158,7 @@ namespace plstim
     void setup_param_changed ();
     void update_setup ();
     void update_converters ();
+    void about_to_quit ();
     void quit ();
     void glwidget_gl_initialised ();
     void normal_screen_restored ();

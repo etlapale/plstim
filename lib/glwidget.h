@@ -162,7 +162,7 @@ namespace plstim
 	//<< ", (ppos.y-" << offy << ")/" << (float) tex_height << " );" << endl
 	<< "}" << endl;
       auto vshader_str = ss.str();
-      cout << "vertex shader:" << endl << vshader_str << endl;
+      //cout << "vertex shader:" << endl << vshader_str << endl;
 
 
       const char* vshader_txt = vshader_str.c_str();
@@ -219,12 +219,12 @@ namespace plstim
 	fprintf (stderr, "could not get attribute ‘ppos’\n");
 	exit (1);
       }
-      qDebug () << "ppos: " << ppos;
+      //qDebug () << "ppos: " << ppos;
 
-      qDebug () << "tw/th:" << tex_width << tex_height;
-      qDebug () << "gw/gh:" << gl_width << gl_height;
+      //qDebug () << "tw/th:" << tex_width << tex_height;
+      //qDebug () << "gw/gh:" << gl_width << gl_height;
 
-      qDebug () << "txM/tyM:" << txM << tyM;
+      //qDebug () << "txM/tyM:" << txM << tyM;
 
       // Triangle covering half the texture
       vertices[0] = txm;

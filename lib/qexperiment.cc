@@ -329,6 +329,15 @@ QExperiment::quit ()
   app.quit ();
 }
 
+void
+QExperiment::about_to_quit ()
+{
+  // Save the GUI state
+  QSize sz = win.size ();
+  settings->setValue ("gui_width", sz.width ());
+  settings->setValue ("gui_height", sz.height ());
+}
+
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     win (),
@@ -489,14 +498,23 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Use an existing setup
   else {
     // Add all the setups to the combo box
-    for (auto g : groups)
-      setup_cbox->addItem (g);
+    for (auto g : groups) {
+      if (g != "General") {
+	setup_cbox->addItem (g);
+      }
+    }
 
     // TODO: check if there was a ‘last’ setup
+    // TODO: make sure there really are existing setups
     
     // Restore setup
     update_setup ();
   }
+
+  // Restore GUI state
+  if (settings->contains ("gui_width"))
+    win.resize (settings->value ("gui_width").toInt (),
+		settings->value ("gui_height").toInt ());
 
   // Constrain the screen selector
   screen_sbox->setMinimum (0);
@@ -508,6 +526,10 @@ QExperiment::QExperiment (int & argc, char** argv)
 	   this, SLOT (update_converters ()));
   connect (glwidget, SIGNAL (gl_initialised ()),
 	   this, SLOT (glwidget_gl_initialised ()));
+
+  // Close event termination
+  connect (&app, SIGNAL (aboutToQuit ()),
+	   this, SLOT (about_to_quit ()));
 }
 
 void
