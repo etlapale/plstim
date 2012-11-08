@@ -167,11 +167,66 @@ using namespace plstim;
 }
 #endif
 
+Page::Page (Page::Type t, const std::string& page_title)
+  : type (t), title (page_title), wait_for_key (true)
+{
+}
+
+void
+QExperiment::add_page (Page* page)
+{
+  pages.push_back (page);
+}
+
 bool
 QExperiment::exec ()
 {
   win.show ();
   return app.exec () == 0;
+}
+
+void
+QExperiment::start_trial ()
+{
+  cout << "Starting trial" << endl;
+  current_page = 0;
+  show_page (current_page);
+}
+
+void
+QExperiment::show_page (int index)
+{
+  Page* p = pages[index];
+
+  glwidget->show_frame (p->title);
+
+  current_page = index;
+}
+
+void
+QExperiment::glwidget_key_press_event (QKeyEvent* evt)
+{
+  // Keyboard events are only handled in sessions
+  if (! session_running)
+    return;
+
+  Page* page = pages[current_page];
+
+  // Go to the next page
+  if (page->wait_for_key) {
+    // End of trial
+    if (current_page + 1 == pages.size ()) {
+      // End of session
+      cout << "end of session" << endl;
+      glwidget->normal_screen ();
+      session_running = false;
+    }
+    // There is a next page
+    else {
+      cout << "showing next page" << endl;
+      show_page (current_page + 1);
+    }
+  }
 }
 
 void
@@ -184,15 +239,17 @@ QExperiment::gl_resized (int w, int h)
 	&& h == res_y_edit->text ().toInt ()) {
 
       waiting_fullscreen = false;
+      session_running = true;
 
       // Run the trials
-      for (current_trial = 0;
+      /*for (current_trial = 0;
 	   current_trial < ntrials;
 	   current_trial++)
 	if (! run_trial ()) {
 	  cout << "could not run a trial!" << endl;
 	  break;
-	}
+	}*/
+      start_trial ();
     }
 
     // Resize event received while expecting fullscreen
@@ -367,7 +424,6 @@ QExperiment::about_to_quit ()
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     win (),
-    swap_interval (1),
     save_setup (false),
     glwidget_initialised (false)
 {
@@ -378,6 +434,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   match_res_msg = NULL;
 
   waiting_fullscreen = false;
+  session_running = false;
 
   // Get the experimental setup
 
@@ -405,9 +462,6 @@ QExperiment::QExperiment (int & argc, char** argv)
        << '.' << glwidget->format ().minorVersion () << endl;
   if (! glwidget->format ().doubleBuffer ())
     error ("double buffering not supported");
-  if (glwidget->format ().swapInterval () != swap_interval) {
-    error ("could not set the swap interval");
-  }
 
   // Create a basic menu
   auto menu = win.menuBar ()->addMenu (QMenu::tr ("&Experiment"));
@@ -588,6 +642,8 @@ QExperiment::set_glformat (QGLFormat glformat)
 	   this, SLOT (glwidget_gl_initialised ()));
   connect (glwidget, SIGNAL (gl_resized (int, int)),
 	   this, SLOT (gl_resized (int, int)));
+  connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
+	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
 
   delete old_widget;
   splitter->addWidget (glwidget);

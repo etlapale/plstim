@@ -46,6 +46,7 @@ namespace plstim
     void gl_initialised ();
     void gl_resized (int w, int h);
     void normal_screen_restored ();
+    void key_press_event (QKeyEvent* evt);
 
   public:
     MyGLWidget (const QGLFormat& format, QWidget* parent)
@@ -64,6 +65,8 @@ namespace plstim
     virtual void keyPressEvent (QKeyEvent* evt) {
       if (evt->key () == Qt::Key_Escape)
 	normal_screen ();
+      else
+	emit key_press_event (evt);
     }
 
   public:

@@ -25,11 +25,24 @@ namespace plstim
       ERROR
     };
   public:
-    Message (Type t, const QString& msg);
+    Message (Message::Type t, const QString& msg);
   public:
-    Type type;
+    Message::Type type;
     QString msg;
     QList<QWidget*> widgets;
+  };
+
+  class Page {
+  public:
+    enum Type {
+      SINGLE
+    };
+  public:
+    std::string title;
+    Page::Type type;
+    bool wait_for_key;
+  public:
+    Page (Page::Type t, const std::string& title);
   };
 
   class QExperiment : public QObject
@@ -51,6 +64,12 @@ namespace plstim
 
     Message* res_msg;
     Message* match_res_msg;
+
+    /// Pages composing a trial
+    std::vector<Page*> pages;
+
+    /// Current page in a trial
+    int current_page;
 
     /// Output display to be used
     std::string routput;
@@ -113,12 +132,20 @@ namespace plstim
   public:
 
     QExperiment (int& argc, char** argv);
+
     virtual ~QExperiment ();
 
     bool exec ();
 
+    /// Add a page to the composition of a trial
+    void add_page (Page* page);
+
     /// Run a single trial
     virtual bool run_trial () = 0;
+
+    void start_trial ();
+
+    void show_page (int index);
 
     /// Generate frames for a single trial
     virtual bool make_frames () = 0;
@@ -171,6 +198,7 @@ namespace plstim
     void about_to_quit ();
     void quit ();
     void glwidget_gl_initialised ();
+    void glwidget_key_press_event (QKeyEvent* evt);
     void gl_resized (int w, int h);
     void normal_screen_restored ();
 
@@ -193,6 +221,7 @@ namespace plstim
     float px_mm;
 
     bool glwidget_initialised;
+    bool session_running;
 
     QByteArray splitter_state;
 

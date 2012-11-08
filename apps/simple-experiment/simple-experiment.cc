@@ -53,13 +53,18 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 
   // Set the bar positions
   spacing = setup->deg2pix (1);
-
-  radius = aperture_diam/2;
 #endif
 
   connect (this, SIGNAL (setup_updated ()),
 	   this, SLOT (update_configuration ()));
   emit setup_updated ();
+
+
+  // Composition of a trial
+  auto fix_page = new Page (Page::Type::SINGLE, "fixation");
+  add_page (fix_page);
+  auto que_page = new Page (Page::Type::SINGLE, "question");
+  add_page (que_page);
 }
 
 void
@@ -78,7 +83,6 @@ LorenceauExperiment::update_configuration ()
   }
   int nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
   cout << "Displaying " << nframes << " per stimulus with a swap interval of " << coef << endl;
-  //swap_interval = coef;
   
   // Update the swap interval
   set_swap_interval (coef);
