@@ -170,15 +170,14 @@ using namespace plstim;
 Page::Page (Page::Type t, const std::string& page_title)
   : type (t), title (page_title)
 {
-  /*switch (type) {
+  switch (type) {
   case Page::Type::SINGLE:
     wait_for_key = true;
     break;
   default:
     wait_for_key = false;
     break;
-  }*/
-  wait_for_key = true;
+  }
 }
 
 void
@@ -231,6 +230,34 @@ QExperiment::show_page (int index)
 
   current_page = index;
   p->make_active ();
+
+  // If no keyboard event expected, go to the next page
+  if (! p->wait_for_key)
+    next_page ();
+}
+
+void
+QExperiment::next_page ()
+{
+  // End of trial
+  if (current_page + 1 == pages.size ()) {
+    // Next trial
+    if (current_trial < ntrials) {
+      current_trial++;
+      run_trial ();
+    }
+    // End of session
+    else {
+      cout << "end of session" << endl;
+      glwidget->normal_screen ();
+      session_running = false;
+    }
+  }
+  // There is a next page
+  else {
+    cout << "showing next page" << endl;
+    show_page (current_page + 1);
+  }
 }
 
 void
@@ -245,25 +272,7 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
   // Go to the next page
   if (page->wait_for_key) {
     cout << endl;
-    // End of trial
-    if (current_page + 1 == pages.size ()) {
-      // Next trial
-      if (current_trial < ntrials) {
-	current_trial++;
-	run_trial ();
-      }
-      // End of session
-      else {
-	cout << "end of session" << endl;
-	glwidget->normal_screen ();
-	session_running = false;
-      }
-    }
-    // There is a next page
-    else {
-      cout << "showing next page" << endl;
-      show_page (current_page + 1);
-    }
+    next_page ();
   }
 }
 

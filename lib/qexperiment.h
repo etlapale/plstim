@@ -148,6 +148,8 @@ namespace plstim
 
     void show_page (int index);
 
+    void next_page ();
+
     /// Show the frames loaded in ‘tframes’
     bool show_frames ();
 
