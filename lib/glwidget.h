@@ -41,6 +41,7 @@ namespace plstim
     float vratio;
 
     GLfloat vertices[12];
+    GLuint current_frame;
 
   signals:
     void gl_initialised ();
@@ -56,13 +57,15 @@ namespace plstim
 	tex_width (0), tex_height (0),
 	fshader (0), vshader (0), program (0),
 	vshader_attached (false),
-	first_shader_update (true)
+	first_shader_update (true),
+	current_frame (0)
     {
       setFocusPolicy (Qt::StrongFocus);
     }
 
   protected:
     virtual void keyPressEvent (QKeyEvent* evt) {
+      //cout << "key press" << endl;
       if (evt->key () == Qt::Key_Escape)
 	normal_screen ();
       else
@@ -81,12 +84,21 @@ namespace plstim
       return true;
     }
 
+    void empty_frame () {
+      cout << "displaying an empty frame" << endl;
+
+      glClear (GL_COLOR_BUFFER_BIT);
+      swapBuffers ();
+    }
+
     void show_frame (const std::string& name) {
-      cout << "SHOW FRAME" << endl;
+      current_frame = named_frames[name];
+
+      cout << "show frame ‘" << name << "’ (at " << current_frame << ")" << endl;
 
       glClear (GL_COLOR_BUFFER_BIT);
 
-      glBindTexture (GL_TEXTURE_2D, named_frames[name]);
+      glBindTexture (GL_TEXTURE_2D, current_frame);
       glUniform1i (texloc, 0);
 
       glDrawArrays (GL_TRIANGLES, 0, 6);
@@ -97,8 +109,9 @@ namespace plstim
       setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
       setCursor (QCursor (Qt::BlankCursor));
       showFullScreen ();
+      //emit gl_resized (width (), height ());
 
-      paintGL ();
+      //paintGL ();
     }
 
     void normal_screen () {
@@ -374,22 +387,30 @@ namespace plstim
       gl_height = h;
       update_shaders ();
 
-      glClear (GL_COLOR_BUFFER_BIT);
+      //glClear (GL_COLOR_BUFFER_BIT);
 
       emit gl_resized (w, h);
     }
 
     void paintGL ()
     {
-      /*std::cout << "paintGL()" << std::endl;
+      if (current_frame == 0) {
+	cout << "paintGL() with no effect" << endl;
+	glClear (GL_COLOR_BUFFER_BIT);
+	swapBuffers ();
+	return;
+      }
+
+      std::cout << "paintGL(" << current_frame << ")" << std::endl;
 
       glClear (GL_COLOR_BUFFER_BIT);
 
-      glBindTexture (GL_TEXTURE_2D, named_frames["question"]);
+      glBindTexture (GL_TEXTURE_2D, current_frame);
       glUniform1i (texloc, 0);
       glDrawArrays (GL_TRIANGLES, 0, 6);
 
-      swapBuffers ();*/
+      swapBuffers ();
+      cout << "YYY" << endl;
     }
   };
 }

@@ -27,7 +27,7 @@ using namespace plstim;
 LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   : QExperiment (argc, argv)
 {
-  ntrials = 10;
+  ntrials = 3;
 #if 0
   // Initialise the random number generator
   twister.seed (time (NULL));

@@ -194,7 +194,7 @@ QExperiment::exec ()
 void
 QExperiment::run_trial ()
 {
-  cout << "Starting trial" << endl;
+  cout << "Starting trial " << current_trial << endl;
   current_page = 0;
   show_page (current_page);
 }
@@ -202,9 +202,17 @@ QExperiment::run_trial ()
 void
 QExperiment::show_page (int index)
 {
+  cout << "show page: " << index << endl;
   Page* p = pages[index];
 
   glwidget->show_frame (p->title);
+  //glwidget->show_frame (p->title);
+  
+  // Workaround a bug on initial frame after fullscreen
+  // Maybe it’s a race condition?
+  // TODO: in any cases, it should be tracked and solved
+  if (current_trial == 0 && index == 0)
+    glwidget->show_frame (p->title);
 
   current_page = index;
 
@@ -222,12 +230,20 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 
   // Go to the next page
   if (page->wait_for_key) {
+    cout << endl;
     // End of trial
     if (current_page + 1 == pages.size ()) {
+      // Next trial
+      if (current_trial < ntrials) {
+	current_trial++;
+	run_trial ();
+      }
       // End of session
-      cout << "end of session" << endl;
-      glwidget->normal_screen ();
-      session_running = false;
+      else {
+	cout << "end of session" << endl;
+	glwidget->normal_screen ();
+	session_running = false;
+      }
     }
     // There is a next page
     else {
@@ -240,11 +256,14 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 void
 QExperiment::gl_resized (int w, int h)
 {
+  bool ignore_full_screen = true;
+
   if (waiting_fullscreen) {
 
     // Confirm that the resize event is a fullscreen event
-    if (w == res_x_edit->text ().toInt ()
-	&& h == res_y_edit->text ().toInt ()) {
+    if (ignore_full_screen || 
+	(w == res_x_edit->text ().toInt ()
+	 && h == res_y_edit->text ().toInt ())) {
 
       waiting_fullscreen = false;
       session_running = true;
@@ -278,6 +297,8 @@ QExperiment::run_session ()
 
   // Notify that we want to run the trials
   waiting_fullscreen = true;
+
+  current_trial = 0;
 
   // Set the GL scene full screen
   glwidget->full_screen ();
