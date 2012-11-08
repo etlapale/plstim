@@ -62,7 +62,11 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 
   // Composition of a trial
   auto fix_page = new Page (Page::Type::SINGLE, "fixation");
+  connect (fix_page, SIGNAL (page_active ()),
+	   this, SLOT (make_frames ()));
   add_page (fix_page);
+  //auto frames_page = new Page (Page::Type::FRAMES, "frames");
+  //add_page (frames);
   auto que_page = new Page (Page::Type::SINGLE, "question");
   add_page (que_page);
 }
@@ -135,6 +139,7 @@ LorenceauExperiment::update_configuration ()
   p.end ();
   add_frame ("fixation", *img);
   
+
   // Question frame
   p.begin (img);
   //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
@@ -145,12 +150,11 @@ LorenceauExperiment::update_configuration ()
   p.end ();
   add_frame ("question", *img);
 
-  //img->save ("output.png");
-  delete img;
 
   // Stimulus frames
-  nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
-
+  
+  
+  delete img;
   glwidget->update_texture_size (tex_width, tex_height);
 }
 
@@ -158,11 +162,11 @@ LorenceauExperiment::~LorenceauExperiment ()
 {
 }
 
+#if 0
 bool
 LorenceauExperiment::run_trial ()
 {
   cout << "RUN TRIAL (NYI)" << endl;
-#if 0
   // Set a random trial condition
   up = bin_dist (twister);
   cw = bin_dist (twister);
@@ -180,16 +184,12 @@ LorenceauExperiment::run_trial ()
   cout << "Line length is " << ll_deg << " degrees, or "
        << ll << " pixels" << endl;
 
-#endif
   make_frames ();
 
-#if 0
   // Wait for a key press before running the trial
   struct timespec tp_fixation;
   clock_gettime (CLOCK, &tp_fixation);
-#endif
   glwidget->show_frame ("fixation");
-#if 0
 #if !NO_INTERACTIVE
   if (! wait_any_key ())
     return false;
@@ -209,9 +209,7 @@ LorenceauExperiment::run_trial ()
 	  tp_frames.tv_sec, tp_frames.tv_nsec);
   printf ("stop:  %lds %ldns\n",
 	  tp_question.tv_sec, tp_question.tv_nsec);
-#endif
   glwidget->show_frame ("question");
-#if 0
   KeySym pressed_key;
 #if !NO_INTERACTIVE
   if (! wait_for_key (answer_keys, &pressed_key))
@@ -248,12 +246,10 @@ LorenceauExperiment::run_trial ()
 
   // Flush to commit trial
   hf->flush (H5F_SCOPE_GLOBAL);
-#endif
-  
-  return true;
 }
+#endif
 
-bool
+void
 LorenceauExperiment::make_frames ()
 {
   cout << "MAKE FRAMES (NYI)" << endl;
@@ -333,11 +329,7 @@ LorenceauExperiment::make_frames ()
     if (! copy_to_texture (sur->get_data (), tframes[i]))
       return false;
   }
-
-  cout << nframes << " frames loaded" << endl;
 #endif
-
-  return true;
 }
 
 

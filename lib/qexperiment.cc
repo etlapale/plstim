@@ -173,6 +173,12 @@ Page::Page (Page::Type t, const std::string& page_title)
 }
 
 void
+Page::make_active ()
+{
+  emit page_active ();
+}
+
+void
 QExperiment::add_page (Page* page)
 {
   pages.push_back (page);
@@ -186,7 +192,7 @@ QExperiment::exec ()
 }
 
 void
-QExperiment::start_trial ()
+QExperiment::run_trial ()
 {
   cout << "Starting trial" << endl;
   current_page = 0;
@@ -201,6 +207,8 @@ QExperiment::show_page (int index)
   glwidget->show_frame (p->title);
 
   current_page = index;
+
+  p->make_active ();
 }
 
 void
@@ -249,7 +257,7 @@ QExperiment::gl_resized (int w, int h)
 	  cout << "could not run a trial!" << endl;
 	  break;
 	}*/
-      start_trial ();
+      run_trial ();
     }
 
     // Resize event received while expecting fullscreen

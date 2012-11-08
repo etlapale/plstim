@@ -3,11 +3,6 @@
 #ifndef __PLSTIM_QEXPERIMENT_H
 #define __PLSTIM_QEXPERIMENT_H
 
-/*#include <cmath>
-#include <map>
-#include <string>
-#include <vector>*/
-
 #include <QApplication>
 #include <QMainWindow>
 
@@ -32,17 +27,26 @@ namespace plstim
     QList<QWidget*> widgets;
   };
 
-  class Page {
+  class Page : public QObject
+  {
+  Q_OBJECT
   public:
     enum Type {
-      SINGLE
+      SINGLE,
+      FRAMES
     };
   public:
-    std::string title;
     Page::Type type;
+    std::string title;
     bool wait_for_key;
   public:
     Page (Page::Type t, const std::string& title);
+    void make_active ();
+  signals:
+    /**
+     * Called when the page is the one currently displayed.
+     */
+    void page_active ();
   };
 
   class QExperiment : public QObject
@@ -140,15 +144,9 @@ namespace plstim
     /// Add a page to the composition of a trial
     void add_page (Page* page);
 
-    /// Run a single trial
-    virtual bool run_trial () = 0;
-
-    void start_trial ();
+    void run_trial ();
 
     void show_page (int index);
-
-    /// Generate frames for a single trial
-    virtual bool make_frames () = 0;
 
     /// Show the frames loaded in ‘tframes’
     bool show_frames ();
