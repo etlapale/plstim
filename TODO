@@ -2,6 +2,10 @@
 
 - There seems to be border (stroke) around filled elements.
 
+[Stimulus]
+
+- Take luminance into account.
+
 [OpenGL]
 
 - We have some shift problems displaying on window (.5 issue?).
@@ -9,3 +13,7 @@
 [Threading]
 
 - Seems that the first frame after fullscreen got displayed too early.
+
+[Code]
+
+- Keep resizeGL() inside MyGLWidget, emit can_run_trial().

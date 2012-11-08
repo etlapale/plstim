@@ -174,6 +174,10 @@ namespace plstim
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
+    float ds2pf (float speed) const {
+      return deg2pix (speed/refresh_edit->text ().toFloat ());
+    }
+
     void set_glformat (QGLFormat glformat);
 
     void set_swap_interval (int swap_interval);

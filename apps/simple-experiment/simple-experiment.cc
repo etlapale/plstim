@@ -25,23 +25,23 @@ using namespace plstim;
 
 
 LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
-  : QExperiment (argc, argv)
+  : QExperiment (argc, argv),
+    bin_dist (0, 1)
 {
   ntrials = 3;
-#if 0
   // Initialise the random number generator
   twister.seed (time (NULL));
   for (int i = 0; i < 10000; i++)
     (void) bin_dist (twister);
 
-  fix_radius = setup->deg2pix (3./60);
-  cout << "Fixation point radius: " << fix_radius << endl;
-
+#if 0
   // Possible answers in a trial
   answer_keys.push_back (XK_Up);
   answer_keys.push_back (XK_Down);
+#endif
 
   // Stimulus configuration
+#if 0
   float lw_deg = sec2deg (1.02);
   lw = setup->deg2pix (lw_deg);
   cout << "Line width is " << lw_deg << " degrees, or "
@@ -50,9 +50,6 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   bg = setup->lum2px (bg_cd);
   cout << "Background luminance is " << bg_cd << " cd/m², or "
        << bg << " in [0,1]" << endl;
-
-  // Set the bar positions
-  spacing = setup->deg2pix (1);
 #endif
 
   connect (this, SIGNAL (setup_updated ()),
@@ -101,6 +98,12 @@ LorenceauExperiment::update_configuration ()
     tex_width <<= 1;
   tex_height = tex_width;
   qDebug () << "texture size:" << tex_width << "x" << tex_height;
+
+  // Line length
+  float ll_deg = 2.7;
+  ll_px = deg2pix (ll_deg);
+  cout << "Line length is " << ll_deg << " degrees, or "
+       << ll_px << " pixels" << endl;
 
   // Make sure the new size is acceptable on the target screen
   auto geom = dsk.screenGeometry (screen_sbox->value ());
@@ -163,10 +166,6 @@ bool
 LorenceauExperiment::run_trial ()
 {
   cout << "RUN TRIAL (NYI)" << endl;
-  // Set a random trial condition
-  up = bin_dist (twister);
-  cw = bin_dist (twister);
-  control = bin_dist (twister);
   // Contrast
   // C%→L: C₁₂→13.44, C₂₅→15, C₃₉→16.68, C₅₂→18.24, C₇₀→20.4
   float fg_cd = luminances [lum_dist (twister)];
@@ -179,24 +178,16 @@ LorenceauExperiment::run_trial ()
   ll = setup->deg2pix (ll_deg);
   cout << "Line length is " << ll_deg << " degrees, or "
        << ll << " pixels" << endl;
+#endif
 
-  make_frames ();
-
+#if 0
   // Wait for a key press before running the trial
   struct timespec tp_fixation;
   clock_gettime (CLOCK, &tp_fixation);
-  glwidget->show_frame ("fixation");
-#if !NO_INTERACTIVE
-  if (! wait_any_key ())
-    return false;
-#endif
 
   // Display each frame of the trial
-  clear_screen ();
   struct timespec tp_frames;
   clock_gettime (CLOCK, &tp_frames);
-  if (! show_frames ())
-    return false;
 
   // Wait for a key press at the end of the trial
   struct timespec tp_question;
@@ -205,12 +196,6 @@ LorenceauExperiment::run_trial ()
 	  tp_frames.tv_sec, tp_frames.tv_nsec);
   printf ("stop:  %lds %ldns\n",
 	  tp_question.tv_sec, tp_question.tv_nsec);
-  glwidget->show_frame ("question");
-  KeySym pressed_key;
-#if !NO_INTERACTIVE
-  if (! wait_for_key (answer_keys, &pressed_key))
-    return false;
-#endif
 
   struct timespec tp_answer;
   clock_gettime (CLOCK, &tp_answer);
@@ -253,7 +238,7 @@ LorenceauExperiment::make_frames ()
   // Remove the existing frames
   glwidget->delete_unamed_frames ();
 
-  auto img = new QImage (tex_width, tex_height, QImage::Format_RGB32);
+  QImage img (tex_width, tex_height, QImage::Format_RGB32);
   cout << "tex dims: " << tex_width << "×" << tex_height << endl;
 
   QColor bg (10, 10, 100);
@@ -268,22 +253,20 @@ LorenceauExperiment::make_frames ()
   // Fixation frame
   QPainter p;
 
+  // Set a random trial condition
+  up = bin_dist (twister);
+  cw = bin_dist (twister);
+  control = bin_dist (twister);
 
-#if 0
-  int offx = (tex_width-aperture_diam)/2;
-  int offy = (tex_height-aperture_diam)/2;
-  // Create a Cairo context to draw the frames
-  auto sur = ImageSurface::create (Cairo::FORMAT_RGB24,
-				   tex_width, tex_height);
-  auto cr = Cairo::Context::create (sur);
-
+  int offx = (tex_width-ap_diam_px)/2;
+  int offy = (tex_height-ap_diam_px)/2;
   // Line speed and direction
   cout << "Clockwise: " << cw << endl
        << "Control: " << control << endl
        << "Up: " << up << endl;
   float orient = radians (cw ? 110 : 70);
-  int bx = (int) (ll*cos(orient));
-  int by = (int) (ll*sin(orient));
+  int bx = (int) (ll_px*cos(orient));
+  int by = (int) (ll_px*sin(orient));
   int sx = abs (bx);
   int sy = abs (by);
   float direction = fmod (orient
@@ -292,7 +275,7 @@ LorenceauExperiment::make_frames ()
     + (orient < M_PI/2 ? -1 : 1) * (control ? 0 : 1) * radians (140)
     , 2*M_PI);
   cout << "Line direction: " << degrees (direction) << "°" << endl;
-  float speed = setup->ds2pf (6.5);
+  float speed = ds2pf (6.5);
   int dx = (int) (speed*cos (direction));
   int dy = (int) (speed*sin (direction));
   cout << "Line speed is 6.5 deg/s, or "
@@ -300,18 +283,12 @@ LorenceauExperiment::make_frames ()
     << (dx >= 0 ? "+" : "") << dx
     << (dy >= 0 ? "+" : "") << dy
     << ")" << endl;
+  float spacing = deg2pix (1);
   cout << "sx+spacing: " << sx << "+" << spacing << endl;
-#endif
-
-#if 0
-  // Render each frame
-  cr->set_antialias (Cairo::ANTIALIAS_NONE);
-  cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
-#endif
 
   for (int i = 0; i < nframes; i++) {
     cout << "beginning frame " << i << endl;
-    p.begin (img);
+    p.begin (&img);
     cout << "  img began" << endl;
 
     // Background
@@ -322,17 +299,19 @@ LorenceauExperiment::make_frames ()
 #if 0
     cr->set_line_width (lw);
     cr->set_source_rgb (fg, fg, fg);
+#endif
+    QPen no_pen;
+    QPen lines_pen (Qt::white);
+    p.setPen (lines_pen);
     for (int x = offx+i*dx - (sx+spacing); x < tex_width+sx+spacing; x+=sx+spacing) {
       for (int y = offy+i*dy; y < tex_height+sy+spacing; y+=sy+spacing) {
-	cr->move_to (x, y);
-	cr->rel_line_to (bx, by);
+	p.drawLine (x, y, x+bx, y+by);
       }
     }
-    cr->stroke ();
-#endif
     
     // Fixation point
     p.setBrush (Qt::red);
+    p.setPen (no_pen);
     cout << "  brush set" << endl;
     int fix_radius = (int) nearbyint (deg2pix (3./60));
     qDebug () << "Fixation radius:" << fix_radius;
@@ -346,7 +325,8 @@ LorenceauExperiment::make_frames ()
 
     // Save as OpenGL texture
     p.end ();
-    glwidget->add_frame (*img);
+    glwidget->add_frame (img);
+    img.save ("frame.png");
   }
 }
 
