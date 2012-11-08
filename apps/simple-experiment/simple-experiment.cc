@@ -34,12 +34,6 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   for (int i = 0; i < 10000; i++)
     (void) bin_dist (twister);
 
-#if 0
-  // Possible answers in a trial
-  answer_keys.push_back (XK_Up);
-  answer_keys.push_back (XK_Down);
-#endif
-
   // Stimulus configuration
 #if 0
   float lw_deg = sec2deg (1.02);
@@ -65,6 +59,10 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   auto frames_page = new Page (Page::Type::FRAMES, "frames");
   add_page (frames_page);
   auto que_page = new Page (Page::Type::SINGLE, "question");
+  que_page->accept_key (Qt::Key_Up);
+  que_page->accept_key (Qt::Key_Down);
+  connect (que_page, SIGNAL (key_pressed (QKeyEvent*)),
+	   this, SLOT (question_answered (QKeyEvent*)));
   add_page (que_page);
 }
 
@@ -229,6 +227,12 @@ LorenceauExperiment::run_trial ()
   hf->flush (H5F_SCOPE_GLOBAL);
 }
 #endif
+
+void
+LorenceauExperiment::question_answered (QKeyEvent* evt)
+{
+  qDebug () << "Question answered with:" << evt->text ();
+}
 
 void
 LorenceauExperiment::make_frames ()

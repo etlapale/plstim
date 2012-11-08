@@ -3,6 +3,8 @@
 #ifndef __PLSTIM_QEXPERIMENT_H
 #define __PLSTIM_QEXPERIMENT_H
 
+#include <set>
+
 #include <QApplication>
 #include <QMainWindow>
 
@@ -39,14 +41,20 @@ namespace plstim
     Page::Type type;
     std::string title;
     bool wait_for_key;
+    std::set<int> accepted_keys;
   public:
     Page (Page::Type t, const std::string& title);
+    void accept_key (int key);
+  public:
     void make_active ();
+    void emit_key_pressed (QKeyEvent* evt);
   signals:
     /**
      * Called when the page is the one currently displayed.
      */
     void page_active ();
+
+    void key_pressed (QKeyEvent* evt);
   };
 
   class QExperiment : public QObject

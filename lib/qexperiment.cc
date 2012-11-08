@@ -187,6 +187,18 @@ Page::make_active ()
 }
 
 void
+Page::emit_key_pressed (QKeyEvent* evt)
+{
+  emit key_pressed (evt);
+}
+
+void
+Page::accept_key (int key)
+{
+  accepted_keys.insert (key);
+}
+
+void
 QExperiment::add_page (Page* page)
 {
   pages.push_back (page);
@@ -271,8 +283,13 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 
   // Go to the next page
   if (page->wait_for_key) {
-    cout << endl;
-    next_page ();
+    // Check if the key is accepted
+    if (page->accepted_keys.empty ()
+	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
+      page->emit_key_pressed (evt);
+      cout << endl;
+      next_page ();
+    }
   }
 }
 
