@@ -1,0 +1,11 @@
+[Painting]
+
+- There seems to be border (stroke) around filled elements.
+
+[OpenGL]
+
+- We have some shift problems displaying on window (.5 issue?).
+
+[Threading]
+
+- Seems that the first frame after fullscreen got displayed too early.
