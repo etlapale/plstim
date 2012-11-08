@@ -168,8 +168,17 @@ using namespace plstim;
 #endif
 
 Page::Page (Page::Type t, const std::string& page_title)
-  : type (t), title (page_title), wait_for_key (true)
+  : type (t), title (page_title)
 {
+  /*switch (type) {
+  case Page::Type::SINGLE:
+    wait_for_key = true;
+    break;
+  default:
+    wait_for_key = false;
+    break;
+  }*/
+  wait_for_key = true;
 }
 
 void
@@ -205,17 +214,22 @@ QExperiment::show_page (int index)
   cout << "show page: " << index << endl;
   Page* p = pages[index];
 
-  glwidget->show_frame (p->title);
-  //glwidget->show_frame (p->title);
-  
-  // Workaround a bug on initial frame after fullscreen
-  // Maybe it’s a race condition?
-  // TODO: in any cases, it should be tracked and solved
-  if (current_trial == 0 && index == 0)
+  switch (p->type) {
+  case Page::Type::SINGLE:
     glwidget->show_frame (p->title);
+    
+    // Workaround a bug on initial frame after fullscreen
+    // Maybe it’s a race condition?
+    // TODO: in any cases, it should be tracked and solved
+    if (current_trial == 0 && index == 0)
+      glwidget->show_frame (p->title);
+    break;
+  case Page::Type::FRAMES:
+    glwidget->show_frames ();
+    break;
+  }
 
   current_page = index;
-
   p->make_active ();
 }
 

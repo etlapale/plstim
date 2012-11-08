@@ -32,7 +32,10 @@ namespace plstim
     GLuint vshader;
     GLuint program;
     bool vshader_attached;
+
+    std::vector<GLuint> unamed_frames;
     std::map<std::string,GLuint> named_frames;
+
     GLint texloc;
 
   protected:
@@ -74,6 +77,21 @@ namespace plstim
 
   public:
 
+    bool add_frame (const QImage& img) {
+
+      unamed_frames.push_back (bindTexture (img));
+      cout << "adding unamed frame, count: " << unamed_frames.size () << endl;
+      return true;
+    }
+
+    void delete_unamed_frames () {
+
+      for (auto f : unamed_frames)
+	deleteTexture (f);
+
+      unamed_frames.clear ();
+    }
+
     bool add_frame (const std::string& name, const QImage& img) {
 
       // Delete existing texture
@@ -103,6 +121,23 @@ namespace plstim
 
       glDrawArrays (GL_TRIANGLES, 0, 6);
       swapBuffers ();
+    }
+
+    void show_frames () {
+
+      cout << "show multiple frames" << endl;
+
+      for (auto f : unamed_frames) {
+	current_frame = f;
+
+	glClear (GL_COLOR_BUFFER_BIT);
+
+	glBindTexture (GL_TEXTURE_2D, current_frame);
+	glUniform1i (texloc, 0);
+
+	glDrawArrays (GL_TRIANGLES, 0, 6);
+	swapBuffers ();
+      }
     }
 
     void full_screen () {

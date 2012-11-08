@@ -65,8 +65,8 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   connect (fix_page, SIGNAL (page_active ()),
 	   this, SLOT (make_frames ()));
   add_page (fix_page);
-  //auto frames_page = new Page (Page::Type::FRAMES, "frames");
-  //add_page (frames);
+  auto frames_page = new Page (Page::Type::FRAMES, "frames");
+  add_page (frames_page);
   auto que_page = new Page (Page::Type::SINGLE, "question");
   add_page (que_page);
 }
@@ -85,7 +85,7 @@ LorenceauExperiment::update_configuration ()
   if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01) {
     cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
   }
-  int nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
+  nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
   cout << "Displaying " << nframes << " per stimulus with a swap interval of " << coef << endl;
   
   // Update the swap interval
@@ -96,10 +96,10 @@ LorenceauExperiment::update_configuration ()
   ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
   qDebug () << "aperture size:" << ap_diam_px << "pixels";
 
-  int tex_width = 1 << ((int) log2f (ap_diam_px));
+  tex_width = 1 << ((int) log2f (ap_diam_px));
   if (tex_width < ap_diam_px)
     tex_width <<= 1;
-  int tex_height = tex_width;
+  tex_height = tex_width;
   qDebug () << "texture size:" << tex_width << "x" << tex_height;
 
   // Make sure the new size is acceptable on the target screen
@@ -150,10 +150,6 @@ LorenceauExperiment::update_configuration ()
   p.end ();
   add_frame ("question", *img);
 
-
-  // Stimulus frames
-  
-  
   delete img;
   glwidget->update_texture_size (tex_width, tex_height);
 }
@@ -252,7 +248,27 @@ LorenceauExperiment::run_trial ()
 void
 LorenceauExperiment::make_frames ()
 {
-  cout << "MAKE FRAMES (NYI)" << endl;
+  cout << "MAKE FRAMES" << endl;
+
+  // Remove the existing frames
+  glwidget->delete_unamed_frames ();
+
+  auto img = new QImage (tex_width, tex_height, QImage::Format_RGB32);
+  cout << "tex dims: " << tex_width << "×" << tex_height << endl;
+
+  QColor bg (10, 10, 100);
+  
+  // Aperture mask path
+  QPainterPath ape_path;
+  ape_path.addRect (0, 0, tex_width, tex_height);
+  ape_path.addEllipse ((int) (tex_width/2 - ap_diam_px/2),
+		 (int) (tex_height/2 - ap_diam_px/2),
+		 (int) ap_diam_px, (int) ap_diam_px);
+
+  // Fixation frame
+  QPainter p;
+
+
 #if 0
   int offx = (tex_width-aperture_diam)/2;
   int offy = (tex_height-aperture_diam)/2;
@@ -285,17 +301,25 @@ LorenceauExperiment::make_frames ()
     << (dy >= 0 ? "+" : "") << dy
     << ")" << endl;
   cout << "sx+spacing: " << sx << "+" << spacing << endl;
+#endif
 
+#if 0
   // Render each frame
   cr->set_antialias (Cairo::ANTIALIAS_NONE);
   cr->set_fill_rule (Cairo::FILL_RULE_EVEN_ODD);
+#endif
+
   for (int i = 0; i < nframes; i++) {
+    cout << "beginning frame " << i << endl;
+    p.begin (img);
+    cout << "  img began" << endl;
 
     // Background
-    cr->set_source_rgb (bg, bg, bg);
-    cr->paint ();
+    p.fillRect (0, 0, tex_width, tex_height, bg);
+    cout << "  bg filled" << endl;
 
     // Lines
+#if 0
     cr->set_line_width (lw);
     cr->set_source_rgb (fg, fg, fg);
     for (int x = offx+i*dx - (sx+spacing); x < tex_width+sx+spacing; x+=sx+spacing) {
@@ -305,31 +329,25 @@ LorenceauExperiment::make_frames ()
       }
     }
     cr->stroke ();
+#endif
     
     // Fixation point
-    cr->set_source_rgb (0, 0, 1);
-    cr->arc (tex_width/2, tex_height/2, fix_radius, 0, 2*M_PI);
-    cr->fill ();
+    p.setBrush (Qt::red);
+    cout << "  brush set" << endl;
+    int fix_radius = (int) nearbyint (deg2pix (3./60));
+    qDebug () << "Fixation radius:" << fix_radius;
+    p.drawEllipse (tex_width/2 - fix_radius,
+		   tex_height/2 - fix_radius,
+		   2*fix_radius, 2*fix_radius);
 
     // Aperture
-    cr->rectangle (0, 0, tex_width, tex_height);
-    cr->arc (tex_width/2, tex_height/2, radius, 0, 2*M_PI);
-    cr->set_source_rgb (0, 0, 0);
-    cr->fill ();
+    p.setBrush (Qt::red);
+    p.drawPath (ape_path);
 
-    // Save the frame as PNG
-#if 0
-    char buf[20];
-    const char* pat = "output-%04d.png";
-    snprintf (buf, 20, pat, i);
-    sur->write_to_png (buf);
-#endif
-
-    // Copy into OpenGL texture
-    if (! copy_to_texture (sur->get_data (), tframes[i]))
-      return false;
+    // Save as OpenGL texture
+    p.end ();
+    glwidget->add_frame (*img);
   }
-#endif
 }
 
 
