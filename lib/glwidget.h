@@ -445,7 +445,6 @@ namespace plstim
       glDrawArrays (GL_TRIANGLES, 0, 6);
 
       swapBuffers ();
-      cout << "YYY" << endl;
     }
   };
 }

@@ -265,7 +265,7 @@ void
 QExperiment::next_page ()
 {
   // End of trial
-  if (current_page + 1 == pages.size ()) {
+  if ((int) (current_page + 1) == (int) (pages.size ())) {
     // Next trial
     if (++current_trial < ntrials) {
       run_trial ();
@@ -437,6 +437,8 @@ QExperiment::load_experiment (const QString& script_path)
        << "  " << ntrials << " trials" << endl
        << "  " << pages.size () << " pages" << endl
        << endl;
+
+  return true;
 }
 
 void
@@ -460,32 +462,6 @@ bool
 QExperiment::add_frame (const QString& name, const QImage& img)
 {
   return glwidget->add_frame (name, img);
-}
-
-bool
-QExperiment::show_frame (const std::string& frame_name)
-{
-#if 0
-  // Set the current frame
-  glBindTexture (GL_TEXTURE_2D, special_frames[frame_name]);
-  glUniform1i (texloc, 0);
-
-  // Draw the frame with triangles
-  glDrawArrays (GL_TRIANGLES, 0, 6);
-  
-  // Swap
-  eglSwapBuffers (egl_dpy, sur);
-
-  return true;
-#endif
-  cerr << "NYI" << endl;
-  return false;
-}
-
-bool
-QExperiment::show_frames ()
-{
-  return false;
 }
 
 bool

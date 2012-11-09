@@ -162,12 +162,6 @@ namespace plstim
 
     void next_page ();
 
-    /// Show the frames loaded in ‘tframes’
-    bool show_frames ();
-
-    /// Show a special frame
-    bool show_frame (const std::string& frame_name);
-
     /// Define a special frame
     bool gen_frame (const std::string& frame_name);
 
