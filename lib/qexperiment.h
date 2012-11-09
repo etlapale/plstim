@@ -148,6 +148,8 @@ namespace plstim
 
     virtual ~QExperiment ();
 
+    bool load_experiment (const QString& path);
+
     bool exec ();
 
     /// Add a page to the composition of a trial

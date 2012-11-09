@@ -28,7 +28,6 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   : QExperiment (argc, argv),
     bin_dist (0, 1)
 {
-  //ntrials = 3;
   // Initialise the random number generator
   twister.seed (time (NULL));
   for (int i = 0; i < 10000; i++)

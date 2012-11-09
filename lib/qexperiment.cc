@@ -207,6 +207,11 @@ QExperiment::add_page (Page* page)
 bool
 QExperiment::exec ()
 {
+  // Load an experiment if given as command line argument
+  auto args = app.arguments ();
+  if (args.size () == 2)
+    load_experiment (args.at (1));
+
   win.show ();
   return app.exec () == 0;
 }
@@ -328,15 +333,36 @@ QExperiment::gl_resized (int w, int h)
   }
 }
 
-void
-QExperiment::run_session ()
+QScriptValue
+page_constructor (QScriptContext* ctx,
+			       QScriptEngine* engine)
 {
+  cout << "ctor for page called" << endl;
+  //QObject* obj = new Page (Page::Type::SINGLE, "fixation");
+  QObject* obj = new QObject ();
+  return engine->newQObject (obj, QScriptEngine::ScriptOwnership);
+}
+
+/*static
+page_constructor (QScriptContext* ctx*/
+
+bool
+QExperiment::load_experiment (const QString& script_path)
+{
+  // TODO: cleanup any existing experiment
+
   // Load the experiment from a QtScript
-  cout << "Loading the experiment" << endl;
+  qDebug () << "Loading experiment from:" << script_path;
   QScriptEngine script_engine;
-  QString script_path ("experiments/lorenceau.qs");
   QFile file (script_path);
   file.open (QIODevice::ReadOnly);
+
+  // Register Page constructor
+  QScriptValue page_ctor = script_engine.newFunction ((QScriptEngine::FunctionSignature) &page_constructor);
+  QScriptValue page_meta = script_engine.newQMetaObject (&QObject::staticMetaObject, page_ctor);
+  script_engine.globalObject ().setProperty ("Page", page_meta);
+
+  // Load the experiment script
   QScriptValue res = script_engine.evaluate (file.readAll (),
 					     script_path);
   if (res.isError ()) {
@@ -346,8 +372,13 @@ QExperiment::run_session ()
   QScriptValue ntrials_val = script_engine.globalObject ().property ("ntrials");
   if (ntrials_val.isNumber ()) {
     ntrials = ntrials_val.toInteger ();
+    qDebug () << "  experiment contains" << ntrials << "trials";
   }
+}
 
+void
+QExperiment::run_session ()
+{
   cout << "Run session!" << endl;
 
   // Save the splitter position
