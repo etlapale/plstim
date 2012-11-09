@@ -167,9 +167,10 @@ using namespace plstim;
 }
 #endif
 
-Page::Page (Page::Type t, const std::string& page_title)
+Page::Page (Page::Type t, const QString& page_title)
   : type (t), title (page_title)
 {
+  qDebug () << "Creating a page with title" << page_title << endl;
   switch (type) {
   case Page::Type::SINGLE:
     wait_for_key = true;
@@ -178,6 +179,11 @@ Page::Page (Page::Type t, const std::string& page_title)
     wait_for_key = false;
     break;
   }
+}
+
+Page::~Page ()
+{
+  qDebug () << "Page" << title << "deleted";
 }
 
 void
@@ -333,14 +339,62 @@ QExperiment::gl_resized (int w, int h)
   }
 }
 
-QScriptValue
-page_constructor (QScriptContext* ctx,
-			       QScriptEngine* engine)
+static QScriptValue
+page_constructor (QScriptContext* ctx, QScriptEngine* engine)
 {
-  cout << "ctor for page called" << endl;
-  //QObject* obj = new Page (Page::Type::SINGLE, "fixation");
-  QObject* obj = new QObject ();
-  return engine->newQObject (obj, QScriptEngine::ScriptOwnership);
+  cout << "ctor for page called with "
+       << ctx->argumentCount() << " arguments" << endl;
+
+  // Invalid arity for Page()
+  if (ctx->argumentCount () == 0 || ctx->argumentCount () > 2) {
+    cerr << "invalid arity for Page constructor" << endl;
+    return engine->undefinedValue ();
+  }
+
+  // Make sure we have a page title
+  auto tval = ctx->argument (ctx->argumentCount () - 1);
+  if (! tval.isString ()) {
+    cerr << "expecting a page title as last argument for Page constructor" << endl;
+    return engine->undefinedValue ();
+  }
+
+  QObject* obj;
+  if (ctx->argumentCount () == 1) {
+    obj = new Page (Page::Type::SINGLE, tval.toString ());
+  }
+  else {
+    obj = new Page (Page::Type::FRAMES, tval.toString ());
+  }
+
+  return engine->newQObject (obj, QScriptEngine::QtOwnership);
+}
+
+static QScriptValue
+page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
+{
+  if (ctx->argumentCount () != 1) {
+    cerr << "invalid use of add_page()" << endl;
+    return engine->undefinedValue ();
+  }
+
+  auto qexp = static_cast<QExperiment*> (param);
+  if (qexp != NULL) {
+    auto val = ctx->argument (0);
+    if (! val.isQObject ()) {
+      cerr << "add_page() argument is not a page (neither a QObject)!" << endl;
+    }
+    else {
+      auto page = dynamic_cast<Page*> (val.toQObject ());
+      if (page == NULL) {
+	cerr << "add_page() argument is not a page!" << endl;
+      }
+      else {
+	qexp->add_page (page);
+      }
+    }
+  }
+
+  return engine->undefinedValue ();
 }
 
 /*static
@@ -358,9 +412,13 @@ QExperiment::load_experiment (const QString& script_path)
   file.open (QIODevice::ReadOnly);
 
   // Register Page constructor
-  QScriptValue page_ctor = script_engine.newFunction ((QScriptEngine::FunctionSignature) &page_constructor);
-  QScriptValue page_meta = script_engine.newQMetaObject (&QObject::staticMetaObject, page_ctor);
+  QScriptValue page_ctor = script_engine.newFunction (page_constructor);
+  QScriptValue page_meta = script_engine.newQMetaObject (&Page::staticMetaObject, page_ctor);
   script_engine.globalObject ().setProperty ("Page", page_meta);
+
+  // Register add_page()
+  auto page_add_cb = script_engine.newFunction (page_adder, this);
+  script_engine.globalObject ().setProperty ("add_page", page_add_cb);
 
   // Load the experiment script
   QScriptValue res = script_engine.evaluate (file.readAll (),
@@ -372,8 +430,13 @@ QExperiment::load_experiment (const QString& script_path)
   QScriptValue ntrials_val = script_engine.globalObject ().property ("ntrials");
   if (ntrials_val.isNumber ()) {
     ntrials = ntrials_val.toInteger ();
-    qDebug () << "  experiment contains" << ntrials << "trials";
   }
+
+  cout << endl
+       << "Experiment loaded:" << endl
+       << "  " << ntrials << " trials" << endl
+       << "  " << pages.size () << " pages" << endl
+       << endl;
 }
 
 void
@@ -394,7 +457,7 @@ QExperiment::run_session ()
 }
 
 bool
-QExperiment::add_frame (const std::string& name, const QImage& img)
+QExperiment::add_frame (const QString& name, const QImage& img)
 {
   return glwidget->add_frame (name, img);
 }

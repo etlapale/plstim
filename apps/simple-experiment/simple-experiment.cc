@@ -52,18 +52,17 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 
   // Composition of a trial
   /*
-  auto fix_page = new Page (Page::Type::SINGLE, "fixation");
   connect (fix_page, SIGNAL (page_active ()),
 	   this, SLOT (make_frames ()));
-  add_page (fix_page);
+
   auto frames_page = new Page (Page::Type::FRAMES, "frames");
   add_page (frames_page);
-  auto que_page = new Page (Page::Type::SINGLE, "question");
+
   que_page->accept_key (Qt::Key_Up);
   que_page->accept_key (Qt::Key_Down);
   connect (que_page, SIGNAL (key_pressed (QKeyEvent*)),
 	   this, SLOT (question_answered (QKeyEvent*)));
-  add_page (que_page);*/
+	   */
 }
 
 void

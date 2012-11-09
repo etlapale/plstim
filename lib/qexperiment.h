@@ -40,11 +40,12 @@ namespace plstim
     };
   public:
     Page::Type type;
-    std::string title;
+    QString title;
     bool wait_for_key;
     std::set<int> accepted_keys;
   public:
-    Page (Page::Type t, const std::string& title);
+    Page (Page::Type t, const QString& title);
+    virtual ~Page ();
     void accept_key (int key);
   public:
     void make_active ();
@@ -196,7 +197,7 @@ namespace plstim
     void run_session ();
 
   protected:
-    bool add_frame (const std::string& name, const QImage& img);
+    bool add_frame (const QString& name, const QImage& img);
 
   protected slots:
     //void screen_param_changed ();

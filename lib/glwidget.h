@@ -34,7 +34,7 @@ namespace plstim
     bool vshader_attached;
 
     std::vector<GLuint> unamed_frames;
-    std::map<std::string,GLuint> named_frames;
+    std::map<QString,GLuint> named_frames;
 
     GLint texloc;
 
@@ -92,7 +92,7 @@ namespace plstim
       unamed_frames.clear ();
     }
 
-    bool add_frame (const std::string& name, const QImage& img) {
+    bool add_frame (const QString& name, const QImage& img) {
 
       // Delete existing texture
       if (named_frames.find (name) != named_frames.end ())
@@ -109,10 +109,10 @@ namespace plstim
       swapBuffers ();
     }
 
-    void show_frame (const std::string& name) {
+    void show_frame (const QString& name) {
       current_frame = named_frames[name];
 
-      cout << "show frame ‘" << name << "’ (at " << current_frame << ")" << endl;
+      qDebug () << "show frame" << name << ", at" << current_frame;
 
       glClear (GL_COLOR_BUFFER_BIT);
 
