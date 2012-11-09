@@ -10,6 +10,7 @@ include_directories (".")
 find_package (Qt4 REQUIRED)
 set ( QT_USE_QTOPENGL TRUE )
 set ( QT_USE_QTNETWORK TRUE )
+set ( QT_USE_QTSCRIPT TRUE )
 include ( ${QT_USE_FILE} )
 
 # Shared library

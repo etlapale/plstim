@@ -330,6 +330,11 @@ QExperiment::gl_resized (int w, int h)
 void
 QExperiment::run_session ()
 {
+  cout << "Loading the experiment" << endl;
+  QScriptEngine script_engine;
+  QFile file ("experiment.qs");
+
+
   cout << "Run session!" << endl;
 
   // Save the splitter position

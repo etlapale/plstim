@@ -7,6 +7,7 @@
 
 #include <QApplication>
 #include <QMainWindow>
+#include <QtScript>
 
 
 #include "glwidget.h"
