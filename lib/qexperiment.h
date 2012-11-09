@@ -170,13 +170,6 @@ namespace plstim
     /// Clear the screen
     bool clear_screen ();
 
-    /// Wait for any key to be pressed
-    bool wait_any_key ();
-
-    /// Wait for a key press in a given set
-    /*bool wait_for_key (const std::vector<KeySym>& accepted_keys,
-		       KeySym* pressed_key);*/
-
     /// Convert a degrees distance to pixels
     float deg2pix (float dst) const {
       return 2*distance*tan(radians(dst)/2)*px_mm;

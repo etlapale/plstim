@@ -345,51 +345,6 @@ QExperiment::run_session ()
 }
 
 bool
-QExperiment::wait_any_key ()
-{
-#if 0
-  bool pressed = false;
-  XEvent evt;
-  while (! pressed) {
-    XNextEvent ((Display*) nat_dpy, &evt);
-    if (evt.type == KeyPress)
-      pressed = true;
-  }
-  return true;
-#endif
-  cerr << "NYI" << endl;
-  return false;
-}
-
-#if 0
-bool
-QExperiment::wait_for_key (const std::vector<KeySym>& accepted_keys,
-			  KeySym* pressed_key)
-{
-#if 0
-  KeySym keysym;
-  XComposeStatus compose;
-  const int buflen = 10;
-  char buf[buflen];
-  XEvent evt;
-  for (;;) {
-    XNextEvent ((Display*) nat_dpy, &evt);
-    if (evt.type == KeyPress) {
-       XLookupString (&evt.xkey, buf, buflen, &keysym, &compose);
-      for (auto k : accepted_keys)
-	if (k == keysym) {
-	  *pressed_key = keysym;
-	  return true;
-      }
-    }
-  }
-#endif
-  cerr << "NYI" << endl;
-  return false;
-}
-#endif
-
-bool
 QExperiment::add_frame (const std::string& name, const QImage& img)
 {
   return glwidget->add_frame (name, img);
@@ -418,51 +373,12 @@ QExperiment::show_frame (const std::string& frame_name)
 bool
 QExperiment::show_frames ()
 {
-  for (int i = 0; i < nframes; i++) {
-#if 0
-#if BUGGY_EGL_SWAP_INTERVAL
-    // Simulate an eglSwapInterval()
-    for (int j = 0; j < swap_interval; j++) {
-#else
-    // Set the swap interval
-    if (swap_interval != 1)
-      //cout << "swap: " << swap_interval << endl;
-      //EGLint si = 2;
-      eglSwapInterval (egl_dpy, swap_interval);
-#endif
-      glClear (GL_COLOR_BUFFER_BIT);
-
-      // Set the current frame
-      glBindTexture (GL_TEXTURE_2D, tframes[i]);
-      glUniform1i (texloc, 0);
-
-      // Draw the frame with triangles
-      glDrawArrays (GL_TRIANGLES, 0, 6);
-
-      // Swap
-      eglSwapBuffers (egl_dpy, sur);
-      //sleep (2);
-#if BUGGY_EGL_SWAP_INTERVAL
-    }
-#endif
-#endif
-  }
-
-  cerr << "NYI" << endl;
   return false;
-  //return true;
 }
 
 bool
 QExperiment::clear_screen ()
 {
-#if 0
-  glClear (GL_COLOR_BUFFER_BIT);
-  eglSwapBuffers (egl_dpy, sur);
-
-  return true;
-#endif
-  cerr << "NYI" << endl;
   return false;
 }
 
