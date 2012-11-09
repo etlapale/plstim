@@ -28,7 +28,7 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   : QExperiment (argc, argv),
     bin_dist (0, 1)
 {
-  ntrials = 3;
+  //ntrials = 3;
   // Initialise the random number generator
   twister.seed (time (NULL));
   for (int i = 0; i < 10000; i++)
@@ -52,6 +52,7 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
 
 
   // Composition of a trial
+  /*
   auto fix_page = new Page (Page::Type::SINGLE, "fixation");
   connect (fix_page, SIGNAL (page_active ()),
 	   this, SLOT (make_frames ()));
@@ -63,7 +64,7 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   que_page->accept_key (Qt::Key_Down);
   connect (que_page, SIGNAL (key_pressed (QKeyEvent*)),
 	   this, SLOT (question_answered (QKeyEvent*)));
-  add_page (que_page);
+  add_page (que_page);*/
 }
 
 void

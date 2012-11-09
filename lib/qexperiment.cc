@@ -331,6 +331,7 @@ QExperiment::gl_resized (int w, int h)
 void
 QExperiment::run_session ()
 {
+  // Load the experiment from a QtScript
   cout << "Loading the experiment" << endl;
   QScriptEngine script_engine;
   QString script_path ("experiments/lorenceau.qs");
@@ -342,6 +343,10 @@ QExperiment::run_session ()
     qDebug () << res.property ("message").toString ();
   }
   file.close ();
+  QScriptValue ntrials_val = script_engine.globalObject ().property ("ntrials");
+  if (ntrials_val.isNumber ()) {
+    ntrials = ntrials_val.toInteger ();
+  }
 
   cout << "Run session!" << endl;
 
