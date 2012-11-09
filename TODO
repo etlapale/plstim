@@ -17,3 +17,7 @@
 [Code]
 
 - Keep resizeGL() inside MyGLWidget, emit can_run_trial().
+
+[Scripting]
+
+- Make enums available.

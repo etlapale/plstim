@@ -38,6 +38,7 @@ namespace plstim
       SINGLE,
       FRAMES
     };
+    Q_ENUMS (Type)
   public:
     Page::Type type;
     QString title;
@@ -193,6 +194,8 @@ namespace plstim
   protected:
     bool add_frame (const QString& name, const QImage& img);
 
+    void setup_updated ();
+
   protected slots:
     //void screen_param_changed ();
     void setup_param_changed ();
@@ -204,6 +207,7 @@ namespace plstim
     void glwidget_key_press_event (QKeyEvent* evt);
     void gl_resized (int w, int h);
     void normal_screen_restored ();
+    void script_engine_exception (const QScriptValue& exception);
 
   protected:
     bool save_setup;
@@ -227,14 +231,12 @@ namespace plstim
     bool session_running;
 
     QByteArray splitter_state;
+    QScriptEngine* script_engine;
 
     /**
      * Waiting for a fullscreen event before starting the session.
      */
     bool waiting_fullscreen;
-
-  signals:
-    void setup_updated ();
   };
 }
 

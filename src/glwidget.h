@@ -84,7 +84,7 @@ namespace plstim
       return true;
     }
 
-    void delete_unamed_frames () {
+    Q_INVOKABLE void delete_unamed_frames () {
 
       for (auto f : unamed_frames)
 	deleteTexture (f);

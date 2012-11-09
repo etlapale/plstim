@@ -9,9 +9,9 @@ egl-anim
 *.so.1*
 */moc_*.cpp
 Makefile
-plstim
 CMakeCache.txt
 cmake_install.cmake
 CMakeFiles
 */moc_*.cxx
 simple-experiment
+/plstim

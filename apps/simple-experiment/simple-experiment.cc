@@ -45,23 +45,10 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
        << bg << " in [0,1]" << endl;
 #endif
 
-  connect (this, SIGNAL (setup_updated ()),
-	   this, SLOT (update_configuration ()));
-  emit setup_updated ();
-
-
   // Composition of a trial
   /*
-  connect (fix_page, SIGNAL (page_active ()),
-	   this, SLOT (make_frames ()));
-
-  auto frames_page = new Page (Page::Type::FRAMES, "frames");
-  add_page (frames_page);
-
   que_page->accept_key (Qt::Key_Up);
   que_page->accept_key (Qt::Key_Down);
-  connect (que_page, SIGNAL (key_pressed (QKeyEvent*)),
-	   this, SLOT (question_answered (QKeyEvent*)));
 	   */
 }
 
@@ -69,7 +56,6 @@ void
 LorenceauExperiment::update_configuration ()
 {
   qDebug () << "update_configuration()";
-
 
   // Compute the necessary number of frames
   float dur_ms = 332;
@@ -228,16 +214,8 @@ LorenceauExperiment::run_trial ()
 #endif
 
 void
-LorenceauExperiment::question_answered (QKeyEvent* evt)
-{
-  qDebug () << "Question answered with:" << evt->text ();
-}
-
-void
 LorenceauExperiment::make_frames ()
 {
-  cout << "MAKE FRAMES" << endl;
-
   // Remove the existing frames
   glwidget->delete_unamed_frames ();
 
@@ -331,15 +309,6 @@ LorenceauExperiment::make_frames ()
     glwidget->add_frame (img);
     img.save ("frame.png");
   }
-}
-
-
-int
-main (int argc, char* argv[])
-{
-  LorenceauExperiment xp (argc, argv);
-  cout << xp.exec () << endl;
-  return 0;
 }
 
 // vim:sw=2:

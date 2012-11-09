@@ -400,34 +400,67 @@ page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
 /*static
 page_constructor (QScriptContext* ctx*/
 
+void
+QExperiment::script_engine_exception (const QScriptValue& exception)
+{
+  cerr << "script engine exception!" << endl;
+
+  if (exception.isError ()) {
+    qDebug () << exception.property ("message").toString ();
+  }
+}
+
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
   // TODO: cleanup any existing experiment
+  ntrials = 0;
+  if (script_engine != NULL)
+    delete script_engine;
+
+  // Create a new QtScript engine
+  script_engine = new QScriptEngine ();
+  connect (script_engine,
+	   SIGNAL (signalHandlerException (const QScriptValue&)),
+	   this,
+	   SLOT (script_engine_exception (const QScriptValue&)));
 
   // Load the experiment from a QtScript
   qDebug () << "Loading experiment from:" << script_path;
-  QScriptEngine script_engine;
   QFile file (script_path);
   file.open (QIODevice::ReadOnly);
 
   // Register Page constructor
-  QScriptValue page_ctor = script_engine.newFunction (page_constructor);
-  QScriptValue page_meta = script_engine.newQMetaObject (&Page::staticMetaObject, page_ctor);
-  script_engine.globalObject ().setProperty ("Page", page_meta);
+  QScriptValue page_ctor = script_engine->newFunction (page_constructor);
+  QScriptValue page_meta = script_engine->newQMetaObject (&Page::staticMetaObject, page_ctor);
+  script_engine->globalObject ().setProperty ("Page", page_meta);
 
   // Register add_page()
-  auto page_add_cb = script_engine.newFunction (page_adder, this);
-  script_engine.globalObject ().setProperty ("add_page", page_add_cb);
+  auto page_add_cb = script_engine->newFunction (page_adder, this);
+  script_engine->globalObject ().setProperty ("add_page", page_add_cb);
+
+  // Register the experiment
+  auto xp_obj = script_engine->newQObject (this);
+  script_engine->globalObject ().setProperty ("xp", xp_obj);
+
+  // Register ‘glwidget’
+  auto glw_obj = script_engine->newQObject (glwidget);
+  script_engine->globalObject ().setProperty ("glwidget", glw_obj);
 
   // Load the experiment script
-  QScriptValue res = script_engine.evaluate (file.readAll (),
+  QScriptValue res = script_engine->evaluate (file.readAll (),
 					     script_path);
   if (res.isError ()) {
     qDebug () << res.property ("message").toString ();
   }
+
+  // Check for exceptions
+  if (script_engine->hasUncaughtException ()) {
+    cout << "uncaught exception!" << endl;
+  }
+
   file.close ();
-  QScriptValue ntrials_val = script_engine.globalObject ().property ("ntrials");
+  QScriptValue ntrials_val = script_engine->globalObject ().property ("ntrials");
   if (ntrials_val.isNumber ()) {
     ntrials = ntrials_val.toInteger ();
   }
@@ -505,6 +538,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   res_msg = NULL;
   match_res_msg = NULL;
+  script_engine = NULL;
 
   waiting_fullscreen = false;
   session_running = false;
@@ -522,15 +556,18 @@ QExperiment::QExperiment (int & argc, char** argv)
   else
     error ("OpenGL >=3.0 required");
 
+  splitter = new QSplitter (&win);
+  win.setCentralWidget (splitter);
+
   // Create an OpenGL widget
   QGLFormat fmt;
   fmt.setDoubleBuffer (true);
   fmt.setVersion (3, 0);
   fmt.setDepth (false);
   fmt.setSwapInterval (1);
-  glwidget = new MyGLWidget (fmt, &win);
-  splitter = new QSplitter (&win);
-  win.setCentralWidget (splitter);
+  glwidget = NULL;
+  set_glformat (fmt);
+  //glwidget = new MyGLWidget (fmt, &win);
   cout << "OpenGL version " << glwidget->format ().majorVersion ()
        << '.' << glwidget->format ().minorVersion () << endl;
   if (! glwidget->format ().doubleBuffer ())
@@ -675,19 +712,35 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   save_setup = true;
 
-  connect (this, SIGNAL (setup_updated ()),
-	   this, SLOT (update_converters ()));
-
   // Close event termination
   connect (&app, SIGNAL (aboutToQuit ()),
 	   this, SLOT (about_to_quit ()));
 }
 
 void
+QExperiment::setup_updated ()
+{
+  cout << "Setup updated" << endl;
+  // Make sure converters are up to date
+  update_converters ();
+
+  // Notify the experiment that a change occured
+  if (script_engine != NULL) {
+    // Check for an update_configuration function
+    auto val = script_engine->globalObject ().property ("update_configuration");
+    // Make sure it’s a function
+    if (val.isFunction ()) {
+      auto this_obj = script_engine->newQObject (this);
+      val.call (this_obj);
+    }
+  }
+}
+
+void
 QExperiment::glwidget_gl_initialised ()
 {
   glwidget_initialised = true;
-  emit setup_updated ();
+  setup_updated ();
 }
 
 void
@@ -700,6 +753,8 @@ QExperiment::normal_screen_restored ()
 void
 QExperiment::set_glformat (QGLFormat glformat)
 {
+  qDebug () << "set_glformat ()" << endl;
+
   auto old_widget = this->glwidget;
   splitter_state = splitter->saveState ();
 
@@ -718,7 +773,8 @@ QExperiment::set_glformat (QGLFormat glformat)
   connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
 	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
 
-  delete old_widget;
+  if (old_widget != NULL)
+    delete old_widget;
   splitter->addWidget (glwidget);
   splitter->restoreState (splitter_state);
 
@@ -865,9 +921,9 @@ QExperiment::~QExperiment ()
   delete refresh_edit;
 
   delete glwidget;
-#if 0
-  egl_cleanup ();
-#endif
+
+  if (script_engine != NULL)
+    delete script_engine;
 }
 
 void
@@ -891,7 +947,7 @@ QExperiment::setup_param_changed ()
   settings->endGroup ();
 
   // Emit the signal
-  emit setup_updated ();
+  setup_updated ();
 }
 
 void
@@ -912,5 +968,14 @@ QExperiment::update_setup ()
   refresh_edit->setText (settings->value ("rate").toString ());
   settings->endGroup ();
 
-  emit setup_updated ();
+  setup_updated ();
+}
+
+
+int
+main (int argc, char* argv[])
+{
+  QExperiment xp (argc, argv);
+  cout << xp.exec () << endl;
+  return 0;
 }
