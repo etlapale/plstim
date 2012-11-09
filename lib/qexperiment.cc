@@ -215,8 +215,10 @@ void
 QExperiment::run_trial ()
 {
   cout << "Starting trial " << current_trial << endl;
-  current_page = 0;
-  show_page (current_page);
+
+  current_page = -1;
+  //show_page (current_page);
+  next_page ();
 }
 
 void
@@ -254,8 +256,7 @@ QExperiment::next_page ()
   // End of trial
   if (current_page + 1 == pages.size ()) {
     // Next trial
-    if (current_trial < ntrials) {
-      current_trial++;
+    if (++current_trial < ntrials) {
       run_trial ();
     }
     // End of session
@@ -332,8 +333,15 @@ QExperiment::run_session ()
 {
   cout << "Loading the experiment" << endl;
   QScriptEngine script_engine;
-  QFile file ("experiment.qs");
-
+  QString script_path ("experiments/lorenceau.qs");
+  QFile file (script_path);
+  file.open (QIODevice::ReadOnly);
+  QScriptValue res = script_engine.evaluate (file.readAll (),
+					     script_path);
+  if (res.isError ()) {
+    qDebug () << res.property ("message").toString ();
+  }
+  file.close ();
 
   cout << "Run session!" << endl;
 
