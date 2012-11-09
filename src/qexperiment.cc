@@ -531,7 +531,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     win (),
     save_setup (false),
-    glwidget_initialised (false)
+    glwidget_initialised (false),
+    bin_dist (0, 1)
 {
   if (! plstim::initialise ())
     error ("could not initialise plstim");
@@ -542,6 +543,13 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   waiting_fullscreen = false;
   session_running = false;
+  
+
+  // Initialise the random number generator
+  twister.seed (time (NULL));
+  for (int i = 0; i < 10000; i++)
+    (void) bin_dist (twister);
+
 
   // Get the experimental setup
 

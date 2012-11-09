@@ -237,6 +237,11 @@ namespace plstim
      * Waiting for a fullscreen event before starting the session.
      */
     bool waiting_fullscreen;
+  
+    /// Random number generator
+    mt19937 twister;
+    /// Binary choice distribution
+    uniform_int_distribution<int> bin_dist;
   };
 }
 

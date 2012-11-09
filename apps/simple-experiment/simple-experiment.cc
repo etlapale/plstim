@@ -1,38 +1,3 @@
-// simple-experiment.cc – Experiment of Lorenceau et al (1993) 
-
-#include <assert.h>
-#include <errno.h>
-#include <setjmp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/utsname.h>
-
-#include <time.h>
-#include <unistd.h>
-#include <sys/time.h>
-
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
-using namespace std;
-
-#include <QtDebug>
-
-#include "simple-experiment.h"
-using namespace plstim;
-
-
-LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
-  : QExperiment (argc, argv),
-    bin_dist (0, 1)
-{
-  // Initialise the random number generator
-  twister.seed (time (NULL));
-  for (int i = 0; i < 10000; i++)
-    (void) bin_dist (twister);
-
   // Stimulus configuration
 #if 0
   float lw_deg = sec2deg (1.02);
@@ -50,7 +15,8 @@ LorenceauExperiment::LorenceauExperiment (int & argc, char** argv)
   que_page->accept_key (Qt::Key_Up);
   que_page->accept_key (Qt::Key_Down);
 	   */
-}
+
+
 
 void
 LorenceauExperiment::update_configuration ()
