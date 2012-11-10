@@ -118,9 +118,6 @@ namespace plstim
     /// Number of trials in a session
     int ntrials;
 
-    /// Number of frames per trial
-    int nframes;
-
     /// Trial frames as OpenGL textures
     //GLuint* tframes;
 
@@ -180,7 +177,7 @@ namespace plstim
 
     void set_glformat (QGLFormat glformat);
 
-    void set_swap_interval (int swap_interval);
+    Q_INVOKABLE void set_swap_interval (int swap_interval);
 
   public slots:
 

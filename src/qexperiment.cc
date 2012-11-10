@@ -739,7 +739,10 @@ QExperiment::setup_updated ()
     // Make sure it’s a function
     if (val.isFunction ()) {
       auto this_obj = script_engine->newQObject (this);
-      val.call (this_obj);
+      auto res = val.call (this_obj);
+      if (res.isError ()) {
+	qDebug () << res.property ("message").toString ();
+      }
     }
   }
 }
@@ -763,11 +766,17 @@ QExperiment::set_glformat (QGLFormat glformat)
 {
   qDebug () << "set_glformat ()" << endl;
 
-  auto old_widget = this->glwidget;
   splitter_state = splitter->saveState ();
 
+  auto old_widget = glwidget;
+  if (old_widget != NULL) {
+    //delete old_widget;
+    //old_widget->setParent (NULL);
+    old_widget->hide ();
+    old_widget->deleteLater ();
+  }
+
   glwidget = new MyGLWidget (glformat, &win);
-  glwidget = glwidget;
 
   splitter->addWidget (glwidget);
 
@@ -781,8 +790,6 @@ QExperiment::set_glformat (QGLFormat glformat)
   connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
 	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
 
-  if (old_widget != NULL)
-    delete old_widget;
   splitter->addWidget (glwidget);
   splitter->restoreState (splitter_state);
 
@@ -792,6 +799,8 @@ QExperiment::set_glformat (QGLFormat glformat)
 void
 QExperiment::set_swap_interval (int swap_interval)
 {
+  cout << "calling set_swap_interval!" << endl;
+
   auto glformat = glwidget->format ();
   auto current_si = glformat.swapInterval ();
   if (current_si != swap_interval) {

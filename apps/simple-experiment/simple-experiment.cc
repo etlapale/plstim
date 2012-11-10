@@ -21,22 +21,6 @@
 void
 LorenceauExperiment::update_configuration ()
 {
-  qDebug () << "update_configuration()";
-
-  // Compute the necessary number of frames
-  float dur_ms = 332;
-  float wanted_frequency = 30;
-  float mon_rate = refresh_edit->text ().toFloat ();
-  int coef = (int) nearbyintf (mon_rate / wanted_frequency);
-  if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01) {
-    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
-  }
-  nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
-  cout << "Displaying " << nframes << " per stimulus with a swap interval of " << coef << endl;
-  
-  // Update the swap interval
-  set_swap_interval (coef);
-
   // Aperture size
   float ap_diam_degs = 24;
   ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
@@ -104,10 +88,6 @@ LorenceauExperiment::update_configuration ()
 
   delete img;
   glwidget->update_texture_size (tex_width, tex_height);
-}
-
-LorenceauExperiment::~LorenceauExperiment ()
-{
 }
 
 #if 0
