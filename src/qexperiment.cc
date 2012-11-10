@@ -988,6 +988,12 @@ QExperiment::update_setup ()
   setup_updated ();
 }
 
+float
+QExperiment::monitor_rate () const
+{
+  return refresh_edit->text ().toFloat ();
+}
+
 
 int
 main (int argc, char* argv[])

@@ -62,7 +62,8 @@ namespace plstim
 
   class QExperiment : public QObject
   {
-  Q_OBJECT
+    Q_OBJECT
+    Q_PROPERTY (float monitor_rate READ monitor_rate)
   protected:
     /// Associated Qt application
     QApplication app;
@@ -176,6 +177,8 @@ namespace plstim
     }
 
     void set_glformat (QGLFormat glformat);
+
+    float monitor_rate () const;
 
     Q_INVOKABLE void set_swap_interval (int swap_interval);
 
