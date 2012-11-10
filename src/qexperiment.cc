@@ -744,6 +744,14 @@ QExperiment::setup_updated ()
 	qDebug () << res.property ("message").toString ();
       }
     }
+
+    // Make sure that every frame is repainted
+    // TODO: this can be done in parallel
+    if (glwidget_initialised) {
+      qDebug () << "repainting frames on a " << tex_size << " pixels texture";
+      for (auto p : pages) {
+      }
+    }
   }
 }
 

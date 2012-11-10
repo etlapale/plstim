@@ -16,39 +16,9 @@
   que_page->accept_key (Qt::Key_Down);
 	   */
 
-
-
 void
 LorenceauExperiment::update_configuration ()
 {
-  // Aperture size
-  float ap_diam_degs = 24;
-  ap_diam_px = (int) ceilf (deg2pix (ap_diam_degs));
-  qDebug () << "aperture size:" << ap_diam_px << "pixels";
-
-  tex_width = 1 << ((int) log2f (ap_diam_px));
-  if (tex_width < ap_diam_px)
-    tex_width <<= 1;
-  tex_height = tex_width;
-  qDebug () << "texture size:" << tex_width << "x" << tex_height;
-
-  // Line length
-  float ll_deg = 2.7;
-  ll_px = deg2pix (ll_deg);
-  cout << "Line length is " << ll_deg << " degrees, or "
-       << ll_px << " pixels" << endl;
-
-  // Make sure the new size is acceptable on the target screen
-  auto geom = dsk.screenGeometry (screen_sbox->value ());
-  if (tex_width > geom.width () || tex_height > geom.height ()) {
-    // TODO: use the message GUI logging facilities
-    qDebug () << "texture too big for the screen";
-    return;
-  }
-
-  if (! glwidget_initialised)
-    return;
-
   // Aperture mask path
   QPainterPath ape_path;
   ape_path.addRect (0, 0, tex_width, tex_height);

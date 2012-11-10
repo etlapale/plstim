@@ -64,6 +64,7 @@ namespace plstim
   {
     Q_OBJECT
     Q_PROPERTY (float monitor_rate READ monitor_rate)
+    Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
   protected:
     /// Associated Qt application
     QApplication app;
@@ -107,10 +108,7 @@ namespace plstim
     int texloc;
 
     /// Texture width (2ⁿ)
-    int tex_width;
-
-    /// Texture height (2ⁿ)
-    int tex_height;
+    int tex_size;
 
     /// Current trial number
     int current_trial;
@@ -167,12 +165,15 @@ namespace plstim
     /// Clear the screen
     bool clear_screen ();
 
+    int textureSize () const { return tex_size; }
+    void setTextureSize (int size) { tex_size = size; }
+
     /// Convert a degrees distance to pixels
-    float deg2pix (float dst) const {
+    Q_INVOKABLE float deg2pix (float dst) const {
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
-    float ds2pf (float speed) const {
+    Q_INVOKABLE float ds2pf (float speed) const {
       return deg2pix (speed/refresh_edit->text ().toFloat ());
     }
 
