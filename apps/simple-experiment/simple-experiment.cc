@@ -26,8 +26,6 @@ LorenceauExperiment::update_configuration ()
 		 (int) (tex_height/2 - ap_diam_px/2),
 		 (int) ap_diam_px, (int) ap_diam_px);
 
-  auto img = new QImage (tex_width, tex_height, QImage::Format_RGB32);
-
   QColor bg (10, 10, 100);
 
   // Fixation frame
@@ -42,22 +40,11 @@ LorenceauExperiment::update_configuration ()
   p.setBrush (Qt::green);
   p.drawPath (ape_path);
   //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
-  p.end ();
-  add_frame ("fixation", *img);
   
 
   // Question frame
-  p.begin (img);
-  //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
-  p.fillRect (0, 0, tex_width, tex_height, bg);
   p.setBrush (Qt::green);
   p.drawPath (ape_path);
-  //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
-  p.end ();
-  add_frame ("question", *img);
-
-  delete img;
-  glwidget->update_texture_size (tex_width, tex_height);
 }
 
 #if 0

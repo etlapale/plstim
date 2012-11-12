@@ -410,6 +410,29 @@ QExperiment::script_engine_exception (const QScriptValue& exception)
   }
 }
 
+Q_DECLARE_METATYPE (QPainter*)
+
+PainterPrototype::PainterPrototype (QObject* parent)
+  : QObject (parent)
+{
+}
+
+QString
+PainterPrototype::toString () const
+{
+  return QString ("QPainter");
+}
+
+void
+PainterPrototype::fillRect (int x, int y, int width, int height)
+{
+  cout << "[QS:2] QPainter::fillRect()" << endl;
+  auto painter = qscriptvalue_cast<QPainter*> (thisObject ());
+
+  QColor bg (10, 10, 100);
+  painter->fillRect (x, y, width, height, bg);
+}
+
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
@@ -424,6 +447,10 @@ QExperiment::load_experiment (const QString& script_path)
 	   SIGNAL (signalHandlerException (const QScriptValue&)),
 	   this,
 	   SLOT (script_engine_exception (const QScriptValue&)));
+
+  // Register the prototype for QPainter
+  script_engine->setDefaultPrototype (qMetaTypeId<QPainter*>(),
+				      script_engine->newQObject (&painter_proto));
 
   // Load the experiment from a QtScript
   qDebug () << "Loading experiment from:" << script_path;
@@ -489,12 +516,6 @@ QExperiment::run_session ()
 
   // Set the GL scene full screen
   glwidget->full_screen ();
-}
-
-bool
-QExperiment::add_frame (const QString& name, const QImage& img)
-{
-  return glwidget->add_frame (name, img);
 }
 
 bool
@@ -734,11 +755,11 @@ QExperiment::setup_updated ()
 
   // Notify the experiment that a change occured
   if (script_engine != NULL) {
+    auto this_obj = script_engine->newQObject (this);
     // Check for an update_configuration function
     auto val = script_engine->globalObject ().property ("update_configuration");
     // Make sure it’s a function
     if (val.isFunction ()) {
-      auto this_obj = script_engine->newQObject (this);
       auto res = val.call (this_obj);
       if (res.isError ()) {
 	qDebug () << res.property ("message").toString ();
@@ -748,9 +769,45 @@ QExperiment::setup_updated ()
     // Make sure that every frame is repainted
     // TODO: this can be done in parallel
     if (glwidget_initialised) {
-      qDebug () << "repainting frames on a " << tex_size << " pixels texture";
-      for (auto p : pages) {
+      qDebug () << "repainting frames on a" << tex_size << "pixels texture";
+      // Make sure the new size is acceptable on the target screen
+      auto geom = dsk.screenGeometry (screen_sbox->value ());
+      if (tex_size > geom.width () || tex_size > geom.height ()) {
+	// TODO: use the message GUI logging facilities
+	qDebug () << "texture too big for the screen";
+	return;
       }
+
+      // Image on which the frames are painted
+      QImage img (tex_size, tex_size, QImage::Format_RGB32);
+
+      // Check for a global named frame painter function
+      auto val = script_engine->globalObject ().property ("paint_frame");
+
+      // Painter
+      QPainter painter;
+      auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
+
+      for (auto p : pages) {
+	painter.begin (&img);
+
+	if (val.isFunction ()) {
+	  QScriptValueList args;
+	  args << p->title;
+	  args << painter_obj;
+	  
+	  auto res = val.call (this_obj, args);
+	  if (res.isError ()) {
+	    qDebug () << res.property ("message").toString ();
+	  }
+	}
+
+	painter.end ();
+	img.save (QString ("page-") + p->title + ".png");
+	glwidget->add_frame (p->title, img);
+      }
+
+      glwidget->update_texture_size (tex_size, tex_size);
     }
   }
 }

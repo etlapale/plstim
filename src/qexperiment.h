@@ -60,6 +60,16 @@ namespace plstim
     void key_pressed (QKeyEvent* evt);
   };
 
+  class PainterPrototype : public QObject, public QScriptable
+  {
+    Q_OBJECT
+  public:
+    PainterPrototype (QObject* parent = NULL);
+  public slots:
+    QString toString () const;
+    void fillRect (int x, int y, int width, int height);
+  };
+
   class QExperiment : public QObject
   {
     Q_OBJECT
@@ -75,6 +85,8 @@ namespace plstim
     QSettings* settings;
 
     QDesktopWidget dsk;
+
+    PainterPrototype painter_proto;
 
     /// List of current messages
     QList<Message*> messages;
@@ -193,8 +205,6 @@ namespace plstim
     void run_session ();
 
   protected:
-    bool add_frame (const QString& name, const QImage& img);
-
     void setup_updated ();
 
   protected slots:
