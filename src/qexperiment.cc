@@ -174,9 +174,11 @@ Page::Page (Page::Type t, const QString& page_title)
   switch (type) {
   case Page::Type::SINGLE:
     wait_for_key = true;
+    nframes = 1;
     break;
-  default:
+  case Page::Type::FRAMES:
     wait_for_key = false;
+    nframes = 0;
     break;
   }
 }
@@ -796,22 +798,30 @@ QExperiment::setup_updated ()
       auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
 
       for (auto p : pages) {
-	painter.begin (&img);
 
-	if (val.isFunction ()) {
+	// Single frames
+	if (p->type == Page::Type::SINGLE && val.isFunction ()) {
+	  painter.begin (&img);
+
 	  QScriptValueList args;
 	  args << p->title;
 	  args << painter_obj;
+	  args << 0;
 	  
 	  auto res = val.call (this_obj, args);
 	  if (res.isError ()) {
 	    qDebug () << res.property ("message").toString ();
 	  }
+
+	  painter.end ();
+	  img.save (QString ("page-") + p->title + ".png");
+	  glwidget->add_frame (p->title, img);
 	}
 
-	painter.end ();
-	img.save (QString ("page-") + p->title + ".png");
-	glwidget->add_frame (p->title, img);
+	// Multiple frames
+	if (p->type == Page::Type::FRAMES && val.isFunction ()) {
+	  qDebug () << "painting" << p->frameCount () << "frames for" << p->title;
+	}
       }
 
       glwidget->update_texture_size (tex_size, tex_size);

@@ -33,7 +33,8 @@ namespace plstim
 
   class Page : public QObject
   {
-  Q_OBJECT
+    Q_OBJECT
+    Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
   public:
     enum Type {
       SINGLE,
@@ -45,6 +46,7 @@ namespace plstim
     QString title;
     bool wait_for_key;
     std::set<int> accepted_keys;
+    int nframes;
   public:
     Page (Page::Type t, const QString& title);
     virtual ~Page ();
@@ -52,6 +54,8 @@ namespace plstim
   public:
     void make_active ();
     void emit_key_pressed (QKeyEvent* evt);
+    int frameCount () const { return nframes; }
+    void setFrameCount (int count) { nframes = count; }
   signals:
     /**
      * Called when the page is the one currently displayed.
