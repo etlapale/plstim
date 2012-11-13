@@ -11,6 +11,7 @@
 
 
 #include "glwidget.h"
+#include "qswrappers.h"
 #include "utils.h"
 
 
@@ -60,16 +61,6 @@ namespace plstim
     void key_pressed (QKeyEvent* evt);
   };
 
-  class PainterPrototype : public QObject, public QScriptable
-  {
-    Q_OBJECT
-  public:
-    PainterPrototype (QObject* parent = NULL);
-  public slots:
-    QString toString () const;
-    void fillRect (int x, int y, int width, int height);
-  };
-
   class QExperiment : public QObject
   {
     Q_OBJECT
@@ -86,6 +77,7 @@ namespace plstim
 
     QDesktopWidget dsk;
 
+    ColorPrototype color_proto;
     PainterPrototype painter_proto;
 
     /// List of current messages

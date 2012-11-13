@@ -378,27 +378,36 @@ page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
   }
 
   auto qexp = static_cast<QExperiment*> (param);
-  if (qexp != NULL) {
-    auto val = ctx->argument (0);
-    if (! val.isQObject ()) {
-      cerr << "add_page() argument is not a page (neither a QObject)!" << endl;
+  auto val = ctx->argument (0);
+  if (! val.isQObject ()) {
+    cerr << "add_page() argument is not a page (neither a QObject)!" << endl;
+  }
+  else {
+    auto page = dynamic_cast<Page*> (val.toQObject ());
+    if (page == NULL) {
+      cerr << "add_page() argument is not a page!" << endl;
     }
     else {
-      auto page = dynamic_cast<Page*> (val.toQObject ());
-      if (page == NULL) {
-	cerr << "add_page() argument is not a page!" << endl;
-      }
-      else {
-	qexp->add_page (page);
-      }
+      qexp->add_page (page);
     }
   }
 
   return engine->undefinedValue ();
 }
 
-/*static
-page_constructor (QScriptContext* ctx*/
+Q_DECLARE_METATYPE (QColor)
+Q_DECLARE_METATYPE (QColor*)
+Q_DECLARE_METATYPE (QPainter*)
+
+static QScriptValue
+color_ctor (QScriptContext* ctx, QScriptEngine* engine)
+{
+  int r = ctx->argument (0).toInt32 ();
+  int g = ctx->argument (1).toInt32 ();
+  int b = ctx->argument (2).toInt32 ();
+
+  return engine->toScriptValue (QColor (r, g, b));
+}
 
 void
 QExperiment::script_engine_exception (const QScriptValue& exception)
@@ -408,29 +417,6 @@ QExperiment::script_engine_exception (const QScriptValue& exception)
   if (exception.isError ()) {
     qDebug () << exception.property ("message").toString ();
   }
-}
-
-Q_DECLARE_METATYPE (QPainter*)
-
-PainterPrototype::PainterPrototype (QObject* parent)
-  : QObject (parent)
-{
-}
-
-QString
-PainterPrototype::toString () const
-{
-  return QString ("QPainter");
-}
-
-void
-PainterPrototype::fillRect (int x, int y, int width, int height)
-{
-  cout << "[QS:2] QPainter::fillRect()" << endl;
-  auto painter = qscriptvalue_cast<QPainter*> (thisObject ());
-
-  QColor bg (10, 10, 100);
-  painter->fillRect (x, y, width, height, bg);
 }
 
 bool
@@ -448,7 +434,9 @@ QExperiment::load_experiment (const QString& script_path)
 	   this,
 	   SLOT (script_engine_exception (const QScriptValue&)));
 
-  // Register the prototype for QPainter
+  // Register defined prototypes
+  script_engine->setDefaultPrototype (qMetaTypeId<QColor*>(),
+				      script_engine->newQObject (&color_proto));
   script_engine->setDefaultPrototype (qMetaTypeId<QPainter*>(),
 				      script_engine->newQObject (&painter_proto));
 
@@ -465,6 +453,10 @@ QExperiment::load_experiment (const QString& script_path)
   // Register add_page()
   auto page_add_cb = script_engine->newFunction (page_adder, this);
   script_engine->globalObject ().setProperty ("add_page", page_add_cb);
+
+  // Register QColor() constructor
+  auto ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
+  script_engine->globalObject ().setProperty ("QColor", ctor);
 
   // Register the experiment
   auto xp_obj = script_engine->newQObject (this);

@@ -13,8 +13,8 @@ set ( QT_USE_QTSCRIPT TRUE )
 include ( ${QT_USE_FILE} )
 
 # Main program
-set (plstim_src src/qexperiment.cc src/utils.cc)
-set (plstim_hdr src/qexperiment.h src/glwidget.h)
+set (plstim_src src/qexperiment.cc src/qswrappers.cc src/utils.cc)
+set (plstim_hdr src/qexperiment.h src/qswrappers.h src/glwidget.h)
 qt4_wrap_cpp (plstim_moc ${plstim_hdr})
 add_executable (plstim ${plstim_src} ${plstim_moc})
 target_link_libraries (plstim ${QT_LIBRARIES})
