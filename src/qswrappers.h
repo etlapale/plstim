@@ -48,6 +48,7 @@ namespace plstim {
     void setPen (const QPen& pen);
 
     void drawEllipse (int x, int y, int width, int height);
+    void drawLine (int x1, int y1, int x2, int y2);
     void drawPath (QPainterPath* path);
     void fillRect (int x, int y, int width, int height, QColor col);
   };

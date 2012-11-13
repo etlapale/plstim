@@ -93,21 +93,11 @@ LorenceauExperiment::make_frames ()
   cw = bin_dist (twister);
   control = bin_dist (twister);
 
-
     // Lines
 #if 0
     cr->set_line_width (lw);
     cr->set_source_rgb (fg, fg, fg);
 #endif
-    QPen lines_pen (Qt::white);
-    p.setPen (lines_pen);
-    for (int x = offx+i*dx - (sx+spacing); x < tex_width+sx+spacing; x+=sx+spacing) {
-      for (int y = offy+i*dy; y < tex_height+sy+spacing; y+=sy+spacing) {
-	p.drawLine (x, y, x+bx, y+by);
-      }
-    }
-
-    QPen no_pen;
 }
 
 // vim:sw=2:
