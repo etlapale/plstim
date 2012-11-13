@@ -88,69 +88,17 @@ LorenceauExperiment::run_trial ()
 void
 LorenceauExperiment::make_frames ()
 {
-  // Remove the existing frames
-  glwidget->delete_unamed_frames ();
-
-  QColor bg (10, 10, 100);
-  
-  // Aperture mask path
-  QPainterPath ape_path;
-  ape_path.addRect (0, 0, tex_width, tex_height);
-  ape_path.addEllipse ((int) (tex_width/2 - ap_diam_px/2),
-		 (int) (tex_height/2 - ap_diam_px/2),
-		 (int) ap_diam_px, (int) ap_diam_px);
-
-  // Fixation frame
-  QPainter p;
-
   // Set a random trial condition
   up = bin_dist (twister);
   cw = bin_dist (twister);
   control = bin_dist (twister);
 
-  int offx = (tex_width-ap_diam_px)/2;
-  int offy = (tex_height-ap_diam_px)/2;
-  // Line speed and direction
-  cout << "Clockwise: " << cw << endl
-       << "Control: " << control << endl
-       << "Up: " << up << endl;
-  float orient = radians (cw ? 110 : 70);
-  int bx = (int) (ll_px*cos(orient));
-  int by = (int) (ll_px*sin(orient));
-  int sx = abs (bx);
-  int sy = abs (by);
-  float direction = fmod (orient
-    + (orient < M_PI/2 ? -1 : +1) * (M_PI/2)	// Orientation
-    + (up ? 0 : 1) * M_PI			// Up/down
-    + (orient < M_PI/2 ? -1 : 1) * (control ? 0 : 1) * radians (140)
-    , 2*M_PI);
-  cout << "Line direction: " << degrees (direction) << "°" << endl;
-  float speed = ds2pf (6.5);
-  int dx = (int) (speed*cos (direction));
-  int dy = (int) (speed*sin (direction));
-  cout << "Line speed is 6.5 deg/s, or "
-    << speed << " px/frame ("
-    << (dx >= 0 ? "+" : "") << dx
-    << (dy >= 0 ? "+" : "") << dy
-    << ")" << endl;
-  float spacing = deg2pix (1);
-  cout << "sx+spacing: " << sx << "+" << spacing << endl;
-
-  for (int i = 0; i < nframes; i++) {
-    cout << "beginning frame " << i << endl;
-    p.begin (&img);
-    cout << "  img began" << endl;
-
-    // Background
-    p.fillRect (0, 0, tex_width, tex_height, bg);
-    cout << "  bg filled" << endl;
 
     // Lines
 #if 0
     cr->set_line_width (lw);
     cr->set_source_rgb (fg, fg, fg);
 #endif
-    QPen no_pen;
     QPen lines_pen (Qt::white);
     p.setPen (lines_pen);
     for (int x = offx+i*dx - (sx+spacing); x < tex_width+sx+spacing; x+=sx+spacing) {
@@ -158,26 +106,8 @@ LorenceauExperiment::make_frames ()
 	p.drawLine (x, y, x+bx, y+by);
       }
     }
-    
-    // Fixation point
-    p.setBrush (Qt::red);
-    p.setPen (no_pen);
-    cout << "  brush set" << endl;
-    int fix_radius = (int) nearbyint (deg2pix (3./60));
-    qDebug () << "Fixation radius:" << fix_radius;
-    p.drawEllipse (tex_width/2 - fix_radius,
-		   tex_height/2 - fix_radius,
-		   2*fix_radius, 2*fix_radius);
 
-    // Aperture
-    p.setBrush (Qt::red);
-    p.drawPath (ape_path);
-
-    // Save as OpenGL texture
-    p.end ();
-    glwidget->add_frame (img);
-    img.save ("frame.png");
-  }
+    QPen no_pen;
 }
 
 // vim:sw=2:

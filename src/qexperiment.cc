@@ -399,9 +399,24 @@ page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
 
 Q_DECLARE_METATYPE (QColor)
 Q_DECLARE_METATYPE (QColor*)
+Q_DECLARE_METATYPE (QPen)
+Q_DECLARE_METATYPE (QPen*)
 Q_DECLARE_METATYPE (QPainter*)
 Q_DECLARE_METATYPE (QPainterPath)
 Q_DECLARE_METATYPE (QPainterPath*)
+
+static QScriptValue
+pen_ctor (QScriptContext* ctx, QScriptEngine* engine)
+{
+  cout << "Creating a new QPainterPath" << endl;
+  
+  if (ctx->argumentCount () == 0)
+    return engine->toScriptValue (new QPen ());
+  else {
+    auto color = qscriptvalue_cast<QColor*> (ctx->argument (0));
+    return engine->toScriptValue (new QPen (*color));
+  }
+}
 
 static QScriptValue
 painterpath_ctor (QScriptContext* ctx, QScriptEngine* engine)
@@ -470,6 +485,10 @@ QExperiment::load_experiment (const QString& script_path)
   // Register QColor() constructor
   auto ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
   script_engine->globalObject ().setProperty ("QColor", ctor);
+
+  // Register QPen() constructor
+  ctor = script_engine->newFunction (pen_ctor, script_engine->newQObject (&pen_proto));
+  script_engine->globalObject ().setProperty ("QPen", ctor);
 
   // Register QPainterPath() constructor
   auto path_ctor = script_engine->newFunction (painterpath_ctor, script_engine->newQObject (&painterpath_proto));
@@ -822,6 +841,8 @@ QExperiment::setup_updated ()
 	if (p->type == Page::Type::FRAMES && val.isFunction ()) {
 	  qDebug () << "painting" << p->frameCount () << "frames for" << p->title;
 
+	  glwidget->delete_unamed_frames ();
+
 	  for (int i = 0; i < p->frameCount (); i++) {
 
 	    painter.begin (&img);
@@ -840,7 +861,7 @@ QExperiment::setup_updated ()
 	    QString filename;
 	    filename.sprintf ("page-%s-%04d.png", qPrintable (p->title), i);
 	    img.save (filename);
-	    glwidget->add_frame (p->title, img);
+	    glwidget->add_frame (img);
 	  }
 	}
       }

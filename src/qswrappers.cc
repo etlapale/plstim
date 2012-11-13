@@ -9,6 +9,8 @@ using namespace plstim;
 
 Q_DECLARE_METATYPE (QColor)
 Q_DECLARE_METATYPE (QColor*)
+Q_DECLARE_METATYPE (QPen)
+Q_DECLARE_METATYPE (QPen*)
 Q_DECLARE_METATYPE (QPainterPath)
 Q_DECLARE_METATYPE (QPainterPath*)
 Q_DECLARE_METATYPE (QPainter*)
@@ -17,6 +19,17 @@ Q_DECLARE_METATYPE (QPainter*)
 ColorPrototype::ColorPrototype (QObject* parent)
   : QObject (parent)
 {
+}
+
+PenPrototype::PenPrototype (QObject* parent)
+  : QObject (parent)
+{
+}
+
+QString
+PenPrototype::toString () const
+{
+  return QString ("QPen");
 }
 
 PainterPathPrototype::PainterPathPrototype (QObject* parent)
@@ -86,10 +99,13 @@ PainterPrototype::drawPath (QPainterPath* path)
 void
 PainterPrototype::setBrush (const QColor& col)
 {
-  cout << "[QS] QPainter::setBrush ()" << endl;
-  cout << "  color is: " << col.red () << "-" << col.green () << "-" << col.blue () << endl;
-
   auto painter = qscriptvalue_cast<QPainter*> (thisObject ());
-
   painter->setBrush (col);
+}
+
+void
+PainterPrototype::setPen (const QPen& pen)
+{
+  auto painter = qscriptvalue_cast<QPainter*> (thisObject ());
+  painter->setPen (pen);
 }

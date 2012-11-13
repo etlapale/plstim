@@ -82,6 +82,7 @@ namespace plstim
     QDesktopWidget dsk;
 
     ColorPrototype color_proto;
+    PenPrototype pen_proto;
     PainterPrototype painter_proto;
     PainterPathPrototype painterpath_proto;
 

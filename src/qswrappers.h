@@ -15,6 +15,15 @@ namespace plstim {
     ColorPrototype (QObject* parent = NULL);
   };
 
+  class PenPrototype : public QObject, public QScriptable
+  {
+    Q_OBJECT
+  public:
+    PenPrototype (QObject* parent = NULL);
+  public slots:
+    QString toString () const;
+  };
+
   class PainterPathPrototype : public QObject, public QScriptable
   {
     Q_OBJECT
@@ -36,6 +45,7 @@ namespace plstim {
     QString toString () const;
 
     void setBrush (const QColor& col);
+    void setPen (const QPen& pen);
 
     void drawEllipse (int x, int y, int width, int height);
     void drawPath (QPainterPath* path);
