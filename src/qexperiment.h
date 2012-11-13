@@ -79,6 +79,7 @@ namespace plstim
 
     ColorPrototype color_proto;
     PainterPrototype painter_proto;
+    PainterPathPrototype painterpath_proto;
 
     /// List of current messages
     QList<Message*> messages;

@@ -16,37 +16,6 @@
   que_page->accept_key (Qt::Key_Down);
 	   */
 
-void
-LorenceauExperiment::update_configuration ()
-{
-  // Aperture mask path
-  QPainterPath ape_path;
-  ape_path.addRect (0, 0, tex_width, tex_height);
-  ape_path.addEllipse ((int) (tex_width/2 - ap_diam_px/2),
-		 (int) (tex_height/2 - ap_diam_px/2),
-		 (int) ap_diam_px, (int) ap_diam_px);
-
-  QColor bg (10, 10, 100);
-
-  // Fixation frame
-  QPainter p (img);
-  //p.fillRect (0, 0, tex_width, tex_height, QColor (10, 10, 0));
-  p.fillRect (0, 0, tex_width, tex_height, bg);
-  p.setBrush (Qt::red);
-  int fix_radius = (int) nearbyint (deg2pix (3./60));
-  qDebug () << "Fixation radius:" << fix_radius;
-  p.drawEllipse (tex_width/2 - fix_radius, tex_height/2 - fix_radius,
-		 2*fix_radius, 2*fix_radius);
-  p.setBrush (Qt::green);
-  p.drawPath (ape_path);
-  //p.fillRect (0, 0, 10, 30, QColor (200, 10, 100));
-  
-
-  // Question frame
-  p.setBrush (Qt::green);
-  p.drawPath (ape_path);
-}
-
 #if 0
 bool
 LorenceauExperiment::run_trial ()
@@ -121,9 +90,6 @@ LorenceauExperiment::make_frames ()
 {
   // Remove the existing frames
   glwidget->delete_unamed_frames ();
-
-  QImage img (tex_width, tex_height, QImage::Format_RGB32);
-  cout << "tex dims: " << tex_width << "×" << tex_height << endl;
 
   QColor bg (10, 10, 100);
   

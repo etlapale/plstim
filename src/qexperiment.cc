@@ -398,6 +398,15 @@ page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
 Q_DECLARE_METATYPE (QColor)
 Q_DECLARE_METATYPE (QColor*)
 Q_DECLARE_METATYPE (QPainter*)
+Q_DECLARE_METATYPE (QPainterPath)
+Q_DECLARE_METATYPE (QPainterPath*)
+
+static QScriptValue
+painterpath_ctor (QScriptContext* ctx, QScriptEngine* engine)
+{
+  cout << "Creating a new QPainterPath" << endl;
+  return engine->toScriptValue (new QPainterPath ());
+}
 
 static QScriptValue
 color_ctor (QScriptContext* ctx, QScriptEngine* engine)
@@ -437,6 +446,8 @@ QExperiment::load_experiment (const QString& script_path)
   // Register defined prototypes
   script_engine->setDefaultPrototype (qMetaTypeId<QColor*>(),
 				      script_engine->newQObject (&color_proto));
+  script_engine->setDefaultPrototype (qMetaTypeId<QPainterPath*>(),
+				      script_engine->newQObject (&painterpath_proto));
   script_engine->setDefaultPrototype (qMetaTypeId<QPainter*>(),
 				      script_engine->newQObject (&painter_proto));
 
@@ -457,6 +468,10 @@ QExperiment::load_experiment (const QString& script_path)
   // Register QColor() constructor
   auto ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
   script_engine->globalObject ().setProperty ("QColor", ctor);
+
+  // Register QPainterPath() constructor
+  auto path_ctor = script_engine->newFunction (painterpath_ctor, script_engine->newQObject (&painterpath_proto));
+  script_engine->globalObject ().setProperty ("QPainterPath", path_ctor);
 
   // Register the experiment
   auto xp_obj = script_engine->newQObject (this);
