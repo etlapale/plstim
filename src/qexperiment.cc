@@ -821,6 +821,27 @@ QExperiment::setup_updated ()
 	// Multiple frames
 	if (p->type == Page::Type::FRAMES && val.isFunction ()) {
 	  qDebug () << "painting" << p->frameCount () << "frames for" << p->title;
+
+	  for (int i = 0; i < p->frameCount (); i++) {
+
+	    painter.begin (&img);
+
+	    QScriptValueList args;
+	    args << p->title;
+	    args << painter_obj;
+	    args << i;
+	    
+	    auto res = val.call (this_obj, args);
+	    if (res.isError ()) {
+	      qDebug () << res.property ("message").toString ();
+	    }
+
+	    painter.end ();
+	    QString filename;
+	    filename.sprintf ("page-%s-%04d.png", qPrintable (p->title), i);
+	    img.save (filename);
+	    glwidget->add_frame (p->title, img);
+	  }
 	}
       }
 
