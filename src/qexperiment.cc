@@ -175,10 +175,12 @@ Page::Page (Page::Type t, const QString& page_title)
   case Page::Type::SINGLE:
     wait_for_key = true;
     nframes = 1;
+    paint_time = PaintTime::EXPERIMENT;
     break;
   case Page::Type::FRAMES:
     wait_for_key = false;
     nframes = 0;
+    paint_time = PaintTime::TRIAL;
     break;
   }
 }
@@ -220,8 +222,9 @@ QExperiment::exec ()
 
   // Load an experiment if given as command line argument
   auto args = app.arguments ();
-  if (args.size () == 2)
+  if (args.size () == 2) {
     load_experiment (args.at (1));
+  }
 
 
   cout << "exec()" << endl;
@@ -229,9 +232,94 @@ QExperiment::exec ()
 }
 
 void
+QExperiment::paint_page (Page* page,
+			 QImage& img,
+			 QPainter& painter,
+			 QScriptValue& painter_obj,
+			 QScriptValue& paint_fun,
+			 QScriptValue& this_obj)
+{
+  QScriptValueList args;
+  QScriptValue res;
+
+  switch (page->type) {
+  // Single frames
+  case Page::Type::SINGLE:
+    painter.begin (&img);
+
+    args << page->title;
+    args << painter_obj;
+    args << 0;
+
+    res = paint_fun.call (this_obj, args);
+    if (res.isError ()) {
+      qDebug () << res.property ("message").toString ();
+    }
+
+    painter.end ();
+    img.save (QString ("page-") + page->title + ".png");
+    glwidget->add_frame (page->title, img);
+    break;
+
+  // Multiple frames
+  case Page::Type::FRAMES:
+    qDebug () << "painting" << page->frameCount () << "frames for" << page->title;
+
+    glwidget->delete_unamed_frames ();
+
+    for (int i = 0; i < page->frameCount (); i++) {
+
+      painter.begin (&img);
+
+      args.clear ();
+      args << page->title;
+      args << painter_obj;
+      args << i;
+
+      res = paint_fun.call (this_obj, args);
+      if (res.isError ()) {
+	qDebug () << res.property ("message").toString ();
+      }
+
+      painter.end ();
+      QString filename;
+      filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
+      img.save (filename);
+      glwidget->add_frame (img);
+    }
+    break;
+  }
+}
+
+void
 QExperiment::run_trial ()
 {
   cout << "Starting trial " << current_trial << endl;
+  auto this_obj = script_engine->newQObject (this);
+
+  // Call QtScript’s new_trial() if existing
+  auto val = script_engine->globalObject ().property ("new_trial");
+  if (val.isFunction ()) {
+    auto res = val.call (this_obj);
+    if (res.isError ()) {
+      qDebug () << res.property ("message").toString ();
+    }
+  }
+
+  // Re-generate per-trial frames
+  auto paint_func = script_engine->globalObject ().property ("paint_frame");
+  if (paint_func.isFunction ()) {
+    QImage img (tex_size, tex_size, QImage::Format_RGB32);
+    QPainter painter;
+    auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
+
+    for (auto p : pages) {
+      if (p->paint_time == Page::PaintTime::TRIAL)
+	paint_page (p, img, painter,
+		    painter_obj, paint_func, this_obj);
+    }
+
+  }
 
   current_page = -1;
   //show_page (current_page);
@@ -825,55 +913,10 @@ QExperiment::setup_updated ()
       QPainter painter;
       auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
 
-      for (auto p : pages) {
-
-	// Single frames
-	if (p->type == Page::Type::SINGLE && val.isFunction ()) {
-	  painter.begin (&img);
-
-	  QScriptValueList args;
-	  args << p->title;
-	  args << painter_obj;
-	  args << 0;
-	  
-	  auto res = val.call (this_obj, args);
-	  if (res.isError ()) {
-	    qDebug () << res.property ("message").toString ();
-	  }
-
-	  painter.end ();
-	  img.save (QString ("page-") + p->title + ".png");
-	  glwidget->add_frame (p->title, img);
-	}
-
-	// Multiple frames
-	if (p->type == Page::Type::FRAMES && val.isFunction ()) {
-	  qDebug () << "painting" << p->frameCount () << "frames for" << p->title;
-
-	  glwidget->delete_unamed_frames ();
-
-	  for (int i = 0; i < p->frameCount (); i++) {
-
-	    painter.begin (&img);
-
-	    QScriptValueList args;
-	    args << p->title;
-	    args << painter_obj;
-	    args << i;
-	    
-	    auto res = val.call (this_obj, args);
-	    if (res.isError ()) {
-	      qDebug () << res.property ("message").toString ();
-	    }
-
-	    painter.end ();
-	    QString filename;
-	    filename.sprintf ("page-%s-%04d.png", qPrintable (p->title), i);
-	    img.save (filename);
-	    glwidget->add_frame (img);
-	  }
-	}
-      }
+      // Repaint each page
+      if (val.isFunction ())
+	for (auto p : pages)
+	  paint_page (p, img, painter, painter_obj, val, this_obj);
 
       glwidget->update_texture_size (tex_size, tex_size);
     }

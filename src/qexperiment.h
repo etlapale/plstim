@@ -35,15 +35,22 @@ namespace plstim
   {
     Q_OBJECT
     Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
+    Q_PROPERTY (PaintTime paintTime READ paintTime WRITE setPaintTime)
   public:
     enum Type {
       SINGLE,
       FRAMES
     };
     Q_ENUMS (Type)
+    enum PaintTime {
+      EXPERIMENT,
+      TRIAL
+    };
+    Q_ENUMS (PaintTime)
   public:
     Page::Type type;
     QString title;
+    PaintTime paint_time;
     bool wait_for_key;
     std::set<int> accepted_keys;
     int nframes;
@@ -56,6 +63,8 @@ namespace plstim
     void emit_key_pressed (QKeyEvent* evt);
     int frameCount () const { return nframes; }
     void setFrameCount (int count) { nframes = count; }
+    PaintTime paintTime () const { return paint_time; }
+    void setPaintTime (PaintTime time) { paint_time = time; }
   signals:
     /**
      * Called when the page is the one currently displayed.
@@ -204,6 +213,11 @@ namespace plstim
 
   protected:
     void setup_updated ();
+
+    void paint_page (Page* page, QImage& img, QPainter& painter,
+		     QScriptValue& painter_obj,
+		     QScriptValue& paint_fun,
+		     QScriptValue& this_obj);
 
   protected slots:
     //void screen_param_changed ();
