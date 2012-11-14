@@ -92,12 +92,6 @@ LorenceauExperiment::make_frames ()
   up = bin_dist (twister);
   cw = bin_dist (twister);
   control = bin_dist (twister);
-
-    // Lines
-#if 0
-    cr->set_line_width (lw);
-    cr->set_source_rgb (fg, fg, fg);
-#endif
 }
 
 // vim:sw=2:

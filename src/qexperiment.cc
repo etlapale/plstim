@@ -241,6 +241,8 @@ QExperiment::paint_page (Page* page,
 {
   QScriptValueList args;
   QScriptValue res;
+  //QElapsedTimer timer;
+  //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
 
   switch (page->type) {
   // Single frames
@@ -265,7 +267,10 @@ QExperiment::paint_page (Page* page,
   case Page::Type::FRAMES:
     qDebug () << "painting" << page->frameCount () << "frames for" << page->title;
 
+    //timer.start ();
     glwidget->delete_unamed_frames ();
+    //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
+    //timer.start ();
 
     for (int i = 0; i < page->frameCount (); i++) {
 
@@ -284,9 +289,10 @@ QExperiment::paint_page (Page* page,
       painter.end ();
       QString filename;
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
-      img.save (filename);
+      //img.save (filename);
       glwidget->add_frame (img);
     }
+    //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     break;
   }
 }
