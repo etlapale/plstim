@@ -215,12 +215,16 @@ QExperiment::add_page (Page* page)
 bool
 QExperiment::exec ()
 {
+  cout << "showing windows" << endl;
+  win.show ();
+
   // Load an experiment if given as command line argument
   auto args = app.arguments ();
   if (args.size () == 2)
     load_experiment (args.at (1));
 
-  win.show ();
+
+  cout << "exec()" << endl;
   return app.exec () == 0;
 }
 
@@ -526,6 +530,9 @@ QExperiment::load_experiment (const QString& script_path)
        << "  " << pages.size () << " pages" << endl
        << endl;
 
+  // Initialise the experiment
+  setup_updated ();
+
   return true;
 }
 
@@ -760,8 +767,10 @@ QExperiment::QExperiment (int & argc, char** argv)
   if (settings->contains ("gui_width"))
     win.resize (settings->value ("gui_width").toInt (),
 		settings->value ("gui_height").toInt ());
-  if (settings->contains ("splitter"))
+  if (settings->contains ("splitter")) {
+    qDebug () << "restoring splitter state from config";
     splitter->restoreState (settings->value ("splitter").toByteArray ());
+  }
 
   // Constrain the screen selector
   screen_sbox->setMinimum (0);
@@ -889,15 +898,22 @@ void
 QExperiment::set_glformat (QGLFormat glformat)
 {
   qDebug () << "set_glformat ()" << endl;
-
   splitter_state = splitter->saveState ();
 
   auto old_widget = glwidget;
   if (old_widget != NULL) {
     //delete old_widget;
+    //old_widget->waiting_deletion = true;
+    //delete old_widget;
     //old_widget->setParent (NULL);
-    old_widget->hide ();
-    old_widget->deleteLater ();
+    //old_widget->hide ();
+    delete old_widget;
+    //old_widget->deleteLater ();
+    /*connect (old_widget, SIGNAL (destroyed ()),
+	     this, SLOT (old_glwidget_destroyed ()));*/
+  }
+  else {
+    cout << "old widget is NULL" << endl;
   }
 
   glwidget = new MyGLWidget (glformat, &win);
