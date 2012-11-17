@@ -633,6 +633,10 @@ QExperiment::load_experiment (const QString& script_path)
 void
 QExperiment::run_session ()
 {
+  // Make sure an experiment is loaded
+  if (script_engine == NULL)
+    return;
+
   cout << "Run session!" << endl;
 
   // Save the splitter position
