@@ -2,11 +2,25 @@
 #define __PLSTIM_QSWRAPPERS_H
 
 
+#include <random>
+
 #include <QPainter>
 #include <QScriptable>
 
 
 namespace plstim {
+
+  class UniformIntDistributionPrototype : public QObject, public QScriptable {
+  Q_OBJECT
+  public:
+    UniformIntDistributionPrototype (QObject* parent = NULL);
+  public slots:
+    QString toString () const;
+    int random ();
+  protected:
+    std::mt19937 twister;
+  };
+
 
   class ColorPrototype : public QObject, public QScriptable
   {

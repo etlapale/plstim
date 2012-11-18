@@ -495,6 +495,8 @@ page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
   return engine->undefinedValue ();
 }
 
+Q_DECLARE_METATYPE (uniform_int_distribution<int>*)
+
 Q_DECLARE_METATYPE (QColor)
 Q_DECLARE_METATYPE (QColor*)
 Q_DECLARE_METATYPE (QPen)
@@ -502,6 +504,21 @@ Q_DECLARE_METATYPE (QPen*)
 Q_DECLARE_METATYPE (QPainter*)
 Q_DECLARE_METATYPE (QPainterPath)
 Q_DECLARE_METATYPE (QPainterPath*)
+
+
+static QScriptValue
+uid_ctor (QScriptContext* ctx, QScriptEngine* engine)
+{
+  qDebug () << "creating a distribution with " << ctx->argumentCount () << "arguments";
+  if (ctx->argumentCount () == 2) {
+    auto min = (int) ctx->argument (0).toInteger ();
+    auto max = (int) ctx->argument (1).toInteger ();
+    auto uid = new uniform_int_distribution<int> (min, max);
+    qDebug () << "  ret new uid" << (long) uid;
+    return engine->toScriptValue (uid);
+  }
+  return engine->undefinedValue ();
+}
 
 static QScriptValue
 pen_ctor (QScriptContext* ctx, QScriptEngine* engine)
@@ -559,6 +576,8 @@ QExperiment::load_experiment (const QString& script_path)
 	   SLOT (script_engine_exception (const QScriptValue&)));
 
   // Register defined prototypes
+  script_engine->setDefaultPrototype (qMetaTypeId<uniform_int_distribution<int>*>(),
+				      script_engine->newQObject (&uid_proto));
   script_engine->setDefaultPrototype (qMetaTypeId<QColor*>(),
 				      script_engine->newQObject (&color_proto));
   script_engine->setDefaultPrototype (qMetaTypeId<QPainterPath*>(),
@@ -580,8 +599,12 @@ QExperiment::load_experiment (const QString& script_path)
   auto page_add_cb = script_engine->newFunction (page_adder, this);
   script_engine->globalObject ().setProperty ("add_page", page_add_cb);
 
+  // Register UniformIntDistribution() constructor
+  auto ctor = script_engine->newFunction (uid_ctor, script_engine->newQObject (&uid_proto));
+  script_engine->globalObject ().setProperty ("UniformIntDistribution", ctor);
+
   // Register QColor() constructor
-  auto ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
+  ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
   script_engine->globalObject ().setProperty ("QColor", ctor);
 
   // Register QPen() constructor

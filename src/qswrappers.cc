@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <iostream>
 using namespace std;
 
@@ -7,6 +9,7 @@ using namespace plstim;
 #include <QScriptEngine>
 
 
+Q_DECLARE_METATYPE (uniform_int_distribution<int>*)
 Q_DECLARE_METATYPE (QColor)
 Q_DECLARE_METATYPE (QColor*)
 Q_DECLARE_METATYPE (QPen)
@@ -14,6 +17,26 @@ Q_DECLARE_METATYPE (QPen*)
 Q_DECLARE_METATYPE (QPainterPath)
 Q_DECLARE_METATYPE (QPainterPath*)
 Q_DECLARE_METATYPE (QPainter*)
+
+
+UniformIntDistributionPrototype::UniformIntDistributionPrototype (QObject* parent)
+  : QObject (parent)
+{
+  twister.seed (time (NULL));
+}
+
+QString
+UniformIntDistributionPrototype::toString () const
+{
+  return QString ("UniformIntDistribution");
+}
+
+int
+UniformIntDistributionPrototype::random ()
+{
+  auto dist = qscriptvalue_cast<uniform_int_distribution<int>*> (thisObject ());
+  return (*dist) (twister);
+}
 
 
 ColorPrototype::ColorPrototype (QObject* parent)
