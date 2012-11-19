@@ -10,6 +10,10 @@
 #include <QtScript>
 
 
+// Lua interpreter
+#include <lua.hpp>
+
+
 #include "glwidget.h"
 #include "qswrappers.h"
 #include "utils.h"
@@ -255,7 +259,11 @@ namespace plstim
     bool session_running;
 
     QByteArray splitter_state;
+
+
     QScriptEngine* script_engine;
+
+    lua_State* lstate;
 
     /**
      * Waiting for a fullscreen event before starting the session.

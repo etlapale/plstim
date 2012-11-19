@@ -18,7 +18,6 @@ using namespace plstim;
 #include <QtDebug>
 
 
-
 #if 0
 #ifdef HAVE_XRANDR
   int evt_base, err_base;
@@ -241,7 +240,7 @@ QExperiment::paint_page (Page* page,
 {
   QScriptValueList args;
   QScriptValue res;
-  //QElapsedTimer timer;
+  QElapsedTimer timer;
   //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
 
   switch (page->type) {
@@ -270,7 +269,7 @@ QExperiment::paint_page (Page* page,
     //timer.start ();
     glwidget->delete_unamed_frames ();
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
-    //timer.start ();
+    timer.start ();
 
     for (int i = 0; i < page->frameCount (); i++) {
 
@@ -292,7 +291,7 @@ QExperiment::paint_page (Page* page,
       //img.save (filename);
       glwidget->add_frame (img);
     }
-    //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
+    qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     break;
   }
 }
@@ -469,32 +468,6 @@ page_constructor (QScriptContext* ctx, QScriptEngine* engine)
   return engine->newQObject (obj, QScriptEngine::QtOwnership);
 }
 
-static QScriptValue
-page_adder (QScriptContext* ctx, QScriptEngine* engine, void* param)
-{
-  if (ctx->argumentCount () != 1) {
-    cerr << "invalid use of add_page()" << endl;
-    return engine->undefinedValue ();
-  }
-
-  auto qexp = static_cast<QExperiment*> (param);
-  auto val = ctx->argument (0);
-  if (! val.isQObject ()) {
-    cerr << "add_page() argument is not a page (neither a QObject)!" << endl;
-  }
-  else {
-    auto page = dynamic_cast<Page*> (val.toQObject ());
-    if (page == NULL) {
-      cerr << "add_page() argument is not a page!" << endl;
-    }
-    else {
-      qexp->add_page (page);
-    }
-  }
-
-  return engine->undefinedValue ();
-}
-
 Q_DECLARE_METATYPE (uniform_int_distribution<int>*)
 
 Q_DECLARE_METATYPE (QColor)
@@ -560,6 +533,37 @@ QExperiment::script_engine_exception (const QScriptValue& exception)
   }
 }
 
+
+static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
+
+
+static int
+l_add_page (lua_State* lstate)
+{
+  qDebug () << "[Lua] add_page ()";
+
+  // Page information
+  auto page_name = luaL_checkstring (lstate, 1);
+  auto page_type = Page::Type::SINGLE;
+  if (lua_gettop (lstate) > 1) {
+    page_type = Page::Type::FRAMES;
+    lua_pop (lstate, 1);
+  }
+  
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+
+  // Create a new page and add it to the experiment
+  auto page = new Page (page_type, page_name);
+  xp->add_page (page);
+
+  // Return the created page
+
+  return 0;
+}
+
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
@@ -567,14 +571,29 @@ QExperiment::load_experiment (const QString& script_path)
   ntrials = 0;
   if (script_engine != NULL)
     delete script_engine;
+  if (lstate != NULL)
+    lua_close (lstate);
 
-  // Create a new QtScript engine
-  script_engine = new QScriptEngine ();
-  connect (script_engine,
-	   SIGNAL (signalHandlerException (const QScriptValue&)),
-	   this,
-	   SLOT (script_engine_exception (const QScriptValue&)));
+  // Create a new Lua state
+  lstate = lua_open ();
+  luaL_openlibs (lstate);
 
+  // Register the current experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_pushlightuserdata (lstate, this);
+  lua_settable (lstate, LUA_REGISTRYINDEX);
+
+  // Register add_page ()
+  lua_pushcfunction (lstate, l_add_page);
+  lua_setglobal (lstate, "add_page");
+
+  if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
+      || lua_pcall (lstate, 0, 0, 0)) {
+    qDebug () << "could not load the experiment:"
+              << lua_tostring (lstate, -1);
+  }
+
+#if 0
   // Register defined prototypes
   script_engine->setDefaultPrototype (qMetaTypeId<uniform_int_distribution<int>*>(),
 				      script_engine->newQObject (&uid_proto));
@@ -585,19 +604,10 @@ QExperiment::load_experiment (const QString& script_path)
   script_engine->setDefaultPrototype (qMetaTypeId<QPainter*>(),
 				      script_engine->newQObject (&painter_proto));
 
-  // Load the experiment from a QtScript
-  qDebug () << "Loading experiment from:" << script_path;
-  QFile file (script_path);
-  file.open (QIODevice::ReadOnly);
-
   // Register Page constructor
   QScriptValue page_ctor = script_engine->newFunction (page_constructor);
   QScriptValue page_meta = script_engine->newQMetaObject (&Page::staticMetaObject, page_ctor);
   script_engine->globalObject ().setProperty ("Page", page_meta);
-
-  // Register add_page()
-  auto page_add_cb = script_engine->newFunction (page_adder, this);
-  script_engine->globalObject ().setProperty ("add_page", page_add_cb);
 
   // Register UniformIntDistribution() constructor
   auto ctor = script_engine->newFunction (uid_ctor, script_engine->newQObject (&uid_proto));
@@ -622,30 +632,19 @@ QExperiment::load_experiment (const QString& script_path)
   // Register ‘glwidget’
   auto glw_obj = script_engine->newQObject (glwidget);
   script_engine->globalObject ().setProperty ("glwidget", glw_obj);
+#endif
 
-  // Load the experiment script
-  QScriptValue res = script_engine->evaluate (file.readAll (),
-					     script_path);
-  if (res.isError ()) {
-    qDebug () << res.property ("message").toString ();
+  lua_getglobal (lstate, "ntrials");
+  if (lua_isnumber (lstate, -1)) {
+    ntrials = (int) lua_tonumber (lstate, -1);
   }
+  lua_pop (lstate, 1);
 
-  // Check for exceptions
-  if (script_engine->hasUncaughtException ()) {
-    cout << "uncaught exception!" << endl;
-  }
-
-  file.close ();
-  QScriptValue ntrials_val = script_engine->globalObject ().property ("ntrials");
-  if (ntrials_val.isNumber ()) {
-    ntrials = ntrials_val.toInteger ();
-  }
-
-  cout << endl
-       << "Experiment loaded:" << endl
-       << "  " << ntrials << " trials" << endl
-       << "  " << pages.size () << " pages" << endl
-       << endl;
+  qDebug () << endl
+            << "Experiment loaded:" << endl
+	    << " " << ntrials << "trials" << endl
+	    << " " << pages.size () << "pages"
+	    << endl;
 
   // Initialise the experiment
   setup_updated ();
@@ -716,6 +715,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   res_msg = NULL;
   match_res_msg = NULL;
+
+  lstate = NULL;
   script_engine = NULL;
 
   waiting_fullscreen = false;
@@ -912,6 +913,7 @@ QExperiment::setup_updated ()
   update_converters ();
 
   // Notify the experiment that a change occured
+#if 0
   if (script_engine != NULL) {
     auto this_obj = script_engine->newQObject (this);
     // Check for an update_configuration function
@@ -953,6 +955,46 @@ QExperiment::setup_updated ()
 
       glwidget->update_texture_size (tex_size, tex_size);
     }
+  }
+#endif
+  if (lstate != NULL) {
+    // Compute the best swap interval
+    lua_getglobal (lstate, "refresh");
+    if (lua_isnumber (lstate, -1)) {
+      double wanted_frequency = lua_tonumber (lstate, -1);
+      double mon_rate = monitor_rate ();
+      double coef = round (mon_rate / wanted_frequency);
+      if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01)
+	qDebug () << "error: cannot set monitor frequency to 1% of desired frequency";
+      qDebug () << "Swap interval:" << coef;
+      set_swap_interval (coef);
+    }
+    lua_pop (lstate, 1);
+
+    // Compute the minimal texture size
+    lua_getglobal (lstate, "size");
+    if (lua_isnumber (lstate, -1)) {
+      double size_degs = lua_tonumber (lstate, -1);
+      double size_px = ceil (deg2pix (size_degs));
+      qDebug () << "Stimulus size:" << size_px;
+
+      // Minimal base-2 texture size
+      tex_size = 1 << (int) floor (log2 (size_px));
+      if (tex_size < size_px)
+	tex_size <<= 1;
+      qDebug () << "Texture size:" << tex_size << "x" << tex_size;
+    }
+    lua_pop (lstate, 1);
+    
+    // Call the update_configuration () callback
+    lua_getglobal (lstate, "update_configuration");
+    if (lua_isfunction (lstate, -1)) {
+      if (lua_pcall (lstate, 0, 0, 0) != 0) {
+	qDebug () << "error: could not call update_configuration:"
+		  << lua_tostring (lstate, -1);
+      }
+    }
+    lua_pop (lstate, 1);
   }
 }
 
@@ -1157,6 +1199,8 @@ QExperiment::~QExperiment ()
 
   if (script_engine != NULL)
     delete script_engine;
+  if (lstate != NULL)
+    lua_close (lstate);
 }
 
 void

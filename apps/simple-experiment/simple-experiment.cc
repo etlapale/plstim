@@ -85,13 +85,4 @@ LorenceauExperiment::run_trial ()
 }
 #endif
 
-void
-LorenceauExperiment::make_frames ()
-{
-  // Set a random trial condition
-  up = bin_dist (twister);
-  cw = bin_dist (twister);
-  control = bin_dist (twister);
-}
-
 // vim:sw=2:
