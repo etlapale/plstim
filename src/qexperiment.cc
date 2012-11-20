@@ -234,10 +234,7 @@ QExperiment::exec ()
 void
 QExperiment::paint_page (Page* page,
 			 QImage& img,
-			 QPainter& painter,
-			 QScriptValue& painter_obj,
-			 QScriptValue& paint_fun,
-			 QScriptValue& this_obj)
+			 QPainter& painter)
 {
   QScriptValueList args;
   QScriptValue res;
@@ -249,16 +246,17 @@ QExperiment::paint_page (Page* page,
   case Page::Type::SINGLE:
     painter.begin (&img);
 
-    args << page->title;
-    args << painter_obj;
-    args << 0;
+    lua_getglobal (lstate, "paint_frame");
+    lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
+    lua_pushlightuserdata (lstate, &painter);
+    lua_pushnumber (lstate, 0);
 
-    res = paint_fun.call (this_obj, args);
-    if (res.isError ()) {
-      qDebug () << res.property ("message").toString ();
-    }
+    if (lua_pcall (lstate, 3, 0, 0) != 0)
+      qDebug () << "error: could not call paint_frame ():"
+	<< lua_tostring (lstate, -1);
 
     painter.end ();
+
     img.save (QString ("page-") + page->title + ".png");
     glwidget->add_frame (page->title, img);
     break;
@@ -276,6 +274,7 @@ QExperiment::paint_page (Page* page,
 
       painter.begin (&img);
 
+#if 0
       args.clear ();
       args << page->title;
       args << painter_obj;
@@ -285,6 +284,7 @@ QExperiment::paint_page (Page* page,
       if (res.isError ()) {
 	qDebug () << res.property ("message").toString ();
       }
+#endif
 
       painter.end ();
       QString filename;
@@ -311,19 +311,6 @@ QExperiment::run_trial ()
     }
   }
   lua_pop (lstate, 1);
-#if 0
-  auto this_obj = script_engine->newQObject (this);
-
-  // Call QtScript’s new_trial() if existing
-  auto val = script_engine->globalObject ().property ("new_trial");
-  if (val.isFunction ()) {
-    auto res = val.call (this_obj);
-    if (res.isError ()) {
-      qDebug () << res.property ("message").toString ();
-    }
-  }
-#endif
-
   // Re-generate per-trial frames
 #if 0
   auto paint_func = script_engine->globalObject ().property ("paint_frame");
@@ -599,6 +586,44 @@ l_bin_random (lua_State* lstate)
   return 1;
 }
 
+static int
+l_qpainter_fill_rect (lua_State* lstate)
+{
+  qDebug () << "qpainter:fill_rect ()";
+
+  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
+  int x = luaL_checkint (lstate, 2);
+  int y = luaL_checkint (lstate, 3);
+  int width = luaL_checkint (lstate, 4);
+  int height = luaL_checkint (lstate, 5);
+
+  // Fetch the colour given as argument
+  QColor col;
+  if (! lua_istable (lstate, 6)) {
+    qDebug () << "error: expecting RGB color as last argument";
+    return 0;
+  }
+  lua_pushinteger (lstate, 1);
+  lua_gettable (lstate, 6);
+  col.setRedF (luaL_checknumber (lstate, -1));
+  lua_pushinteger (lstate, 2);
+  lua_gettable (lstate, 6);
+  col.setGreenF (luaL_checknumber (lstate, -1));
+  lua_pushinteger (lstate, 3);
+  lua_gettable (lstate, 6);
+  col.setBlueF (luaL_checknumber (lstate, -1));
+
+  painter->fillRect (x, y, width, height, col);
+
+  return 0;
+}
+
+static const struct luaL_reg qpainter_lib [] = {
+  {"fill_rect", l_qpainter_fill_rect},
+  {NULL, NULL}
+};
+
+
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
@@ -618,6 +643,17 @@ QExperiment::load_experiment (const QString& script_path)
   lua_pushlightuserdata (lstate, this);
   lua_settable (lstate, LUA_REGISTRYINDEX);
 
+  // Create a (TODO: read-only) experiment information table
+  const char* filename = script_path.toLocal8Bit ().data ();
+  lua_newtable (lstate);
+  lua_pushstring (lstate, "path");
+  lua_pushstring (lstate, filename);
+  lua_settable (lstate, -3);
+  lua_setglobal (lstate, "xp");
+
+  // Register wrappers
+  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
+
   // Register add_page ()
   lua_pushcfunction (lstate, l_add_page);
   lua_setglobal (lstate, "add_page");
@@ -626,7 +662,7 @@ QExperiment::load_experiment (const QString& script_path)
   lua_pushcfunction (lstate, l_bin_random);
   lua_setglobal (lstate, "bin_random");
 
-  if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
+  if (luaL_loadfile (lstate, filename)
       || lua_pcall (lstate, 0, 0, 0)) {
     qDebug () << "could not load the experiment:"
               << lua_tostring (lstate, -1);
@@ -951,51 +987,6 @@ QExperiment::setup_updated ()
   // Make sure converters are up to date
   update_converters ();
 
-  // Notify the experiment that a change occured
-#if 0
-  if (script_engine != NULL) {
-    auto this_obj = script_engine->newQObject (this);
-    // Check for an update_configuration function
-    auto val = script_engine->globalObject ().property ("update_configuration");
-    // Make sure it’s a function
-    if (val.isFunction ()) {
-      auto res = val.call (this_obj);
-      if (res.isError ()) {
-	qDebug () << res.property ("message").toString ();
-      }
-    }
-
-    // Make sure that every frame is repainted
-    // TODO: this can be done in parallel
-    if (glwidget_initialised) {
-      qDebug () << "repainting frames on a" << tex_size << "pixels texture";
-      // Make sure the new size is acceptable on the target screen
-      auto geom = dsk.screenGeometry (screen_sbox->value ());
-      if (tex_size > geom.width () || tex_size > geom.height ()) {
-	// TODO: use the message GUI logging facilities
-	qDebug () << "texture too big for the screen";
-	return;
-      }
-
-      // Image on which the frames are painted
-      QImage img (tex_size, tex_size, QImage::Format_RGB32);
-
-      // Check for a global named frame painter function
-      auto val = script_engine->globalObject ().property ("paint_frame");
-
-      // Painter
-      QPainter painter;
-      auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
-
-      // Repaint each page
-      if (val.isFunction ())
-	for (auto p : pages)
-	  paint_page (p, img, painter, painter_obj, val, this_obj);
-
-      glwidget->update_texture_size (tex_size, tex_size);
-    }
-  }
-#endif
   if (lstate != NULL) {
     // Compute the best swap interval
     lua_getglobal (lstate, "refresh");
@@ -1021,6 +1012,13 @@ QExperiment::setup_updated ()
       tex_size = 1 << (int) floor (log2 (size_px));
       if (tex_size < size_px)
 	tex_size <<= 1;
+
+      // Update Lua’s (TODO: read-only) info
+      lua_getglobal (lstate, "xp");
+      lua_pushstring (lstate, "tex_size");
+      lua_pushnumber (lstate, tex_size);
+      lua_settable (lstate, -3);
+
       qDebug () << "Texture size:" << tex_size << "x" << tex_size;
     }
     lua_pop (lstate, 1);
@@ -1034,15 +1032,38 @@ QExperiment::setup_updated ()
       }
     }
     lua_pop (lstate, 1);
+      
+    // Make sure the new size is acceptable on the target screen
+    auto geom = dsk.screenGeometry (screen_sbox->value ());
+    if (tex_size > geom.width () || tex_size > geom.height ()) {
+      // TODO: use the message GUI logging facilities
+      qDebug () << "error: texture too big for the screen";
+      return;
+    }
 
+    // Notify the GLWidget of a new texture size
+    glwidget->update_texture_size (tex_size, tex_size);
 
+    // Image on which the frames are painted
+    QImage img (tex_size, tex_size, QImage::Format_RGB32);
+    QPainter painter;
+
+    // Search for a paint_frame () function
+    lua_getglobal (lstate, "paint_frame");
+    bool pf_is_func = lua_isfunction (lstate, -1);
+    lua_pop (lstate, 1);
+    
     for (auto p : pages) {
-      // Make sure animated frames have updated number of frames
       if (p->type == Page::Type::FRAMES) {
+	// Make sure animated frames have updated number of frames
 	p->nframes = (int) round ((monitor_rate () / swap_interval)*p->duration/1000.0);
 	qDebug () << "Displaying" << p->nframes << "frames for" << p->title;
 	qDebug () << "  " << monitor_rate () << "/" << swap_interval;
       }
+
+      // Repaint the page
+      if (glwidget_initialised && pf_is_func)
+	paint_page (p, img, painter);
     }
   }
 }

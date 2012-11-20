@@ -224,10 +224,7 @@ namespace plstim
   protected:
     void setup_updated ();
 
-    void paint_page (Page* page, QImage& img, QPainter& painter,
-		     QScriptValue& painter_obj,
-		     QScriptValue& paint_fun,
-		     QScriptValue& this_obj);
+    void paint_page (Page* page, QImage& img, QPainter& painter);
 
   protected slots:
     //void screen_param_changed ();
