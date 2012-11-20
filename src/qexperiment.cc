@@ -269,7 +269,7 @@ QExperiment::paint_page (Page* page,
 
     painter->end ();
 
-    img.save (QString ("page-") + page->title + ".png");
+    //img.save (QString ("page-") + page->title + ".png");
     glwidget->add_frame (page->title, img);
     break;
 
@@ -300,8 +300,8 @@ QExperiment::paint_page (Page* page,
 	  << lua_tostring (lstate, -1);
 
       painter->end ();
-      QString filename;
-      filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
+      //QString filename;
+      //filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       //img.save (filename);
       glwidget->add_frame (img);
     }
@@ -517,6 +517,26 @@ l_deg2pix (lua_State* lstate)
   return 1;
 }
 
+static int
+l_ds2pf (lua_State* lstate)
+{
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Distance argument [deg]
+  auto degs = luaL_checknumber (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Generate the random number
+  auto pixs = xp->ds2pf (degs);
+  lua_pushnumber (lstate, pixs);
+  
+  return 1;
+}
+
 static QColor
 get_colour (lua_State* lstate, int index)
 {
@@ -554,9 +574,23 @@ l_qpainter_draw_path (lua_State* lstate)
 }
 
 static int
+l_qpainter_draw_line (lua_State* lstate)
+{
+  auto painter = (QPainter*) lua_touserdata (lstate, 1);
+  int x1 = luaL_checkint (lstate, 2);
+  int y1 = luaL_checkint (lstate, 3);
+  int x2 = luaL_checkint (lstate, 4);
+  int y2 = luaL_checkint (lstate, 5);
+
+  painter->drawLine (x1, y1, x2, y2);
+
+  return 0;
+}
+
+static int
 l_qpainter_draw_ellipse (lua_State* lstate)
 {
-  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
+  auto painter = (QPainter*) lua_touserdata (lstate, 1);
   int x = luaL_checkint (lstate, 2);
   int y = luaL_checkint (lstate, 3);
   int width = luaL_checkint (lstate, 4);
@@ -599,6 +633,21 @@ l_qpainter_set_brush (lua_State* lstate)
   return 0;
 }
 
+static int
+l_qpainter_set_pen (lua_State* lstate)
+{
+  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
+
+  if (lua_gettop (lstate) == 1)
+    painter->setPen (Qt::NoPen);
+  else {
+    QColor col = get_colour (lstate, 2);
+    painter->setPen (col);
+  }
+
+  return 0;
+}
+
 
 static int
 l_qpainter_gc (lua_State* lstate)
@@ -619,9 +668,11 @@ static const struct luaL_reg qpainter_lib_f [] = {
 
 static const struct luaL_reg qpainter_lib_m [] = {
   {"draw_ellipse", l_qpainter_draw_ellipse},
+  {"draw_line", l_qpainter_draw_line},
   {"draw_path", l_qpainter_draw_path},
   {"fill_rect", l_qpainter_fill_rect},
   {"set_brush", l_qpainter_set_brush},
+  {"set_pen", l_qpainter_set_pen},
   {"__gc", l_qpainter_gc},
   {NULL, NULL}
 };
@@ -756,6 +807,9 @@ QExperiment::load_experiment (const QString& script_path)
   // Register deg2pix ()
   lua_pushcfunction (lstate, l_deg2pix);
   lua_setglobal (lstate, "deg2pix");
+  // Register ds2pf ()
+  lua_pushcfunction (lstate, l_ds2pf);
+  lua_setglobal (lstate, "ds2pf");
 
   if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
       || lua_pcall (lstate, 0, 0, 0)) {
