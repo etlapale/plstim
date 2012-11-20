@@ -517,6 +517,29 @@ l_deg2pix (lua_State* lstate)
   return 1;
 }
 
+static QColor
+get_colour (lua_State* lstate, int index)
+{
+  QColor col;
+
+  if (! lua_istable (lstate, index)) {
+    qDebug () << "error: expecting RGB color as last argument";
+    return col;
+  }
+
+  lua_pushinteger (lstate, 1);
+  lua_gettable (lstate, index);
+  col.setRedF (luaL_checknumber (lstate, -1));
+  lua_pushinteger (lstate, 2);
+  lua_gettable (lstate, index);
+  col.setGreenF (luaL_checknumber (lstate, -1));
+  lua_pushinteger (lstate, 3);
+  lua_gettable (lstate, index);
+  col.setBlueF (luaL_checknumber (lstate, -1));
+
+  return col;
+}
+
 static int
 l_qpainter_fill_rect (lua_State* lstate)
 {
@@ -529,20 +552,7 @@ l_qpainter_fill_rect (lua_State* lstate)
   int height = luaL_checkint (lstate, 5);
 
   // Fetch the colour given as argument
-  QColor col;
-  if (! lua_istable (lstate, 6)) {
-    qDebug () << "error: expecting RGB color as last argument";
-    return 0;
-  }
-  lua_pushinteger (lstate, 1);
-  lua_gettable (lstate, 6);
-  col.setRedF (luaL_checknumber (lstate, -1));
-  lua_pushinteger (lstate, 2);
-  lua_gettable (lstate, 6);
-  col.setGreenF (luaL_checknumber (lstate, -1));
-  lua_pushinteger (lstate, 3);
-  lua_gettable (lstate, 6);
-  col.setBlueF (luaL_checknumber (lstate, -1));
+  QColor col = get_colour (lstate, 6);
 
   // TODO: pop the arguments?
 
@@ -550,6 +560,20 @@ l_qpainter_fill_rect (lua_State* lstate)
 
   return 0;
 }
+
+static int
+l_qpainter_set_brush (lua_State* lstate)
+{
+  qDebug () << "qpainter:set_brush ()";
+
+  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
+  QColor col = get_colour (lstate, 2);
+
+  painter->setBrush (col);
+
+  return 0;
+}
+
 
 static int
 l_qpainter_gc (lua_State* lstate)
@@ -570,6 +594,7 @@ static const struct luaL_reg qpainter_lib_f [] = {
 
 static const struct luaL_reg qpainter_lib_m [] = {
   {"fill_rect", l_qpainter_fill_rect},
+  {"set_brush", l_qpainter_set_brush},
   {"__gc", l_qpainter_gc},
   {NULL, NULL}
 };
@@ -605,6 +630,23 @@ l_qpainterpath_add_rect (lua_State* lstate)
 
   return 0;
 }
+static int
+l_qpainterpath_add_ellipse (lua_State* lstate)
+{
+  // Make sure we got a QPainterPath
+  auto path = (QPainterPath*) luaL_checkudata (lstate, 1, "plstim.qpainterpath");
+
+  int x = luaL_checkint (lstate, 2);
+  int y = luaL_checkint (lstate, 3);
+  int width = luaL_checkint (lstate, 4);
+  int height = luaL_checkint (lstate, 5);
+
+  // TODO: pop the arguments?
+
+  path->addEllipse (x, y, width, height);
+
+  return 0;
+}
 
 static const struct luaL_reg qpainterpath_lib_f [] = {
   {"new", l_qpainterpath_new},
@@ -612,6 +654,7 @@ static const struct luaL_reg qpainterpath_lib_f [] = {
 };
 
 static const struct luaL_reg qpainterpath_lib_m [] = {
+  {"add_ellipse", l_qpainterpath_add_ellipse},
   {"add_rect", l_qpainterpath_add_rect},
   {NULL, NULL}
 };
