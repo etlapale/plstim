@@ -7,15 +7,11 @@
 
 #include <QApplication>
 #include <QMainWindow>
-#include <QtScript>
-
 
 // Lua interpreter
 #include <lua.hpp>
 
-
 #include "glwidget.h"
-#include "qswrappers.h"
 #include "utils.h"
 
 
@@ -99,11 +95,6 @@ namespace plstim
     QSettings* settings;
 
     QDesktopWidget dsk;
-
-    ColorPrototype color_proto;
-    PenPrototype pen_proto;
-    PainterPrototype painter_proto;
-    PainterPathPrototype painterpath_proto;
 
     /// List of current messages
     QList<Message*> messages;
@@ -237,7 +228,6 @@ namespace plstim
     void glwidget_key_press_event (QKeyEvent* evt);
     void gl_resized (int w, int h);
     void normal_screen_restored ();
-    void script_engine_exception (const QScriptValue& exception);
 
   protected:
     bool save_setup;
@@ -262,8 +252,6 @@ namespace plstim
 
     QByteArray splitter_state;
 
-
-    QScriptEngine* script_engine;
 
     lua_State* lstate;
 

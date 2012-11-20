@@ -236,8 +236,6 @@ QExperiment::paint_page (Page* page,
 			 QImage& img,
 			 QPainter& painter)
 {
-  QScriptValueList args;
-  QScriptValue res;
   QElapsedTimer timer;
   //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
 
@@ -440,61 +438,7 @@ QExperiment::gl_resized (int w, int h)
   }
 }
 
-static QScriptValue
-page_constructor (QScriptContext* ctx, QScriptEngine* engine)
-{
-  cout << "ctor for page called with "
-       << ctx->argumentCount() << " arguments" << endl;
-
-  // Invalid arity for Page()
-  if (ctx->argumentCount () == 0 || ctx->argumentCount () > 2) {
-    cerr << "invalid arity for Page constructor" << endl;
-    return engine->undefinedValue ();
-  }
-
-  // Make sure we have a page title
-  auto tval = ctx->argument (ctx->argumentCount () - 1);
-  if (! tval.isString ()) {
-    cerr << "expecting a page title as last argument for Page constructor" << endl;
-    return engine->undefinedValue ();
-  }
-
-  QObject* obj;
-  if (ctx->argumentCount () == 1) {
-    obj = new Page (Page::Type::SINGLE, tval.toString ());
-  }
-  else {
-    obj = new Page (Page::Type::FRAMES, tval.toString ());
-  }
-
-  return engine->newQObject (obj, QScriptEngine::QtOwnership);
-}
-
-Q_DECLARE_METATYPE (uniform_int_distribution<int>*)
-
-Q_DECLARE_METATYPE (QColor)
-Q_DECLARE_METATYPE (QColor*)
-Q_DECLARE_METATYPE (QPen)
-Q_DECLARE_METATYPE (QPen*)
-Q_DECLARE_METATYPE (QPainter*)
-Q_DECLARE_METATYPE (QPainterPath)
-Q_DECLARE_METATYPE (QPainterPath*)
-
-
-static QScriptValue
-uid_ctor (QScriptContext* ctx, QScriptEngine* engine)
-{
-  qDebug () << "creating a distribution with " << ctx->argumentCount () << "arguments";
-  if (ctx->argumentCount () == 2) {
-    auto min = (int) ctx->argument (0).toInteger ();
-    auto max = (int) ctx->argument (1).toInteger ();
-    auto uid = new uniform_int_distribution<int> (min, max);
-    qDebug () << "  ret new uid" << (long) uid;
-    return engine->toScriptValue (uid);
-  }
-  return engine->undefinedValue ();
-}
-
+/*
 static QScriptValue
 pen_ctor (QScriptContext* ctx, QScriptEngine* engine)
 {
@@ -514,26 +458,7 @@ painterpath_ctor (QScriptContext* ctx, QScriptEngine* engine)
   cout << "Creating a new QPainterPath" << endl;
   return engine->toScriptValue (new QPainterPath ());
 }
-
-static QScriptValue
-color_ctor (QScriptContext* ctx, QScriptEngine* engine)
-{
-  int r = ctx->argument (0).toInt32 ();
-  int g = ctx->argument (1).toInt32 ();
-  int b = ctx->argument (2).toInt32 ();
-
-  return engine->toScriptValue (QColor (r, g, b));
-}
-
-void
-QExperiment::script_engine_exception (const QScriptValue& exception)
-{
-  cerr << "script engine exception!" << endl;
-
-  if (exception.isError ()) {
-    qDebug () << exception.property ("message").toString ();
-  }
-}
+}*/
 
 
 static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
@@ -629,8 +554,6 @@ QExperiment::load_experiment (const QString& script_path)
 {
   // TODO: cleanup any existing experiment
   ntrials = 0;
-  if (script_engine != NULL)
-    delete script_engine;
   if (lstate != NULL)
     lua_close (lstate);
 
@@ -667,47 +590,6 @@ QExperiment::load_experiment (const QString& script_path)
     qDebug () << "could not load the experiment:"
               << lua_tostring (lstate, -1);
   }
-
-#if 0
-  // Register defined prototypes
-  script_engine->setDefaultPrototype (qMetaTypeId<uniform_int_distribution<int>*>(),
-				      script_engine->newQObject (&uid_proto));
-  script_engine->setDefaultPrototype (qMetaTypeId<QColor*>(),
-				      script_engine->newQObject (&color_proto));
-  script_engine->setDefaultPrototype (qMetaTypeId<QPainterPath*>(),
-				      script_engine->newQObject (&painterpath_proto));
-  script_engine->setDefaultPrototype (qMetaTypeId<QPainter*>(),
-				      script_engine->newQObject (&painter_proto));
-
-  // Register Page constructor
-  QScriptValue page_ctor = script_engine->newFunction (page_constructor);
-  QScriptValue page_meta = script_engine->newQMetaObject (&Page::staticMetaObject, page_ctor);
-  script_engine->globalObject ().setProperty ("Page", page_meta);
-
-  // Register UniformIntDistribution() constructor
-  auto ctor = script_engine->newFunction (uid_ctor, script_engine->newQObject (&uid_proto));
-  script_engine->globalObject ().setProperty ("UniformIntDistribution", ctor);
-
-  // Register QColor() constructor
-  ctor = script_engine->newFunction (color_ctor, script_engine->newQObject (&color_proto));
-  script_engine->globalObject ().setProperty ("QColor", ctor);
-
-  // Register QPen() constructor
-  ctor = script_engine->newFunction (pen_ctor, script_engine->newQObject (&pen_proto));
-  script_engine->globalObject ().setProperty ("QPen", ctor);
-
-  // Register QPainterPath() constructor
-  auto path_ctor = script_engine->newFunction (painterpath_ctor, script_engine->newQObject (&painterpath_proto));
-  script_engine->globalObject ().setProperty ("QPainterPath", path_ctor);
-
-  // Register the experiment
-  auto xp_obj = script_engine->newQObject (this);
-  script_engine->globalObject ().setProperty ("xp", xp_obj);
-
-  // Register ‘glwidget’
-  auto glw_obj = script_engine->newQObject (glwidget);
-  script_engine->globalObject ().setProperty ("glwidget", glw_obj);
-#endif
 
   lua_getglobal (lstate, "ntrials");
   if (lua_isnumber (lstate, -1)) {
@@ -792,7 +674,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   match_res_msg = NULL;
 
   lstate = NULL;
-  script_engine = NULL;
 
   waiting_fullscreen = false;
   session_running = false;
@@ -1268,9 +1149,6 @@ QExperiment::~QExperiment ()
   delete refresh_edit;
 
   delete glwidget;
-
-  if (script_engine != NULL)
-    delete script_engine;
 
   // TODO: debug the double free corruption here
   /*if (lstate != NULL)
