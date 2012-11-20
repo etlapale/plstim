@@ -551,6 +551,8 @@ l_qpainter_fill_rect (lua_State* lstate)
   lua_gettable (lstate, 6);
   col.setBlueF (luaL_checknumber (lstate, -1));
 
+  // TODO: pop the arguments?
+
   painter->fillRect (x, y, width, height, col);
 
   return 0;
@@ -558,6 +560,37 @@ l_qpainter_fill_rect (lua_State* lstate)
 
 static const struct luaL_reg qpainter_lib [] = {
   {"fill_rect", l_qpainter_fill_rect},
+  {NULL, NULL}
+};
+
+static int
+l_qpainterpath_new (lua_State* lstate)
+{
+  auto path = new QPainterPath ();
+  lua_pushlightuserdata (lstate, path);
+
+  return 1;
+}
+
+static int
+l_qpainterpath_add_rect (lua_State* lstate)
+{
+  auto path = (QPainterPath*) lua_touserdata (lstate, 1);
+  int x = luaL_checkint (lstate, 2);
+  int y = luaL_checkint (lstate, 3);
+  int width = luaL_checkint (lstate, 4);
+  int height = luaL_checkint (lstate, 5);
+
+  // TODO: pop the arguments?
+
+  path->addRect (x, y, width, height);
+
+  return 0;
+}
+
+static const struct luaL_reg qpainterpath_lib [] = {
+  {"new", l_qpainterpath_new},
+  {"add_rect", l_qpainterpath_add_rect},
   {NULL, NULL}
 };
 
@@ -580,15 +613,15 @@ QExperiment::load_experiment (const QString& script_path)
   lua_settable (lstate, LUA_REGISTRYINDEX);
 
   // Create a (TODO: read-only) experiment information table
-  const char* filename = script_path.toLocal8Bit ().data ();
   lua_newtable (lstate);
   lua_pushstring (lstate, "path");
-  lua_pushstring (lstate, filename);
+  lua_pushstring (lstate, script_path.toLocal8Bit ().data ());
   lua_settable (lstate, -3);
   lua_setglobal (lstate, "xp");
 
   // Register wrappers
   luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
+  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib, 0);
 
   // Register add_page ()
   lua_pushcfunction (lstate, l_add_page);
@@ -601,7 +634,7 @@ QExperiment::load_experiment (const QString& script_path)
   lua_pushcfunction (lstate, l_deg2pix);
   lua_setglobal (lstate, "deg2pix");
 
-  if (luaL_loadfile (lstate, filename)
+  if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
       || lua_pcall (lstate, 0, 0, 0)) {
     qDebug () << "could not load the experiment:"
               << lua_tostring (lstate, -1);
