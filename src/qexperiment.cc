@@ -541,6 +541,19 @@ get_colour (lua_State* lstate, int index)
 }
 
 static int
+l_qpainter_draw_path (lua_State* lstate)
+{
+  qDebug () << "qpainter:draw_path ()";
+
+  auto painter = (QPainter*) lua_touserdata (lstate, 1);
+  auto path = (QPainterPath*) lua_touserdata (lstate, 2);
+
+  painter->drawPath (*path);
+
+  return 0;
+}
+
+static int
 l_qpainter_fill_rect (lua_State* lstate)
 {
   qDebug () << "qpainter:fill_rect ()";
@@ -593,6 +606,7 @@ static const struct luaL_reg qpainter_lib_f [] = {
 };
 
 static const struct luaL_reg qpainter_lib_m [] = {
+  {"draw_path", l_qpainter_draw_path},
   {"fill_rect", l_qpainter_fill_rect},
   {"set_brush", l_qpainter_set_brush},
   {"__gc", l_qpainter_gc},
