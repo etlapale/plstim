@@ -602,15 +602,21 @@ static const struct luaL_reg qpainter_lib_m [] = {
 static int
 l_qpainterpath_new (lua_State* lstate)
 {
-  // Create a new QPainterPath
-  auto path = new QPainterPath ();
-  lua_pushlightuserdata (lstate, path);
-
-  // Set the matching metatable
-  luaL_getmetatable (lstate, "plstim.qpainterpath");
-  lua_setmetatable (lstate, -2);
-
+  // Create a new Lua accessible QPainterPath
+  auto path = new (lstate, "plstim.qpainterpath") QPainterPath ();
   return 1;
+}
+
+static int
+l_qpainterpath_gc (lua_State* lstate)
+{
+  qDebug () << "[Lua] Garbage collecting a QPainterPath";
+
+  // Call the C++ destructor
+  auto path = static_cast<QPainterPath*> (lua_touserdata (lstate, 1));
+  path->~QPainterPath ();
+
+  return 0;
 }
 
 static int
@@ -656,6 +662,7 @@ static const struct luaL_reg qpainterpath_lib_f [] = {
 static const struct luaL_reg qpainterpath_lib_m [] = {
   {"add_ellipse", l_qpainterpath_add_ellipse},
   {"add_rect", l_qpainterpath_add_rect},
+  {"__gc", l_qpainterpath_gc},
   {NULL, NULL}
 };
 
