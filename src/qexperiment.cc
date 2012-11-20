@@ -566,8 +566,13 @@ static const struct luaL_reg qpainter_lib [] = {
 static int
 l_qpainterpath_new (lua_State* lstate)
 {
+  // Create a new QPainterPath
   auto path = new QPainterPath ();
   lua_pushlightuserdata (lstate, path);
+
+  // Set the matching metatable
+  luaL_getmetatable (lstate, "plstim.qpainterpath");
+  lua_setmetatable (lstate, -2);
 
   return 1;
 }
@@ -575,7 +580,9 @@ l_qpainterpath_new (lua_State* lstate)
 static int
 l_qpainterpath_add_rect (lua_State* lstate)
 {
-  auto path = (QPainterPath*) lua_touserdata (lstate, 1);
+  // Make sure we got a QPainterPath
+  auto path = (QPainterPath*) luaL_checkudata (lstate, 1, "plstim.qpainterpath");
+
   int x = luaL_checkint (lstate, 2);
   int y = luaL_checkint (lstate, 3);
   int width = luaL_checkint (lstate, 4);
@@ -594,6 +601,14 @@ static const struct luaL_reg qpainterpath_lib [] = {
   {NULL, NULL}
 };
 
+int
+luaopen_plstim (lua_State* lstate)
+{
+  luaL_newmetatable (lstate, "plstim.qpainterpath");
+
+  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
+  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib, 0);
+}
 
 bool
 QExperiment::load_experiment (const QString& script_path)
@@ -620,8 +635,7 @@ QExperiment::load_experiment (const QString& script_path)
   lua_setglobal (lstate, "xp");
 
   // Register wrappers
-  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
-  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib, 0);
+  luaopen_plstim (lstate);
 
   // Register add_page ()
   lua_pushcfunction (lstate, l_add_page);
