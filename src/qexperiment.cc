@@ -18,6 +18,16 @@ using namespace plstim;
 #include <QtDebug>
 
 
+
+void*
+operator new (std::size_t size, lua_State* lstate, const char* metaname)
+{
+  void* obj = lua_newuserdata (lstate, size);
+  luaL_getmetatable (lstate, metaname);
+  lua_setmetatable (lstate, -2);
+  return obj;
+}
+
 #if 0
 #ifdef HAVE_XRANDR
   int evt_base, err_base;
@@ -234,7 +244,7 @@ QExperiment::exec ()
 void
 QExperiment::paint_page (Page* page,
 			 QImage& img,
-			 QPainter& painter)
+			 QPainter* painter)
 {
   QElapsedTimer timer;
   //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
@@ -242,18 +252,22 @@ QExperiment::paint_page (Page* page,
   switch (page->type) {
   // Single frames
   case Page::Type::SINGLE:
-    painter.begin (&img);
+    painter->begin (&img);
 
     lua_getglobal (lstate, "paint_frame");
     lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
-    lua_pushlightuserdata (lstate, &painter);
+
+    // Fetch the QPainter from the registry
+    lua_pushlightuserdata (lstate, (void*) painter);
+    lua_gettable (lstate, LUA_REGISTRYINDEX);
+
     lua_pushnumber (lstate, 0);
 
     if (lua_pcall (lstate, 3, 0, 0) != 0)
       qDebug () << "error: could not call paint_frame ():"
 	<< lua_tostring (lstate, -1);
 
-    painter.end ();
+    painter->end ();
 
     img.save (QString ("page-") + page->title + ".png");
     glwidget->add_frame (page->title, img);
@@ -270,21 +284,22 @@ QExperiment::paint_page (Page* page,
 
     for (int i = 0; i < page->frameCount (); i++) {
 
-      painter.begin (&img);
+      painter->begin (&img);
 
-#if 0
-      args.clear ();
-      args << page->title;
-      args << painter_obj;
-      args << i;
+      lua_getglobal (lstate, "paint_frame");
+      lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
 
-      res = paint_fun.call (this_obj, args);
-      if (res.isError ()) {
-	qDebug () << res.property ("message").toString ();
-      }
-#endif
+      // Fetch the QPainter from the registry
+      lua_pushlightuserdata (lstate, (void*) painter);
+      lua_gettable (lstate, LUA_REGISTRYINDEX);
 
-      painter.end ();
+      lua_pushnumber (lstate, i);
+
+      if (lua_pcall (lstate, 3, 0, 0) != 0)
+	qDebug () << "error: could not call paint_frame ():"
+	  << lua_tostring (lstate, -1);
+
+      painter->end ();
       QString filename;
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       //img.save (filename);
@@ -431,28 +446,6 @@ QExperiment::gl_resized (int w, int h)
   }
 }
 
-/*
-static QScriptValue
-pen_ctor (QScriptContext* ctx, QScriptEngine* engine)
-{
-  cout << "Creating a new QPainterPath" << endl;
-  
-  if (ctx->argumentCount () == 0)
-    return engine->toScriptValue (new QPen ());
-  else {
-    auto color = qscriptvalue_cast<QColor*> (ctx->argument (0));
-    return engine->toScriptValue (new QPen (*color));
-  }
-}
-
-static QScriptValue
-painterpath_ctor (QScriptContext* ctx, QScriptEngine* engine)
-{
-  cout << "Creating a new QPainterPath" << endl;
-  return engine->toScriptValue (new QPainterPath ());
-}
-}*/
-
 
 static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 
@@ -558,8 +551,26 @@ l_qpainter_fill_rect (lua_State* lstate)
   return 0;
 }
 
-static const struct luaL_reg qpainter_lib [] = {
+static int
+l_qpainter_gc (lua_State* lstate)
+{
+  qDebug () << "[Lua] Garbage collecting a QPainter";
+
+  // Call the C++ destructor
+  auto painter = static_cast<QPainter*> (lua_touserdata (lstate, 1));
+  painter->~QPainter ();
+
+  return 0;
+}
+
+static const struct luaL_reg qpainter_lib_f [] = {
+  //{"fill_rect", l_qpainter_fill_rect},
+  {NULL, NULL}
+};
+
+static const struct luaL_reg qpainter_lib_m [] = {
   {"fill_rect", l_qpainter_fill_rect},
+  {"__gc", l_qpainter_gc},
   {NULL, NULL}
 };
 
@@ -605,19 +616,27 @@ static const struct luaL_reg qpainterpath_lib_m [] = {
   {NULL, NULL}
 };
 
-int
-luaopen_plstim (lua_State* lstate)
-{
-  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
 
-  luaL_newmetatable (lstate, "plstim.qpainterpath");
+static void
+register_class (lua_State* lstate,
+		const char* fullname, const luaL_reg* methods)
+{
+  luaL_newmetatable (lstate, fullname);
 
   // Register the methods
   lua_pushstring (lstate, "__index");
   lua_pushvalue (lstate, -2);
   lua_settable (lstate, -3);
-  luaL_openlib (lstate, NULL, qpainterpath_lib_m, 0);
+  luaL_openlib (lstate, NULL, methods, 0);
+}
 
+int
+luaopen_plstim (lua_State* lstate)
+{
+  register_class (lstate, "plstim.qpainter", qpainter_lib_m);
+  luaL_openlib (lstate, "qpainter", qpainter_lib_f, 0);
+
+  register_class (lstate, "plstim.qpainterpath", qpainterpath_lib_m);
   luaL_openlib (lstate, "qpainterpath", qpainterpath_lib_f, 0);
 }
 
@@ -1001,7 +1020,17 @@ QExperiment::setup_updated ()
 
     // Image on which the frames are painted
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
-    QPainter painter;
+
+    // Create a QPainter accessible from Lua
+    auto painter = new (lstate, "plstim.qpainter") QPainter;
+
+    // Register the QPainter to avoid collection
+    lua_pushlightuserdata (lstate, (void*) painter);
+    lua_pushvalue (lstate, -2);
+    lua_settable (lstate, LUA_REGISTRYINDEX);
+
+    // Remove the QPainter from the stack
+    lua_pop (lstate, 1);
 
     // Search for a paint_frame () function
     lua_getglobal (lstate, "paint_frame");
@@ -1020,6 +1049,11 @@ QExperiment::setup_updated ()
       if (glwidget_initialised && pf_is_func)
 	paint_page (p, img, painter);
     }
+
+    // Mark the QPainter for destruction
+    lua_pushlightuserdata (lstate, (void*) painter);
+    lua_pushnil (lstate);
+    lua_settable (lstate, LUA_REGISTRYINDEX);
   }
 }
 
@@ -1225,8 +1259,8 @@ QExperiment::~QExperiment ()
   delete glwidget;
 
   // TODO: debug the double free corruption here
-  /*if (lstate != NULL)
-    lua_close (lstate);*/
+  if (lstate != NULL)
+    lua_close (lstate);
 }
 
 void
