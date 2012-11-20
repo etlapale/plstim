@@ -167,7 +167,8 @@ using namespace plstim;
 #endif
 
 Page::Page (Page::Type t, const QString& page_title)
-  : type (t), title (page_title)
+  : type (t), title (page_title),
+    duration (0)
 {
   qDebug () << "Creating a page with title" << page_title << endl;
   switch (type) {
@@ -545,8 +546,12 @@ l_add_page (lua_State* lstate)
   // Page information
   auto page_name = luaL_checkstring (lstate, 1);
   auto page_type = Page::Type::SINGLE;
+  float duration = 0;
+
+  // Animated frames
   if (lua_gettop (lstate) > 1) {
     page_type = Page::Type::FRAMES;
+    duration = luaL_checknumber (lstate, 2);
     lua_pop (lstate, 1);
   }
   
@@ -557,6 +562,7 @@ l_add_page (lua_State* lstate)
 
   // Create a new page and add it to the experiment
   auto page = new Page (page_type, page_name);
+  page->duration = duration;
   xp->add_page (page);
 
   // Return the created page
@@ -995,6 +1001,16 @@ QExperiment::setup_updated ()
       }
     }
     lua_pop (lstate, 1);
+
+
+    for (auto p : pages) {
+      // Make sure animated frames have updated number of frames
+      if (p->type == Page::Type::FRAMES) {
+	p->nframes = (int) round ((monitor_rate () / swap_interval)*p->duration/1000.0);
+	qDebug () << "Displaying" << p->nframes << "frames for" << p->title;
+	qDebug () << "  " << monitor_rate () << "/" << swap_interval;
+      }
+    }
   }
 }
 
@@ -1066,6 +1082,8 @@ QExperiment::set_swap_interval (int swap_interval)
     glformat.setSwapInterval (swap_interval);
     set_glformat (glformat);
   }
+
+  this->swap_interval = swap_interval;
 }
 
 Message::Message (Type t, const QString& str)

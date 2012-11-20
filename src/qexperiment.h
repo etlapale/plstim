@@ -57,7 +57,13 @@ namespace plstim
     PaintTime paint_time;
     bool wait_for_key;
     std::set<int> accepted_keys;
+
+    /// Duration of the animation in milliseconds
+    float duration;
+
+    /// Actual number of frames in the page
     int nframes;
+
   public:
     Page (Page::Type t, const QString& title);
     virtual ~Page ();
@@ -205,7 +211,7 @@ namespace plstim
 
     float monitor_rate () const;
 
-    Q_INVOKABLE void set_swap_interval (int swap_interval);
+    void set_swap_interval (int swap_interval);
 
   public slots:
 
