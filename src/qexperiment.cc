@@ -595,8 +595,12 @@ l_qpainterpath_add_rect (lua_State* lstate)
   return 0;
 }
 
-static const struct luaL_reg qpainterpath_lib [] = {
+static const struct luaL_reg qpainterpath_lib_f [] = {
   {"new", l_qpainterpath_new},
+  {NULL, NULL}
+};
+
+static const struct luaL_reg qpainterpath_lib_m [] = {
   {"add_rect", l_qpainterpath_add_rect},
   {NULL, NULL}
 };
@@ -604,10 +608,17 @@ static const struct luaL_reg qpainterpath_lib [] = {
 int
 luaopen_plstim (lua_State* lstate)
 {
+  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
+
   luaL_newmetatable (lstate, "plstim.qpainterpath");
 
-  luaL_openlib (lstate, "qpainter", qpainter_lib, 0);
-  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib, 0);
+  // Register the methods
+  lua_pushstring (lstate, "__index");
+  lua_pushvalue (lstate, -2);
+  lua_settable (lstate, -3);
+  luaL_openlib (lstate, NULL, qpainterpath_lib_m, 0);
+
+  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib_f, 0);
 }
 
 bool
