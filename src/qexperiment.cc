@@ -554,6 +554,20 @@ l_qpainter_draw_path (lua_State* lstate)
 }
 
 static int
+l_qpainter_draw_ellipse (lua_State* lstate)
+{
+  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
+  int x = luaL_checkint (lstate, 2);
+  int y = luaL_checkint (lstate, 3);
+  int width = luaL_checkint (lstate, 4);
+  int height = luaL_checkint (lstate, 5);
+
+  painter->drawEllipse (x, y, width, height);
+
+  return 0;
+}
+
+static int
 l_qpainter_fill_rect (lua_State* lstate)
 {
   qDebug () << "qpainter:fill_rect ()";
@@ -577,8 +591,6 @@ l_qpainter_fill_rect (lua_State* lstate)
 static int
 l_qpainter_set_brush (lua_State* lstate)
 {
-  qDebug () << "qpainter:set_brush ()";
-
   QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
   QColor col = get_colour (lstate, 2);
 
@@ -606,6 +618,7 @@ static const struct luaL_reg qpainter_lib_f [] = {
 };
 
 static const struct luaL_reg qpainter_lib_m [] = {
+  {"draw_ellipse", l_qpainter_draw_ellipse},
   {"draw_path", l_qpainter_draw_path},
   {"fill_rect", l_qpainter_fill_rect},
   {"set_brush", l_qpainter_set_brush},
@@ -617,7 +630,7 @@ static int
 l_qpainterpath_new (lua_State* lstate)
 {
   // Create a new Lua accessible QPainterPath
-  auto path = new (lstate, "plstim.qpainterpath") QPainterPath ();
+  new (lstate, "plstim.qpainterpath") QPainterPath ();
   return 1;
 }
 
@@ -702,6 +715,8 @@ luaopen_plstim (lua_State* lstate)
 
   register_class (lstate, "plstim.qpainterpath", qpainterpath_lib_m);
   luaL_openlib (lstate, "qpainterpath", qpainterpath_lib_f, 0);
+
+  return 0;
 }
 
 bool
