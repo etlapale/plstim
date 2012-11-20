@@ -100,7 +100,6 @@ namespace plstim
 
     QDesktopWidget dsk;
 
-    UniformIntDistributionPrototype uid_proto;
     ColorPrototype color_proto;
     PenPrototype pen_proto;
     PainterPrototype painter_proto;
@@ -276,8 +275,10 @@ namespace plstim
      */
     bool waiting_fullscreen;
   
+  public:
     /// Random number generator
     mt19937 twister;
+
     /// Binary choice distribution
     uniform_int_distribution<int> bin_dist;
   };

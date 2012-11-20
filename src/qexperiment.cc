@@ -301,6 +301,17 @@ void
 QExperiment::run_trial ()
 {
   cout << "Starting trial " << current_trial << endl;
+
+  // Call the update_configuration () callback
+  lua_getglobal (lstate, "new_trial");
+  if (lua_isfunction (lstate, -1)) {
+    if (lua_pcall (lstate, 0, 0, 0) != 0) {
+      qDebug () << "error: could not call update_configuration:"
+		<< lua_tostring (lstate, -1);
+    }
+  }
+  lua_pop (lstate, 1);
+#if 0
   auto this_obj = script_engine->newQObject (this);
 
   // Call QtScript’s new_trial() if existing
@@ -311,8 +322,10 @@ QExperiment::run_trial ()
       qDebug () << res.property ("message").toString ();
     }
   }
+#endif
 
   // Re-generate per-trial frames
+#if 0
   auto paint_func = script_engine->globalObject ().property ("paint_frame");
   if (paint_func.isFunction ()) {
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
@@ -326,6 +339,7 @@ QExperiment::run_trial ()
     }
 
   }
+#endif
 
   current_page = -1;
   //show_page (current_page);
@@ -541,8 +555,6 @@ static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 static int
 l_add_page (lua_State* lstate)
 {
-  qDebug () << "[Lua] add_page ()";
-
   // Page information
   auto page_name = luaL_checkstring (lstate, 1);
   auto page_type = Page::Type::SINGLE;
@@ -559,6 +571,7 @@ l_add_page (lua_State* lstate)
   lua_pushstring (lstate, PLSTIM_EXPERIMENT);
   lua_gettable (lstate, LUA_REGISTRYINDEX);
   auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
 
   // Create a new page and add it to the experiment
   auto page = new Page (page_type, page_name);
@@ -568,6 +581,22 @@ l_add_page (lua_State* lstate)
   // Return the created page
 
   return 0;
+}
+
+static int
+l_bin_random (lua_State* lstate)
+{
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Generate the random number
+  int num = xp->bin_dist (xp->twister);
+  lua_pushboolean (lstate, num);
+  
+  return 1;
 }
 
 bool
@@ -592,6 +621,10 @@ QExperiment::load_experiment (const QString& script_path)
   // Register add_page ()
   lua_pushcfunction (lstate, l_add_page);
   lua_setglobal (lstate, "add_page");
+
+  // Register bin_random ()
+  lua_pushcfunction (lstate, l_bin_random);
+  lua_setglobal (lstate, "bin_random");
 
   if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
       || lua_pcall (lstate, 0, 0, 0)) {
@@ -662,7 +695,7 @@ void
 QExperiment::run_session ()
 {
   // Make sure an experiment is loaded
-  if (script_engine == NULL)
+  if (lstate == NULL)
     return;
 
   cout << "Run session!" << endl;
@@ -1217,8 +1250,10 @@ QExperiment::~QExperiment ()
 
   if (script_engine != NULL)
     delete script_engine;
-  if (lstate != NULL)
-    lua_close (lstate);
+
+  // TODO: debug the double free corruption here
+  /*if (lstate != NULL)
+    lua_close (lstate);*/
 }
 
 void
