@@ -420,13 +420,6 @@ QExperiment::gl_resized (int w, int h)
       session_running = true;
 
       // Run the trials
-      /*for (current_trial = 0;
-	   current_trial < ntrials;
-	   current_trial++)
-	if (! run_trial ()) {
-	  cout << "could not run a trial!" << endl;
-	  break;
-	}*/
       run_trial ();
     }
 
@@ -512,6 +505,26 @@ l_bin_random (lua_State* lstate)
 }
 
 static int
+l_deg2pix (lua_State* lstate)
+{
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Distance argument [deg]
+  auto degs = luaL_checknumber (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Generate the random number
+  auto pixs = xp->deg2pix (degs);
+  lua_pushnumber (lstate, pixs);
+  
+  return 1;
+}
+
+static int
 l_qpainter_fill_rect (lua_State* lstate)
 {
   qDebug () << "qpainter:fill_rect ()";
@@ -584,6 +597,9 @@ QExperiment::load_experiment (const QString& script_path)
   // Register bin_random ()
   lua_pushcfunction (lstate, l_bin_random);
   lua_setglobal (lstate, "bin_random");
+  // Register deg2pix ()
+  lua_pushcfunction (lstate, l_deg2pix);
+  lua_setglobal (lstate, "deg2pix");
 
   if (luaL_loadfile (lstate, filename)
       || lua_pcall (lstate, 0, 0, 0)) {
