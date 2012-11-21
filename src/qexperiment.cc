@@ -324,22 +324,34 @@ QExperiment::run_trial ()
     }
   }
   lua_pop (lstate, 1);
-  // Re-generate per-trial frames
-#if 0
-  auto paint_func = script_engine->globalObject ().property ("paint_frame");
-  if (paint_func.isFunction ()) {
+
+  // Check if there is a paint_frame () function
+  lua_getglobal (lstate, "paint_frame");
+  bool pf_is_func = lua_isfunction (lstate, -1);
+  lua_pop (lstate, 1);
+
+  if (pf_is_func) {
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
-    QPainter painter;
-    auto painter_obj = script_engine->newVariant (QVariant::fromValue (&painter));
+    auto painter = new (lstate, "plstim.qpainter") QPainter;
 
-    for (auto p : pages) {
+    // Register the QPainter to avoid collection
+    lua_pushlightuserdata (lstate, (void*) painter);
+    lua_pushvalue (lstate, -2);
+    lua_settable (lstate, LUA_REGISTRYINDEX);
+
+    // Remove the QPainter from the stack
+    lua_pop (lstate, 1);
+
+    // Paint the per-trial pages
+    for (auto p : pages)
       if (p->paint_time == Page::PaintTime::TRIAL)
-	paint_page (p, img, painter,
-		    painter_obj, paint_func, this_obj);
-    }
-
+	paint_page (p, img, painter);
+	  
+    // Mark the QPainter for destruction
+    lua_pushlightuserdata (lstate, (void*) painter);
+    lua_pushnil (lstate);
+    lua_settable (lstate, LUA_REGISTRYINDEX);
   }
-#endif
 
   current_page = -1;
   //show_page (current_page);
@@ -652,8 +664,6 @@ l_qpainter_set_pen (lua_State* lstate)
 static int
 l_qpainter_gc (lua_State* lstate)
 {
-  qDebug () << "[Lua] Garbage collecting a QPainter";
-
   // Call the C++ destructor
   auto painter = static_cast<QPainter*> (lua_touserdata (lstate, 1));
   painter->~QPainter ();
@@ -662,7 +672,6 @@ l_qpainter_gc (lua_State* lstate)
 }
 
 static const struct luaL_reg qpainter_lib_f [] = {
-  //{"fill_rect", l_qpainter_fill_rect},
   {NULL, NULL}
 };
 
