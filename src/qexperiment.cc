@@ -502,9 +502,30 @@ l_bin_random (lua_State* lstate)
   auto xp = (QExperiment*) lua_touserdata (lstate, -1);
   lua_pop (lstate, 1);
 
-  // Generate the random number
-  int num = xp->bin_dist (xp->twister);
-  lua_pushboolean (lstate, num);
+  // If we want an array of random numbers
+  if (lua_gettop (lstate) >= 1) {
+    qDebug () << "bin_random () with argument";
+    // Number of elements
+    auto size = luaL_checkinteger (lstate, -1);
+    lua_pop (lstate, 1);
+
+    // Create the array
+    lua_createtable (lstate, size, 0);
+    
+    // Populate with random numbers
+    for (int i = 0; i < size; i++) {
+      //lua_pushinteger (lstate, i+1);
+      lua_pushboolean (lstate, xp->bin_dist (xp->twister));
+      lua_rawseti (lstate, -2, i+1);
+      //lua_settable (lstate, -3);
+    }
+  }
+  // If we want a single random number
+  else {
+    // Generate the random number
+    int num = xp->bin_dist (xp->twister);
+    lua_pushboolean (lstate, num);
+  }
   
   return 1;
 }
@@ -653,8 +674,16 @@ l_qpainter_set_pen (lua_State* lstate)
   if (lua_gettop (lstate) == 1)
     painter->setPen (Qt::NoPen);
   else {
-    QColor col = get_colour (lstate, 2);
-    painter->setPen (col);
+    // Colour argument
+    if (lua_istable (lstate, 2)) {
+      QColor col = get_colour (lstate, 2);
+      painter->setPen (col);
+    }
+    // QPen argument
+    else {
+      auto pen = (QPen*) luaL_checkudata (lstate, 2, "plstim.qpen");
+      painter->setPen (*pen);
+    }
   }
 
   return 0;
@@ -664,6 +693,8 @@ l_qpainter_set_pen (lua_State* lstate)
 static int
 l_qpainter_gc (lua_State* lstate)
 {
+  qDebug () << "[Lua] Garbage collecting a QPainter";
+
   // Call the C++ destructor
   auto painter = static_cast<QPainter*> (lua_touserdata (lstate, 1));
   painter->~QPainter ();
@@ -687,6 +718,52 @@ static const struct luaL_reg qpainter_lib_m [] = {
 };
 
 static int
+l_qpen_new (lua_State* lstate)
+{
+  if (lua_gettop (lstate) >= 1) {
+    auto col = get_colour (lstate, 1);
+    new (lstate, "plstim.qpen") QPen (col);
+  }
+  else {
+    new (lstate, "plstim.qpen") QPen;
+  }
+
+  return 1;
+}
+
+static int
+l_qpen_gc (lua_State* lstate)
+{
+  // Call the C++ destructor
+  auto pen = static_cast<QPen*> (lua_touserdata (lstate, 1));
+  pen->~QPen ();
+
+  return 0;
+}
+
+static int
+l_qpen_set_width (lua_State* lstate)
+{
+  auto pen = (QPen*) lua_touserdata (lstate, 1);
+  auto width = luaL_checknumber (lstate, 2);
+
+  pen->setWidthF (width);
+
+  return 0;
+}
+
+static const struct luaL_reg qpen_lib_f [] = {
+  {"new", l_qpen_new},
+  {NULL, NULL}
+};
+
+static const struct luaL_reg qpen_lib_m [] = {
+  {"set_width", l_qpen_set_width},
+  {"__gc", l_qpen_gc},
+  {NULL, NULL}
+};
+
+static int
 l_qpainterpath_new (lua_State* lstate)
 {
   // Create a new Lua accessible QPainterPath
@@ -697,8 +774,6 @@ l_qpainterpath_new (lua_State* lstate)
 static int
 l_qpainterpath_gc (lua_State* lstate)
 {
-  qDebug () << "[Lua] Garbage collecting a QPainterPath";
-
   // Call the C++ destructor
   auto path = static_cast<QPainterPath*> (lua_touserdata (lstate, 1));
   path->~QPainterPath ();
@@ -775,6 +850,9 @@ luaopen_plstim (lua_State* lstate)
 
   register_class (lstate, "plstim.qpainterpath", qpainterpath_lib_m);
   luaL_openlib (lstate, "qpainterpath", qpainterpath_lib_f, 0);
+
+  register_class (lstate, "plstim.qpen", qpen_lib_m);
+  luaL_openlib (lstate, "qpen", qpen_lib_f, 0);
 
   return 0;
 }

@@ -117,7 +117,10 @@ namespace plstim
       glClear (GL_COLOR_BUFFER_BIT);
 
       glBindTexture (GL_TEXTURE_2D, current_frame);
+      assert_gl_error ("binding a texture");
+
       glUniform1i (texloc, 0);
+      assert_gl_error ("specifying an uniform");
 
       glDrawArrays (GL_TRIANGLES, 0, 6);
       swapBuffers ();
