@@ -12,25 +12,12 @@
 #include <lua.hpp>
 
 #include "glwidget.h"
+#include "messagebox.h"
 #include "utils.h"
 
 
 namespace plstim
 {
-  class Message {
-  public:
-    enum Type {
-      WARNING,
-      ERROR
-    };
-  public:
-    Message (Message::Type t, const QString& msg);
-  public:
-    Message::Type type;
-    QString msg;
-    QList<QWidget*> widgets;
-  };
-
   class Page : public QObject
   {
     Q_OBJECT
@@ -88,7 +75,7 @@ namespace plstim
   protected:
     /// Associated Qt application
     QApplication app;
-    QMainWindow win;
+    QMainWindow* win;
     MyGLWidget* glwidget;
 
     /// Application settings
@@ -96,11 +83,9 @@ namespace plstim
 
     QDesktopWidget dsk;
 
-    /// List of current messages
-    QList<Message*> messages;
-
-    Message* res_msg;
-    Message* match_res_msg;
+    MessageBox* msgbox;
+    //Message* res_msg;
+    //Message* match_res_msg;
 
     /// Pages composing a trial
     std::vector<Page*> pages;
@@ -155,10 +140,6 @@ namespace plstim
      * destroyed after calling this function.
      */
     //bool copy_to_texture (const GLvoid* src, GLuint dest);
-    
-    void add_message (Message* msg);
-
-    void remove_message (Message* msg);
 
   public:
 
@@ -244,6 +225,9 @@ namespace plstim
     QLineEdit* lum_max_edit;
     QLineEdit* refresh_edit;
 
+    QSplitter* hsplitter;
+    QTabWidget* logtab;
+
     float distance;
     float px_mm;
 
@@ -266,6 +250,9 @@ namespace plstim
 
     /// Binary choice distribution
     uniform_int_distribution<int> bin_dist;
+
+    /// Uniform double distribution in [0,1]
+    uniform_real_distribution<double> real_dist;
   };
 }
 

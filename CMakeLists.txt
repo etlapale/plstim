@@ -16,8 +16,8 @@ find_package (Lua51 REQUIRED)
 include_directories (${LUA_INCLUDE_DIR})
 
 # Main program
-set (plstim_src src/qexperiment.cc src/utils.cc)
-set (plstim_hdr src/qexperiment.h src/glwidget.h)
+set (plstim_src src/qexperiment.cc src/messagebox.cc src/utils.cc)
+set (plstim_hdr src/qexperiment.h src/messagebox.h src/glwidget.h)
 qt4_wrap_cpp (plstim_moc ${plstim_hdr})
 add_executable (plstim ${plstim_src} ${plstim_moc})
 target_link_libraries (plstim ${QT_LIBRARIES} ${LUA_LIBRARIES})

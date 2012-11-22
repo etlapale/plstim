@@ -228,7 +228,7 @@ bool
 QExperiment::exec ()
 {
   cout << "showing windows" << endl;
-  win.show ();
+  win->show ();
 
   // Load an experiment if given as command line argument
   auto args = app.arguments ();
@@ -525,6 +525,42 @@ l_bin_random (lua_State* lstate)
     // Generate the random number
     int num = xp->bin_dist (xp->twister);
     lua_pushboolean (lstate, num);
+  }
+  
+  return 1;
+}
+
+static int
+l_random (lua_State* lstate)
+{
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // If we want an array of random numbers
+  if (lua_gettop (lstate) >= 1) {
+    // Number of elements
+    auto size = luaL_checkinteger (lstate, -1);
+    lua_pop (lstate, 1);
+
+    // Create the array
+    lua_createtable (lstate, size, 0);
+    
+    // Populate with random numbers
+    for (int i = 0; i < size; i++) {
+      //lua_pushinteger (lstate, i+1);
+      lua_pushnumber (lstate, xp->real_dist (xp->twister));
+      lua_rawseti (lstate, -2, i+1);
+      //lua_settable (lstate, -3);
+    }
+  }
+  // If we want a single random number
+  else {
+    // Generate the random number
+    double num = xp->real_dist (xp->twister);
+    lua_pushnumber (lstate, num);
   }
   
   return 1;
@@ -888,9 +924,12 @@ QExperiment::load_experiment (const QString& script_path)
   lua_pushcfunction (lstate, l_add_page);
   lua_setglobal (lstate, "add_page");
 
-  // Register bin_random ()
+  // Register random functions
+  lua_pushcfunction (lstate, l_random);
+  lua_setglobal (lstate, "random");
   lua_pushcfunction (lstate, l_bin_random);
   lua_setglobal (lstate, "bin_random");
+
   // Register deg2pix ()
   lua_pushcfunction (lstate, l_deg2pix);
   lua_setglobal (lstate, "deg2pix");
@@ -967,7 +1006,7 @@ void
 QExperiment::about_to_quit ()
 {
   // Save the GUI state
-  QSize sz = win.size ();
+  QSize sz = win->size ();
   settings->setValue ("gui_width", sz.width ());
   settings->setValue ("gui_height", sz.height ());
   settings->setValue ("splitter", splitter->saveState ());
@@ -975,17 +1014,18 @@ QExperiment::about_to_quit ()
 
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
-    win (),
     save_setup (false),
     glwidget_initialised (false),
-    bin_dist (0, 1)
+    bin_dist (0, 1),
+    real_dist (0, 1)
 {
   if (! plstim::initialise ())
     error ("could not initialise plstim");
 
-  res_msg = NULL;
-  match_res_msg = NULL;
+  //res_msg = NULL;
+  //match_res_msg = NULL;
 
+  win = new QMainWindow;
   lstate = NULL;
 
   waiting_fullscreen = false;
@@ -1011,8 +1051,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   else
     error ("OpenGL >=3.0 required");
 
-  splitter = new QSplitter (&win);
-  win.setCentralWidget (splitter);
+  splitter = new QSplitter;
 
   // Create an OpenGL widget
   QGLFormat fmt;
@@ -1029,7 +1068,7 @@ QExperiment::QExperiment (int & argc, char** argv)
     error ("double buffering not supported");
 
   // Create a basic menu
-  auto menu = win.menuBar ()->addMenu (QMenu::tr ("&Experiment"));
+  auto menu = win->menuBar ()->addMenu (QMenu::tr ("&Experiment"));
   // Run the simulation in full screen
   auto action = menu->addAction ("&Run");
   action->setShortcut(tr("Ctrl+R"));
@@ -1049,6 +1088,16 @@ QExperiment::QExperiment (int & argc, char** argv)
   auto tbox = new QToolBox;
   splitter->addWidget (tbox);
   splitter->addWidget (glwidget);
+
+  // Horizontal splitter (top: GLwidget, bottom: message box)
+  hsplitter = new QSplitter (Qt::Vertical);
+  hsplitter->addWidget (splitter);
+  logtab = new QTabWidget;
+  msgbox = new MessageBox;
+  logtab->addTab (msgbox, "Messages");
+  hsplitter->addWidget (logtab);
+
+  win->setCentralWidget (hsplitter);
 
   // Experimental setup
   auto setup_widget = new QWidget;
@@ -1156,7 +1205,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Restore GUI state
   if (settings->contains ("gui_width"))
-    win.resize (settings->value ("gui_width").toInt (),
+    win->resize (settings->value ("gui_width").toInt (),
 		settings->value ("gui_height").toInt ());
   if (settings->contains ("splitter")) {
     qDebug () << "restoring splitter state from config";
@@ -1313,7 +1362,7 @@ QExperiment::set_glformat (QGLFormat glformat)
     cout << "old widget is NULL" << endl;
   }
 
-  glwidget = new MyGLWidget (glformat, &win);
+  glwidget = new MyGLWidget (glformat, win);
 
   splitter->addWidget (glwidget);
 
@@ -1349,11 +1398,6 @@ QExperiment::set_swap_interval (int swap_interval)
   this->swap_interval = swap_interval;
 }
 
-Message::Message (Type t, const QString& str)
-  : type(t), msg (str)
-{
-}
-
 void
 QExperiment::update_converters ()
 {
@@ -1363,8 +1407,10 @@ QExperiment::update_converters ()
     / phy_width_edit->text ().toFloat ();
   float vres = res_y_edit->text ().toFloat ()
     / phy_height_edit->text ().toFloat ();
-  float err = fabsf ((hres-vres) / (hres+vres));
+  //float err = fabsf ((hres-vres) / (hres+vres));
 
+  // TODO: restablish messages for resolutions
+#if 0
   // Create an error message if necessary
   if (res_msg == NULL) {
     res_msg = NULL;
@@ -1401,9 +1447,12 @@ QExperiment::update_converters ()
       add_message (res_msg);
     }
   }
+#endif
 
   px_mm = (hres+vres)/2.0;
 
+  // TODO: restablish resolution messages
+#if 0
 
   // TODO: put that somewhere else
   // Check that configured resolution match current one
@@ -1425,41 +1474,7 @@ QExperiment::update_converters ()
     remove_message (match_res_msg);
     match_res_msg = NULL;
   }
-}
-
-void
-QExperiment::add_message (Message* msg)
-{
-  // Store the message
-  messages << msg;
-
-  // Mark associated widgets
-  for (auto w : msg->widgets) {
-    auto p = w->palette ();
-    if (msg->type == Message::Type::WARNING)
-      p.setColor (QPalette::Base, QColor (0xfe, 0xc9, 0x7d));
-    else
-      p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
-    w->setPalette (p);
-  }
-
-  qDebug ()
-    << (msg->type == Message::Type::ERROR ? "error:" : "warning:" )
-    << msg->msg;
-}
-
-void
-QExperiment::remove_message (Message* msg)
-{
-  messages.removeOne (msg);
-
-  // TODO: restore to the previous colour
-  // TODO: make sure no other message changed the colour
-  for (auto w : msg->widgets) {
-    auto p = w->palette ();
-    p.setColor (QPalette::Base, QColor (0xff, 0xff, 0xff));
-    w->setPalette (p);
-  }
+#endif
 }
 
 QExperiment::~QExperiment ()
