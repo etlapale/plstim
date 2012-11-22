@@ -937,8 +937,37 @@ QExperiment::load_experiment (const QString& script_path)
   lua_pushcfunction (lstate, l_ds2pf);
   lua_setglobal (lstate, "ds2pf");
 
-  if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
-      || lua_pcall (lstate, 0, 0, 0)) {
+  int ret = luaL_loadfile (lstate, script_path.toLocal8Bit ().data ());
+  switch (ret) {
+  case 0:
+    break;
+  case LUA_ERRSYNTAX:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Syntax error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRMEM:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Memory allocation error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRFILE:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Cannot read experiment file",
+			      lua_tostring (lstate, -1)));
+    break;
+  }
+
+  // Cleanup Lua engine on error
+  if (ret) {
+    lua_pop (lstate, 1);
+    lua_close (lstate);
+    lstate = NULL;
+    return false;
+  }
+
+  //if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
+  if (lua_pcall (lstate, 0, 0, 0)) {
     qDebug () << "could not load the experiment:"
               << lua_tostring (lstate, -1);
   }

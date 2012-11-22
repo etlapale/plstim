@@ -15,10 +15,12 @@ namespace plstim
       ERROR
     };
   public:
-    Message (Message::Type t, const QString& msg);
+    Message (Message::Type t, const QString& title);
+    Message (Message::Type t, const QString& title, const QString& description);
   public:
     Message::Type type;
-    QString msg;
+    QString title;
+    QString description;
     QList<QWidget*> widgets;
   };
 

@@ -5,7 +5,12 @@ using namespace plstim;
 
 
 Message::Message (Type t, const QString& str)
-  : type(t), msg (str)
+  : type(t), title (str)
+{
+}
+
+Message::Message (Type t, const QString& str, const QString& desc)
+  : type(t), title (str), description (desc)
 {
 }
 
@@ -17,6 +22,8 @@ MessageBox::MessageBox (QWidget* parent)
 void
 MessageBox::add (Message* msg)
 {
+  qDebug () << "adding new message to the box";
+
   // Store the message
   messages << msg;
 
@@ -32,7 +39,7 @@ MessageBox::add (Message* msg)
 
   qDebug ()
     << (msg->type == Message::Type::ERROR ? "error:" : "warning:" )
-    << msg->msg;
+    << msg->title;
 }
 
 void
