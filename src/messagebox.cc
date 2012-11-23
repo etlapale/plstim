@@ -14,18 +14,54 @@ Message::Message (Type t, const QString& str, const QString& desc)
 {
 }
 
+MessageEntry::MessageEntry (Message* msg)
+{
+  layout = new QGridLayout;
+  layout->setColumnStretch (1, 1);
+  setLayout (layout);
+
+  // Icon
+  icon = new QLabel;
+  QStyle::StandardPixmap spix;
+  
+  switch (msg->type) {
+  case Message::Type::WARNING:
+    spix = QStyle::SP_MessageBoxWarning;
+    break;
+  case Message::Type::ERROR:
+    spix = QStyle::SP_MessageBoxCritical;
+    break;
+  }
+
+  icon->setPixmap (style ()->standardIcon (spix).pixmap (64, 64));
+  layout->addWidget (icon, 0, 0);
+
+  // Title
+  QString fmt_title ("<b>%1</b>");
+  title = new QLabel (fmt_title.arg (msg->title));
+  layout->addWidget (title, 0, 1);
+
+  // Description
+  description = new QLabel (msg->description);
+  layout->addWidget (description, 1, 1);
+}
+
 MessageBox::MessageBox (QWidget* parent)
   : QWidget (parent)
 {
+  layout = new QVBoxLayout;
+  setLayout (layout);
 }
 
 void
 MessageBox::add (Message* msg)
 {
-  qDebug () << "adding new message to the box";
-
   // Store the message
   messages << msg;
+
+  // Add a GUI entry
+  auto entry = new MessageEntry (msg);
+  layout->addWidget (entry);
 
   // Mark associated widgets
   for (auto w : msg->widgets) {
@@ -36,10 +72,6 @@ MessageBox::add (Message* msg)
       p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
     w->setPalette (p);
   }
-
-  qDebug ()
-    << (msg->type == Message::Type::ERROR ? "error:" : "warning:" )
-    << msg->title;
 }
 
 void
