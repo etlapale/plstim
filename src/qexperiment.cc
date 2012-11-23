@@ -957,21 +957,34 @@ QExperiment::load_experiment (const QString& script_path)
 			      lua_tostring (lstate, -1)));
     break;
   }
+  if (ret)
+    goto lerr;
 
-  // Cleanup Lua engine on error
-  if (ret) {
-    lua_pop (lstate, 1);
-    lua_close (lstate);
-    lstate = NULL;
-    return false;
+  ret = lua_pcall (lstate, 0, 0, 0);
+  switch (ret) {
+  case 0:
+    break;
+  case LUA_ERRRUN:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Runtime error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRMEM:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Memory allocation error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRERR:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Problem in error handler",
+			      lua_tostring (lstate, -1)));
+    break;
   }
+  if (ret)
+    goto lerr;
 
-  //if (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())
-  if (lua_pcall (lstate, 0, 0, 0)) {
-    qDebug () << "could not load the experiment:"
-              << lua_tostring (lstate, -1);
-  }
 
+  // Fetch general experiment information
   lua_getglobal (lstate, "ntrials");
   if (lua_isnumber (lstate, -1)) {
     ntrials = (int) lua_tonumber (lstate, -1);
@@ -988,6 +1001,13 @@ QExperiment::load_experiment (const QString& script_path)
   setup_updated ();
 
   return true;
+
+  // Cleanup Lua engine on error
+lerr:
+  lua_pop (lstate, 1);
+  lua_close (lstate);
+  lstate = NULL;
+  return false;
 }
 
 void
