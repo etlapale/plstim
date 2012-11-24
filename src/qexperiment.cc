@@ -896,6 +896,8 @@ luaopen_plstim (lua_State* lstate)
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
+  if (unusable) return false;
+
   // TODO: cleanup any existing experiment
   ntrials = 0;
   if (lstate != NULL)
@@ -1038,13 +1040,6 @@ QExperiment::clear_screen ()
 }
 
 void
-QExperiment::error (const std::string& msg)
-{
-  cerr << "error: " << msg << endl;
-  app.exit (1);
-}
-
-void
 QExperiment::quit ()
 {
   cout << "Goodbye!" << endl;
@@ -1066,13 +1061,10 @@ QExperiment::QExperiment (int & argc, char** argv)
     save_setup (false),
     glwidget_initialised (false),
     bin_dist (0, 1),
-    real_dist (0, 1)
+    real_dist (0, 1),
+    unusable (false)
 {
-  if (! plstim::initialise ())
-    error ("could not initialise plstim");
-
-  //res_msg = NULL;
-  //match_res_msg = NULL;
+  plstim::initialise ();
 
   win = new QMainWindow;
   lstate = NULL;
@@ -1089,32 +1081,9 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Get the experimental setup
 
-  // Check for OpenGL
-  if (! QGLFormat::hasOpenGL ())
-    error ("OpenGL not supported");
-  auto flags = QGLFormat::openGLVersionFlags ();
-  if (flags & QGLFormat::OpenGL_Version_4_0)
-    cout << "OpenGL 4.0 is supported" << endl;
-  else if (flags & QGLFormat::OpenGL_Version_3_0)
-    cout << "OpenGL 3.0 is supported" << endl;
-  else
-    error ("OpenGL >=3.0 required");
+  glwidget = NULL;
 
   splitter = new QSplitter;
-
-  // Create an OpenGL widget
-  QGLFormat fmt;
-  fmt.setDoubleBuffer (true);
-  fmt.setVersion (3, 0);
-  fmt.setDepth (false);
-  fmt.setSwapInterval (1);
-  glwidget = NULL;
-  set_glformat (fmt);
-  //glwidget = new MyGLWidget (fmt, &win);
-  cout << "OpenGL version " << glwidget->format ().majorVersion ()
-       << '.' << glwidget->format ().minorVersion () << endl;
-  if (! glwidget->format ().doubleBuffer ())
-    error ("double buffering not supported");
 
   // Create a basic menu
   auto menu = win->menuBar ()->addMenu (QMenu::tr ("&Experiment"));
@@ -1142,7 +1111,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Left toolbox
   auto tbox = new QToolBox;
   splitter->addWidget (tbox);
-  splitter->addWidget (glwidget);
 
   // Horizontal splitter (top: GLwidget, bottom: message box)
   hsplitter = new QSplitter (Qt::Vertical);
@@ -1216,6 +1184,44 @@ QExperiment::QExperiment (int & argc, char** argv)
   flayout->addRow ("Refresh rate", refresh_edit);
   setup_widget->setLayout (flayout);
   tbox->addItem (setup_widget, "Setup");
+
+  
+  // Check for OpenGL
+  if (! QGLFormat::hasOpenGL ()) {
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "OpenGL not found"));
+    unusable = true;
+    return;
+  }
+
+  auto flags = QGLFormat::openGLVersionFlags ();
+  if (! (flags & QGLFormat::OpenGL_Version_3_0)) {
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "OpenGL 3.0 not supported"));
+    unusable = true;
+    return;
+  }
+
+  
+  // Create an OpenGL widget
+  QGLFormat fmt;
+  fmt.setDoubleBuffer (true);
+  fmt.setVersion (3, 0);
+  fmt.setDepth (false);
+  fmt.setSwapInterval (1);
+  set_glformat (fmt);
+  // Show OpenGL version in GUI
+  QString glfmt ("%1.%2");
+  flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
+  // Check for double buffering
+  if (! glwidget->format ().doubleBuffer ()) {
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Missing double buffering support"));
+    unusable = true;
+    return;
+  }
+  splitter->addWidget (glwidget);
+
 
   // Try to fetch back setup
   settings = new QSettings;

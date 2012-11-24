@@ -128,10 +128,6 @@ namespace plstim
     /// Special frames required by the protocol
     //std::map<std::string,GLuint> special_frames;
 
-  protected:
-
-    void error (const std::string& msg);
-
     /**
      * Copy a pixel surface into an OpenGL texture.
      * The destination texture must have been already created
@@ -244,6 +240,8 @@ namespace plstim
      * Waiting for a fullscreen event before starting the session.
      */
     bool waiting_fullscreen;
+
+    bool unusable;
 
     /// Last opened directory in file dialog
     QString last_dialog_dir;
