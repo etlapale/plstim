@@ -1480,7 +1480,10 @@ QExperiment::update_recents ()
   QString label ("&%1 %2");
   for (auto path : rlist) {
     QFileInfo fi (path);
-    recent_actions[i]->setText (label.arg (i+1).arg (fi.fileName ()));
+    QString name = fi.fileName ();
+    if (name.endsWith (".lua"))
+      name = name.left (name.size () - 4);
+    recent_actions[i]->setText (label.arg (i+1).arg (name));
     recent_actions[i]->setData (path);
     recent_actions[i]->setVisible (true);
     i++;
