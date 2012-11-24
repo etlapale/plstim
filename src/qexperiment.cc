@@ -893,10 +893,27 @@ luaopen_plstim (lua_State* lstate)
   return 0;
 }
 
+void
+QExperiment::open_recent ()
+{
+  auto action = qobject_cast<QAction*> (sender());
+  if (action)
+    load_experiment (action->data ().toString ());
+}
+
 bool
 QExperiment::load_experiment (const QString& script_path)
 {
   if (unusable) return false;
+
+  // Store the experiment path in the recent list
+  auto rlist = settings->value ("recents").toStringList ();
+  rlist.removeAll (script_path);
+  rlist.prepend (script_path);
+  while (rlist.size () > max_recents)
+    rlist.removeLast ();
+  settings->setValue ("recents", rlist);
+  update_recents ();
 
   // TODO: cleanup any existing experiment
   ntrials = 0;
@@ -1097,20 +1114,35 @@ QExperiment::QExperiment (int & argc, char** argv)
   splitter = new QSplitter;
 
   // Create a basic menu
-  auto menu = win->menuBar ()->addMenu (QMenu::tr ("&Experiment"));
+  xp_menu = win->menuBar ()->addMenu (tr ("&Experiment"));
   // 
-  auto action = menu->addAction ("&Open");
+  auto action = xp_menu->addAction ("&Open");
   action->setShortcut(tr("Ctrl+O"));
   action->setStatusTip(tr("&Open an experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
+  xp_menu->addSeparator ();
 
   // Run the simulation in full screen
-  action = menu->addAction ("&Run");
+  action = xp_menu->addAction ("&Run");
   action->setShortcut(tr("Ctrl+R"));
   action->setStatusTip(tr("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
+  xp_menu->addSeparator ();
+
+  // Maximum number of recent experiments displayed
+  max_recents = 5;
+  recent_actions = new QAction*[max_recents];
+  for (int i = 0; i < max_recents; i++) {
+    recent_actions[i] = new QAction (xp_menu);
+    recent_actions[i]->setVisible (false);
+    xp_menu->addAction (recent_actions[i]);
+    connect (recent_actions[i], SIGNAL (triggered ()),
+	     this, SLOT (open_recent ()));
+  }
+  xp_menu->addSeparator ();
+
   // Terminate the program
-  action = menu->addAction ("&Quit");
+  action = xp_menu->addAction ("&Quit");
   action->setShortcut(tr("Ctrl+Q"));
   action->setStatusTip(tr("&Quit the program"));
   connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
@@ -1250,6 +1282,9 @@ QExperiment::QExperiment (int & argc, char** argv)
     qDebug () << "restoring splitter state from config";
     splitter->restoreState (settings->value ("splitter").toByteArray ());
   }
+
+  // Set recent experiments
+  update_recents ();
 
   // Constrain the screen selector
   screen_sbox->setMinimum (0);
@@ -1435,6 +1470,23 @@ QExperiment::set_swap_interval (int swap_interval)
   }
 
   this->swap_interval = swap_interval;
+}
+
+void
+QExperiment::update_recents ()
+{
+  auto rlist = settings->value ("recents").toStringList ();
+  int i = 0;
+  QString label ("&%1 %2");
+  for (auto path : rlist) {
+    QFileInfo fi (path);
+    recent_actions[i]->setText (label.arg (i+1).arg (fi.fileName ()));
+    recent_actions[i]->setData (path);
+    recent_actions[i]->setVisible (true);
+    i++;
+  }
+  while (i < max_recents)
+    recent_actions[i++]->setVisible (false);
 }
 
 void

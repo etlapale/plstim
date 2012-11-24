@@ -199,6 +199,7 @@ namespace plstim
     void setup_param_changed ();
     void update_setup ();
     void update_converters ();
+    void update_recents ();
     void about_to_quit ();
     void open ();
     void quit ();
@@ -206,6 +207,7 @@ namespace plstim
     void glwidget_key_press_event (QKeyEvent* evt);
     void gl_resized (int w, int h);
     void normal_screen_restored ();
+    void open_recent ();
 
   protected:
     bool save_setup;
@@ -233,6 +235,9 @@ namespace plstim
 
     QByteArray splitter_state;
 
+    QMenu* xp_menu;
+    int max_recents;
+    QAction** recent_actions;
 
     lua_State* lstate;
 

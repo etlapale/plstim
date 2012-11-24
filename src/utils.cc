@@ -1,5 +1,3 @@
-#include "utils.h"
-
 #include <QCoreApplication>
 #include <QTextCodec>
 
@@ -13,6 +11,7 @@ namespace plstim
     if (initialised)
       return true;
 
+    // Sources encoding
     auto utf8_codec = QTextCodec::codecForName ("UTF-8");
     QTextCodec::setCodecForCStrings (utf8_codec);
     QTextCodec::setCodecForTr (utf8_codec);
