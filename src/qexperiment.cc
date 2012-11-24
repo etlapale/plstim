@@ -1544,7 +1544,7 @@ QExperiment::setup_param_changed ()
   settings->setValue ("dst", dst_edit->value ());
   settings->setValue ("lmin", lum_min_edit->value ());
   settings->setValue ("lmax", lum_max_edit->value ());
-  settings->setValue ("rate", refresh_edit->text ());
+  settings->setValue ("rate", refresh_edit->value ());
   settings->endGroup ();
 
   // Emit the signal
