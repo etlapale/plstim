@@ -1118,10 +1118,16 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Create a basic menu
   auto menu = win->menuBar ()->addMenu (QMenu::tr ("&Experiment"));
+  // 
+  auto action = menu->addAction ("&Open");
+  action->setShortcut(tr("Ctrl+O"));
+  action->setStatusTip(tr("&Open an experiment"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
+
   // Run the simulation in full screen
-  auto action = menu->addAction ("&Run");
+  action = menu->addAction ("&Run");
   action->setShortcut(tr("Ctrl+R"));
-  action->setStatusTip(tr("&Run the simulation"));
+  action->setStatusTip(tr("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
   // Terminate the program
   action = menu->addAction ("&Quit");
@@ -1596,6 +1602,19 @@ float
 QExperiment::monitor_rate () const
 {
   return refresh_edit->text ().toFloat ();
+}
+
+void
+QExperiment::open ()
+{
+  QFileDialog dialog (win, tr ("Open experiment"), last_dialog_dir);
+  dialog.setFileMode (QFileDialog::ExistingFile);
+  dialog.setNameFilter (tr ("Experiment (*.lua);;All files (*)"));
+
+  if (dialog.exec () == QDialog::Accepted) {
+    last_dialog_dir = dialog.directory ().absolutePath ();
+    load_experiment (dialog.selectedFiles ().at (0));
+  }
 }
 
 

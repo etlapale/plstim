@@ -204,6 +204,7 @@ namespace plstim
     void update_setup ();
     void update_converters ();
     void about_to_quit ();
+    void open ();
     void quit ();
     void glwidget_gl_initialised ();
     void glwidget_key_press_event (QKeyEvent* evt);
@@ -243,6 +244,9 @@ namespace plstim
      * Waiting for a fullscreen event before starting the session.
      */
     bool waiting_fullscreen;
+
+    /// Last opened directory in file dialog
+    QString last_dialog_dir;
   
   public:
     /// Random number generator
