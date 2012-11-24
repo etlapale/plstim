@@ -440,8 +440,8 @@ QExperiment::gl_resized (int w, int h)
 
     // Confirm that the resize event is a fullscreen event
     if (ignore_full_screen || 
-	(w == res_x_edit->text ().toInt ()
-	 && h == res_y_edit->text ().toInt ())) {
+	(w == res_x_edit->value ()
+	 && h == res_y_edit->value ())) {
 
       waiting_fullscreen = false;
       session_running = true;
@@ -1056,6 +1056,17 @@ QExperiment::about_to_quit ()
   settings->setValue ("splitter", splitter->saveState ());
 }
 
+QSpinBox*
+QExperiment::make_setup_spin (int min, int max, const char* suffix)
+{
+  auto spin = new QSpinBox;
+  spin->setRange (min, max);
+  spin->setSuffix (suffix);
+  connect (spin, SIGNAL (valueChanged (int)),
+	   this, SLOT (setup_param_changed ()));
+  return spin;
+}
+
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     save_setup (false),
@@ -1128,48 +1139,15 @@ QExperiment::QExperiment (int & argc, char** argv)
   screen_sbox = new QSpinBox;
   connect (screen_sbox, SIGNAL (valueChanged (int)),
 	   this, SLOT (setup_param_changed ()));
-  res_x_edit = new QLineEdit;
-  auto res_valid = new QIntValidator (1, 16384);
-  res_x_edit->setValidator (res_valid);
-  res_x_edit->setMaxLength (5);
-  connect (res_x_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  res_y_edit = new QLineEdit;
-  res_y_edit->setValidator (res_valid);
-  res_y_edit->setMaxLength (5);
-  connect (res_y_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  phy_width_edit = new QLineEdit;
-  phy_width_edit->setValidator (res_valid);
-  phy_width_edit->setMaxLength (5);
-  connect (phy_width_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  phy_height_edit = new QLineEdit;
-  phy_height_edit->setValidator (res_valid);
-  phy_height_edit->setMaxLength (5);
-  connect (phy_height_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  dst_edit = new QLineEdit;
-  dst_edit->setValidator (res_valid);
-  dst_edit->setMaxLength (5);
-  connect (dst_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  lum_min_edit = new QLineEdit;
-  auto lum_valid = new QDoubleValidator (0, 16384, 2);
-  lum_min_edit->setValidator (lum_valid);
-  lum_min_edit->setMaxLength (5);
-  connect (lum_min_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  lum_max_edit = new QLineEdit;
-  lum_max_edit->setValidator (lum_valid);
-  lum_max_edit->setMaxLength (5);
-  connect (lum_max_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
-  refresh_edit = new QLineEdit;
-  refresh_edit->setValidator (res_valid);
-  refresh_edit->setMaxLength (5);
-  connect (refresh_edit, SIGNAL (textChanged (const QString&)),
-	   this, SLOT (setup_param_changed ()));
+  // Set minimum to mode 13h, and maximum to 4320p
+  res_x_edit = make_setup_spin (320, 7680, " px");
+  res_y_edit = make_setup_spin (200, 4320, " px");
+  phy_width_edit = make_setup_spin (10, 8000, " mm");
+  phy_height_edit = make_setup_spin (10, 8000, " mm");
+  dst_edit = make_setup_spin (10, 8000, " mm");
+  lum_min_edit = make_setup_spin (1, 800, " cd/m²");
+  lum_max_edit = make_setup_spin (1, 800, " cd/m²");
+  refresh_edit = make_setup_spin (1, 300, " Hz"); 
 
   auto flayout = new QFormLayout;
   flayout->addRow ("Setup name", setup_cbox);
@@ -1244,8 +1222,8 @@ QExperiment::QExperiment (int & argc, char** argv)
     qDebug () << "screen geometry: " << geom.width () << "x"
               << geom.height () << "+" << geom.x () << "+" << geom.y ();
     screen_sbox->setValue (i);
-    res_x_edit->setText (QString::number (geom.width ()));
-    res_y_edit->setText (QString::number (geom.height ()));
+    res_x_edit->setValue (geom.width ());
+    res_y_edit->setValue (geom.height ());
   }
 
   // Use an existing setup
@@ -1462,12 +1440,12 @@ QExperiment::set_swap_interval (int swap_interval)
 void
 QExperiment::update_converters ()
 {
-  distance = dst_edit->text ().toFloat ();
+  distance = dst_edit->value ();
 
-  float hres = res_x_edit->text ().toFloat ()
-    / phy_width_edit->text ().toFloat ();
-  float vres = res_y_edit->text ().toFloat ()
-    / phy_height_edit->text ().toFloat ();
+  float hres = (float) res_x_edit->value ()
+    / phy_width_edit->value ();
+  float vres = (float) res_y_edit->value ()
+    / phy_height_edit->value ();
   //float err = fabsf ((hres-vres) / (hres+vres));
 
   // TODO: restablish messages for resolutions
@@ -1541,18 +1519,8 @@ QExperiment::update_converters ()
 QExperiment::~QExperiment ()
 {
   delete settings;
-
-  delete setup_cbox;
-  delete res_x_edit;
-  delete res_y_edit;
-  delete phy_width_edit;
-  delete phy_height_edit;
-  delete dst_edit;
-  delete lum_min_edit;
-  delete lum_max_edit;
-  delete refresh_edit;
-
   delete glwidget;
+  delete win;
 
   // TODO: debug the double free corruption here
   if (lstate != NULL)
@@ -1569,13 +1537,13 @@ QExperiment::setup_param_changed ()
 
   settings->beginGroup (setup_cbox->currentText ());
   settings->setValue ("scr", screen_sbox->value ());
-  settings->setValue ("res_x", res_x_edit->text ());
-  settings->setValue ("res_y", res_y_edit->text ());
-  settings->setValue ("phy_w", phy_width_edit->text ());
-  settings->setValue ("phy_h", phy_height_edit->text ());
-  settings->setValue ("dst", dst_edit->text ());
-  settings->setValue ("lmin", lum_min_edit->text ());
-  settings->setValue ("lmax", lum_max_edit->text ());
+  settings->setValue ("res_x", res_x_edit->value ());
+  settings->setValue ("res_y", res_y_edit->value ());
+  settings->setValue ("phy_w", phy_width_edit->value ());
+  settings->setValue ("phy_h", phy_height_edit->value ());
+  settings->setValue ("dst", dst_edit->value ());
+  settings->setValue ("lmin", lum_min_edit->value ());
+  settings->setValue ("lmax", lum_max_edit->value ());
   settings->setValue ("rate", refresh_edit->text ());
   settings->endGroup ();
 
@@ -1591,14 +1559,14 @@ QExperiment::update_setup ()
 
   settings->beginGroup (sname);
   screen_sbox->setValue (settings->value ("scr").toInt ());
-  res_x_edit->setText (settings->value ("res_x").toString ());
-  res_y_edit->setText (settings->value ("res_y").toString ());
-  phy_width_edit->setText (settings->value ("phy_w").toString ());
-  phy_height_edit->setText (settings->value ("phy_h").toString ());
-  dst_edit->setText (settings->value ("dst").toString ());
-  lum_min_edit->setText (settings->value ("lmin").toString ());
-  lum_max_edit->setText (settings->value ("lmax").toString ());
-  refresh_edit->setText (settings->value ("rate").toString ());
+  res_x_edit->setValue (settings->value ("res_x").toInt ());
+  res_y_edit->setValue (settings->value ("res_y").toInt ());
+  phy_width_edit->setValue (settings->value ("phy_w").toInt ());
+  phy_height_edit->setValue (settings->value ("phy_h").toInt ());
+  dst_edit->setValue (settings->value ("dst").toInt ());
+  lum_min_edit->setValue (settings->value ("lmin").toInt ());
+  lum_max_edit->setValue (settings->value ("lmax").toInt ());
+  refresh_edit->setValue (settings->value ("rate").toInt ());
   settings->endGroup ();
 
   setup_updated ();
@@ -1607,7 +1575,7 @@ QExperiment::update_setup ()
 float
 QExperiment::monitor_rate () const
 {
-  return refresh_edit->text ().toFloat ();
+  return (float) refresh_edit->value ();
 }
 
 void

@@ -166,12 +166,12 @@ namespace plstim
     void setTextureSize (int size) { tex_size = size; }
 
     /// Convert a degrees distance to pixels
-    Q_INVOKABLE float deg2pix (float dst) const {
+    float deg2pix (float dst) const {
       return 2*distance*tan(radians(dst)/2)*px_mm;
     }
 
-    Q_INVOKABLE float ds2pf (float speed) const {
-      return deg2pix (speed/refresh_edit->text ().toFloat ());
+    float ds2pf (float speed) const {
+      return deg2pix (speed/refresh_edit->value ());
     }
 
     void set_glformat (QGLFormat glformat);
@@ -213,14 +213,14 @@ namespace plstim
     QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
-    QLineEdit* res_x_edit;
-    QLineEdit* res_y_edit;
-    QLineEdit* phy_width_edit;
-    QLineEdit* phy_height_edit;
-    QLineEdit* dst_edit;
-    QLineEdit* lum_min_edit;
-    QLineEdit* lum_max_edit;
-    QLineEdit* refresh_edit;
+    QSpinBox* res_x_edit;
+    QSpinBox* res_y_edit;
+    QSpinBox* phy_width_edit;
+    QSpinBox* phy_height_edit;
+    QSpinBox* dst_edit;
+    QSpinBox* lum_min_edit;
+    QSpinBox* lum_max_edit;
+    QSpinBox* refresh_edit;
 
     QSplitter* hsplitter;
     QTabWidget* logtab;
@@ -241,8 +241,6 @@ namespace plstim
      */
     bool waiting_fullscreen;
 
-    bool unusable;
-
     /// Last opened directory in file dialog
     QString last_dialog_dir;
   
@@ -255,6 +253,11 @@ namespace plstim
 
     /// Uniform double distribution in [0,1]
     uniform_real_distribution<double> real_dist;
+
+  protected:
+    bool unusable;
+
+    QSpinBox* make_setup_spin (int min, int max, const char* suffix);
   };
 }
 
