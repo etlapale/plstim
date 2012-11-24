@@ -1235,6 +1235,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Try to fetch back setup
   settings = new QSettings;
+  settings->beginGroup ("setups");
   auto groups = settings->childGroups ();
 
   // No setup previously defined, infer a new one
@@ -1256,6 +1257,7 @@ QExperiment::QExperiment (int & argc, char** argv)
     screen_sbox->setValue (i);
     res_x_edit->setValue (geom.width ());
     res_y_edit->setValue (geom.height ());
+    settings->endGroup ();
   }
 
   // Use an existing setup
@@ -1266,9 +1268,9 @@ QExperiment::QExperiment (int & argc, char** argv)
 	setup_cbox->addItem (g);
       }
     }
+    settings->endGroup ();
 
     // TODO: check if there was a ‘last’ setup
-    // TODO: make sure there really are existing setups
     
     // Restore setup
     update_setup ();
@@ -1590,6 +1592,7 @@ QExperiment::setup_param_changed ()
 
   qDebug () << "changing setup param value";
 
+  settings->beginGroup ("setups");
   settings->beginGroup (setup_cbox->currentText ());
   settings->setValue ("scr", screen_sbox->value ());
   settings->setValue ("res_x", res_x_edit->value ());
@@ -1600,6 +1603,7 @@ QExperiment::setup_param_changed ()
   settings->setValue ("lmin", lum_min_edit->value ());
   settings->setValue ("lmax", lum_max_edit->value ());
   settings->setValue ("rate", refresh_edit->value ());
+  settings->endGroup ();
   settings->endGroup ();
 
   // Emit the signal
@@ -1612,6 +1616,7 @@ QExperiment::update_setup ()
   auto sname = setup_cbox->currentText ();
   qDebug () << "restoring setup for" << sname;
 
+  settings->beginGroup ("setups");
   settings->beginGroup (sname);
   screen_sbox->setValue (settings->value ("scr").toInt ());
   res_x_edit->setValue (settings->value ("res_x").toInt ());
@@ -1622,6 +1627,7 @@ QExperiment::update_setup ()
   lum_min_edit->setValue (settings->value ("lmin").toInt ());
   lum_max_edit->setValue (settings->value ("lmax").toInt ());
   refresh_edit->setValue (settings->value ("rate").toInt ());
+  settings->endGroup ();
   settings->endGroup ();
 
   setup_updated ();
