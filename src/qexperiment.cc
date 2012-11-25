@@ -1016,6 +1016,8 @@ QExperiment::load_experiment (const QString& script_path)
 	    << " " << pages.size () << "pages"
 	    << endl;
 
+  xp_label->setText (script_path);
+
   // Initialise the experiment
   setup_updated ();
 
@@ -1164,6 +1166,10 @@ QExperiment::QExperiment (int & argc, char** argv)
   hsplitter->addWidget (logtab);
 
   win->setCentralWidget (hsplitter);
+
+  // Status bar with current experiment name
+  xp_label = new QLabel ("No experiment loaded");
+  win->statusBar ()->addWidget (xp_label);
 
   // Experimental setup
   auto setup_widget = new QWidget;

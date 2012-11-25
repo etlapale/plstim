@@ -223,6 +223,7 @@ namespace plstim
     QSpinBox* lum_min_edit;
     QSpinBox* lum_max_edit;
     QSpinBox* refresh_edit;
+    QLabel* xp_label;
 
     QSplitter* hsplitter;
     QTabWidget* logtab;
