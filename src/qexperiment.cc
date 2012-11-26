@@ -902,9 +902,12 @@ QExperiment::open_recent ()
 }
 
 bool
-QExperiment::load_experiment (const QString& script_path)
+QExperiment::load_experiment (const QString& path)
 {
   if (unusable) return false;
+
+  // Canonicalise the script path
+  auto script_path = QFileInfo (path).canonicalFilePath ();
 
   // Store the experiment path in the recent list
   auto rlist = settings->value ("recents").toStringList ();
