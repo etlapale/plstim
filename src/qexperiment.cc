@@ -480,27 +480,45 @@ static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 static int
 l_add_page (lua_State* lstate)
 {
-  // Page information
-  auto page_name = luaL_checkstring (lstate, 1);
-  auto page_type = Page::Type::SINGLE;
-  float duration = 0;
-
-  // Animated frames
-  if (lua_gettop (lstate) > 1) {
-    page_type = Page::Type::FRAMES;
-    duration = luaL_checknumber (lstate, 2);
-    lua_pop (lstate, 1);
-  }
-  
   // Search for the experiment
   lua_pushstring (lstate, PLSTIM_EXPERIMENT);
   lua_gettable (lstate, LUA_REGISTRYINDEX);
   auto xp = (QExperiment*) lua_touserdata (lstate, -1);
   lua_pop (lstate, 1);
 
+  // Page information
+  auto page_name = luaL_checkstring (lstate, 1);
+  auto page_type = Page::Type::SINGLE;
+  float duration = 0;
+  std::set<int> accepted_keys;
+
+  if (lua_gettop (lstate) >= 2) {
+    // Animated frames
+    if (lua_isnumber (lstate, 2)) {
+      page_type = Page::Type::FRAMES;
+      duration = lua_tonumber (lstate, 2);
+    }
+    // Key wait
+    else {
+      auto str = QString (luaL_checkstring (lstate, 2));
+      auto keys = str.split (" ", QString::SkipEmptyParts);
+      for (auto k : keys) {
+	auto it = xp->key_mapping.find (k.toUtf8 ().data ());
+	if (it == xp->key_mapping.end ()) {
+	  qDebug () << "error: no mapping for key " << k;
+	}
+	else {
+	  accepted_keys.insert (it->second);
+	}
+      }
+    }
+    lua_pop (lstate, 1);
+  }
+
   // Create a new page and add it to the experiment
   auto page = new Page (page_type, page_name);
   page->duration = duration;
+  page->accepted_keys = accepted_keys;
   xp->add_page (page);
 
   // Return the created page
@@ -647,8 +665,6 @@ get_colour (lua_State* lstate, int index)
 static int
 l_qpainter_draw_path (lua_State* lstate)
 {
-  qDebug () << "qpainter:draw_path ()";
-
   auto painter = (QPainter*) lua_touserdata (lstate, 1);
   auto path = (QPainterPath*) lua_touserdata (lstate, 2);
 
@@ -688,8 +704,6 @@ l_qpainter_draw_ellipse (lua_State* lstate)
 static int
 l_qpainter_fill_rect (lua_State* lstate)
 {
-  qDebug () << "qpainter:fill_rect ()";
-
   QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
   int x = luaL_checkint (lstate, 2);
   int y = luaL_checkint (lstate, 3);
@@ -1112,6 +1126,13 @@ QExperiment::QExperiment (int & argc, char** argv)
   for (int i = 0; i < 10000; i++)
     (void) bin_dist (twister);
 
+
+  // Mapping of key names to keys for Lua
+  key_mapping["down"] = Qt::Key_Down;
+  key_mapping["left"] = Qt::Key_Left;
+  key_mapping["right"] = Qt::Key_Right;
+  key_mapping["up"] = Qt::Key_Up;
+  
 
   // Get the experimental setup
 

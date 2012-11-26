@@ -42,7 +42,6 @@ bool
 MyGLWidget::add_frame (const QImage& img)
 {
   unamed_frames.push_back (bindTexture (img));
-  cout << "adding unamed frame, count: " << unamed_frames.size () << endl;
   return true;
 }
 

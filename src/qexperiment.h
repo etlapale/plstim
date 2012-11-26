@@ -267,6 +267,8 @@ namespace plstim
     /// Uniform double distribution in [0,1]
     std::uniform_real_distribution<double> real_dist;
 
+    std::map<std::string,int> key_mapping;
+
   protected:
     bool unusable;
 
