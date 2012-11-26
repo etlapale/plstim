@@ -25,12 +25,13 @@ MyGLWidget::MyGLWidget (const QGLFormat& format, QWidget* parent)
     waiting_fullscreen (false)
 {
   setFocusPolicy (Qt::StrongFocus);
+  setAutoBufferSwap (false);
 }
 
 void
 MyGLWidget::keyPressEvent (QKeyEvent* evt)
 {
-  //cout << "key press" << endl;
+  qDebug () << "key press";
   if (evt->key () == Qt::Key_Escape)
     normal_screen ();
   else
@@ -420,8 +421,10 @@ MyGLWidget::resizeGL (int w, int h)
   glClear (GL_COLOR_BUFFER_BIT);
 
   // TODO: we might want to check that the size is fullscreen
-  if (waiting_fullscreen)
+  if (waiting_fullscreen) {
+    waiting_fullscreen = false;
     emit can_run_trial ();
+  }
 }
 
 void

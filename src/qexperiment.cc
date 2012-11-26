@@ -1435,6 +1435,7 @@ QExperiment::glwidget_gl_initialised ()
 void
 QExperiment::normal_screen_restored ()
 {
+  qDebug () << "normal screen restored";
   splitter->addWidget (glwidget);
   splitter->restoreState (splitter_state);
 }
