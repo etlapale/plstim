@@ -312,6 +312,32 @@ QExperiment::paint_page (Page* page,
   }
 }
 
+bool
+QExperiment::check_lua (int retcode)
+{
+  switch (retcode) {
+  case 0:
+    return true;
+  case LUA_ERRRUN:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Runtime error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRMEM:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Memory allocation error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRERR:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Problem in error handler",
+			      lua_tostring (lstate, -1)));
+    break;
+  }
+  lua_pop (lstate, 1);
+  return false;
+}
+
 void
 QExperiment::run_trial ()
 {
@@ -319,13 +345,11 @@ QExperiment::run_trial ()
 
   // Call the new_trial () callback
   lua_getglobal (lstate, "new_trial");
-  if (lua_isfunction (lstate, -1)) {
-    if (lua_pcall (lstate, 0, 0, 0) != 0) {
-      qDebug () << "error: could not call new_trial:"
-		<< lua_tostring (lstate, -1);
+  if (lua_isfunction (lstate, -1))
+    if (! check_lua (lua_pcall (lstate, 0, 0, 0))) {
+      abort_experiment ();
+      return;
     }
-  }
-  lua_pop (lstate, 1);
 
   // Check if there is a paint_frame () function
   lua_getglobal (lstate, "paint_frame");
@@ -904,11 +928,21 @@ QExperiment::open_recent ()
 }
 
 void
+QExperiment::abort_experiment ()
+{
+  current_page = -1;
+  glwidget->normal_screen ();
+  session_running = false;
+}
+
+void
 QExperiment::unload_experiment ()
 {
   // No experiment loaded
   if (lstate == NULL)
     return;
+
+  abort_experiment ();
 
   ntrials = 0;
   for (auto p : pages)

@@ -148,6 +148,8 @@ namespace plstim
   public slots:
     void unload_experiment ();
 
+    void abort_experiment ();
+
   public:
     bool exec ();
 
@@ -197,6 +199,8 @@ namespace plstim
     void setup_updated ();
 
     void paint_page (Page* page, QImage& img, QPainter* painter);
+
+    bool check_lua (int retcode);
 
   protected slots:
     //void screen_param_changed ();
