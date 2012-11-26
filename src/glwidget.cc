@@ -79,6 +79,7 @@ MyGLWidget::empty_frame ()
 {
   cout << "displaying an empty frame" << endl;
 
+  makeCurrent ();
   glClear (GL_COLOR_BUFFER_BIT);
   swapBuffers ();
 }
@@ -90,6 +91,7 @@ MyGLWidget::show_frame (const QString& name)
 
   qDebug () << "show frame" << name << ", at" << current_frame;
 
+  makeCurrent ();
   glClear (GL_COLOR_BUFFER_BIT);
 
   glBindTexture (GL_TEXTURE_2D, current_frame);
@@ -107,6 +109,7 @@ MyGLWidget::show_frames ()
 {
   cout << "show multiple frames" << endl;
 
+  makeCurrent ();
   for (auto f : unamed_frames) {
     current_frame = f;
 
@@ -171,6 +174,8 @@ MyGLWidget::update_shaders ()
   }
 
   //qDebug () << "tex:" << tex_width << tex_height << "gl:" << gl_width << gl_height;
+
+  makeCurrent ();
 
   // Create an identity vertex shader
   glViewport (0, 0, (GLint) gl_width, (GLint) gl_height);
