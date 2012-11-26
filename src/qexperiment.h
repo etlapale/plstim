@@ -145,6 +145,10 @@ namespace plstim
 
     bool load_experiment (const QString& path);
 
+  public slots:
+    void unload_experiment ();
+
+  public:
     bool exec ();
 
     /// Add a page to the composition of a trial
@@ -239,6 +243,8 @@ namespace plstim
     QMenu* xp_menu;
     int max_recents;
     QAction** recent_actions;
+
+    QAction* close_action;
 
     lua_State* lstate;
 

@@ -84,12 +84,20 @@ namespace plstim
       return true;
     }
 
-    Q_INVOKABLE void delete_unamed_frames () {
+    void delete_unamed_frames () {
 
       for (auto f : unamed_frames)
 	deleteTexture (f);
 
       unamed_frames.clear ();
+    }
+
+    void delete_named_frames () {
+
+      for (auto f : named_frames)
+	deleteTexture (f.second);
+
+      named_frames.clear ();
     }
 
     bool add_frame (const QString& name, const QImage& img) {

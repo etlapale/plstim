@@ -901,6 +901,28 @@ QExperiment::open_recent ()
     load_experiment (action->data ().toString ());
 }
 
+void
+QExperiment::unload_experiment ()
+{
+  // No experiment loaded
+  if (lstate == NULL)
+    return;
+
+  ntrials = 0;
+  for (auto p : pages)
+    delete p;
+  pages.clear ();
+
+  glwidget->delete_named_frames ();
+  glwidget->delete_unamed_frames ();
+  // TODO: also delete shaders. put everything in cleanup ()
+
+  xp_label->setText ("No experiment loaded");
+
+  lua_close (lstate);
+  lstate = NULL;
+}
+
 bool
 QExperiment::load_experiment (const QString& path)
 {
@@ -919,9 +941,7 @@ QExperiment::load_experiment (const QString& path)
   update_recents ();
 
   // TODO: cleanup any existing experiment
-  ntrials = 0;
-  if (lstate != NULL)
-    lua_close (lstate);
+  unload_experiment ();
 
   // Create a new Lua state
   lstate = lua_open ();
@@ -1038,8 +1058,10 @@ void
 QExperiment::run_session ()
 {
   // Make sure an experiment is loaded
-  if (lstate == NULL)
+  if (lstate == NULL) {
+    win->statusBar ()->showMessage ("no experiment loaded", 2000);
     return;
+  }
 
   cout << "Run session!" << endl;
 
@@ -1125,13 +1147,18 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setShortcut(tr("Ctrl+O"));
   action->setStatusTip(tr("&Open an experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
-  xp_menu->addSeparator ();
 
   // Run the simulation in full screen
   action = xp_menu->addAction ("&Run");
   action->setShortcut(tr("Ctrl+R"));
   action->setStatusTip(tr("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
+
+  // Close the current simulation
+  close_action = xp_menu->addAction ("&Close");
+  close_action->setShortcut(tr("Ctrl+W"));
+  close_action->setStatusTip(tr("&Close the experiment"));
+  connect (close_action, SIGNAL (triggered ()), this, SLOT (unload_experiment ()));
   xp_menu->addSeparator ();
 
   // Maximum number of recent experiments displayed
