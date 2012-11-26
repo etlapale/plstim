@@ -300,9 +300,11 @@ QExperiment::paint_page (Page* page,
 	  << lua_tostring (lstate, -1);
 
       painter->end ();
-      //QString filename;
-      //filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
-      //img.save (filename);
+#if 1
+      QString filename;
+      filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
+      img.save (filename);
+#endif
       glwidget->add_frame (img);
     }
     qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
@@ -315,11 +317,11 @@ QExperiment::run_trial ()
 {
   cout << "Starting trial " << current_trial << endl;
 
-  // Call the update_configuration () callback
+  // Call the new_trial () callback
   lua_getglobal (lstate, "new_trial");
   if (lua_isfunction (lstate, -1)) {
     if (lua_pcall (lstate, 0, 0, 0) != 0) {
-      qDebug () << "error: could not call update_configuration:"
+      qDebug () << "error: could not call new_trial:"
 		<< lua_tostring (lstate, -1);
     }
   }
@@ -1427,7 +1429,11 @@ QExperiment::setup_updated ()
       }
 
       // Repaint the page
-      if (glwidget_initialised && pf_is_func)
+      // Assume that setup is not updated during trials, so
+      // that paint_frame () is called by run_trial () for
+      // per-trial pages
+      if (glwidget_initialised && pf_is_func
+	  && p->paint_time != Page::PaintTime::TRIAL)
 	paint_page (p, img, painter);
     }
 
