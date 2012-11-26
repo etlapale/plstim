@@ -1053,6 +1053,7 @@ QExperiment::run_session ()
 void
 QExperiment::run_session_inline ()
 {
+  glwidget->setFocus (Qt::OtherFocusReason);
   current_trial = 0;
   can_run_trial ();
 }
