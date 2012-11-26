@@ -263,9 +263,11 @@ QExperiment::paint_page (Page* page,
 
     lua_pushnumber (lstate, 0);
 
-    if (lua_pcall (lstate, 3, 0, 0) != 0)
-      qDebug () << "error: could not call paint_frame ():"
-	<< lua_tostring (lstate, -1);
+    if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
+      painter->end ();
+      abort_experiment ();
+      return;
+    }
 
     painter->end ();
 
@@ -295,9 +297,11 @@ QExperiment::paint_page (Page* page,
 
       lua_pushnumber (lstate, i);
 
-      if (lua_pcall (lstate, 3, 0, 0) != 0)
-	qDebug () << "error: could not call paint_frame ():"
-	  << lua_tostring (lstate, -1);
+      if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
+	painter->end ();
+	abort_experiment ();
+	return;
+      }
 
       painter->end ();
 #if 1
@@ -318,9 +322,9 @@ QExperiment::check_lua (int retcode)
   switch (retcode) {
   case 0:
     return true;
-  case LUA_ERRRUN:
+  case LUA_ERRERR:
     msgbox->add (new Message (Message::Type::ERROR,
-			      "Runtime error",
+			      "Problem in error handler",
 			      lua_tostring (lstate, -1)));
     break;
   case LUA_ERRMEM:
@@ -328,9 +332,14 @@ QExperiment::check_lua (int retcode)
 			      "Memory allocation error",
 			      lua_tostring (lstate, -1)));
     break;
-  case LUA_ERRERR:
+  case LUA_ERRRUN:
     msgbox->add (new Message (Message::Type::ERROR,
-			      "Problem in error handler",
+			      "Runtime error",
+			      lua_tostring (lstate, -1)));
+    break;
+  case LUA_ERRSYNTAX:
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Syntax error",
 			      lua_tostring (lstate, -1)));
     break;
   }
@@ -458,30 +467,10 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 }
 
 void
-QExperiment::gl_resized (int w, int h)
+QExperiment::can_run_trial ()
 {
-  bool ignore_full_screen = true;
-
-  if (waiting_fullscreen) {
-
-    // Confirm that the resize event is a fullscreen event
-    if (ignore_full_screen || 
-	(w == res_x_edit->value ()
-	 && h == res_y_edit->value ())) {
-
-      waiting_fullscreen = false;
-      session_running = true;
-
-      // Run the trials
-      run_trial ();
-    }
-
-    // Resize event received while expecting fullscreen
-    else {
-      cerr << "expecting fullscreen event, but got a simple resize"
-	   << endl;
-    }
-  }
+  session_running = true;
+  run_trial ();
 }
 
 
@@ -1015,50 +1004,10 @@ QExperiment::load_experiment (const QString& path)
   lua_pushcfunction (lstate, l_ds2pf);
   lua_setglobal (lstate, "ds2pf");
 
-  int ret = luaL_loadfile (lstate, script_path.toLocal8Bit ().data ());
-  switch (ret) {
-  case 0:
-    break;
-  case LUA_ERRSYNTAX:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Syntax error",
-			      lua_tostring (lstate, -1)));
-    break;
-  case LUA_ERRMEM:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Memory allocation error",
-			      lua_tostring (lstate, -1)));
-    break;
-  case LUA_ERRFILE:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Cannot read experiment file",
-			      lua_tostring (lstate, -1)));
-    break;
-  }
-  if (ret)
+  if (! check_lua (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())))
     goto lerr;
 
-  ret = lua_pcall (lstate, 0, 0, 0);
-  switch (ret) {
-  case 0:
-    break;
-  case LUA_ERRRUN:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Runtime error",
-			      lua_tostring (lstate, -1)));
-    break;
-  case LUA_ERRMEM:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Memory allocation error",
-			      lua_tostring (lstate, -1)));
-    break;
-  case LUA_ERRERR:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Problem in error handler",
-			      lua_tostring (lstate, -1)));
-    break;
-  }
-  if (ret)
+  if (! check_lua (lua_pcall (lstate, 0, 0, 0)))
     goto lerr;
 
 
@@ -1084,7 +1033,6 @@ QExperiment::load_experiment (const QString& path)
 
   // Cleanup Lua engine on error
 lerr:
-  lua_pop (lstate, 1);
   lua_close (lstate);
   lstate = NULL;
   return false;
@@ -1093,24 +1041,20 @@ lerr:
 void
 QExperiment::run_session ()
 {
-  // Make sure an experiment is loaded
-  if (lstate == NULL) {
-    win->statusBar ()->showMessage ("no experiment loaded", 2000);
-    return;
-  }
-
-  cout << "Run session!" << endl;
-
   // Save the splitter position
   splitter_state = splitter->saveState ();
-
-  // Notify that we want to run the trials
-  waiting_fullscreen = true;
 
   current_trial = 0;
 
   // Set the GL scene full screen
   glwidget->full_screen ();
+}
+
+void
+QExperiment::run_session_inline ()
+{
+  current_trial = 0;
+  can_run_trial ();
 }
 
 bool
@@ -1160,10 +1104,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   win = new QMainWindow;
   lstate = NULL;
 
-  waiting_fullscreen = false;
   session_running = false;
   
-
   // Initialise the random number generator
   twister.seed (time (NULL));
   for (int i = 0; i < 10000; i++)
@@ -1184,11 +1126,17 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setStatusTip(tr("&Open an experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
 
-  // Run the simulation in full screen
+  // Run an experiment in full screen
   action = xp_menu->addAction ("&Run");
   action->setShortcut(tr("Ctrl+R"));
   action->setStatusTip(tr("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
+
+  // Run an experiment inside the main window
+  action = xp_menu->addAction ("Run &inline");
+  action->setShortcut(tr("Ctrl+Shift+R"));
+  action->setStatusTip(tr("&Run the experiment inside the window"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (run_session_inline ()));
 
   // Close the current simulation
   close_action = xp_menu->addAction ("&Close");
@@ -1416,13 +1364,11 @@ QExperiment::setup_updated ()
     
     // Call the update_configuration () callback
     lua_getglobal (lstate, "update_configuration");
-    if (lua_isfunction (lstate, -1)) {
-      if (lua_pcall (lstate, 0, 0, 0) != 0) {
-	qDebug () << "error: could not call update_configuration:"
-		  << lua_tostring (lstate, -1);
+    if (lua_isfunction (lstate, -1))
+      if (! check_lua (lua_pcall (lstate, 0, 0, 0))) {
+	abort_experiment ();
+	return;
       }
-    }
-    lua_pop (lstate, 1);
       
     // Make sure the new size is acceptable on the target screen
     auto geom = dsk.screenGeometry (screen_sbox->value ());
@@ -1523,8 +1469,8 @@ QExperiment::set_glformat (QGLFormat glformat)
 	   this, SLOT (normal_screen_restored ()));
   connect (glwidget, SIGNAL (gl_initialised ()),
 	   this, SLOT (glwidget_gl_initialised ()));
-  connect (glwidget, SIGNAL (gl_resized (int, int)),
-	   this, SLOT (gl_resized (int, int)));
+  connect (glwidget, SIGNAL (can_run_trial ()),
+	   this, SLOT (can_run_trial ()));
   connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
 	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
 

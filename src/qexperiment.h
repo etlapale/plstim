@@ -194,6 +194,7 @@ namespace plstim
      * before the session being finished.
      */
     void run_session ();
+    void run_session_inline ();
 
   protected:
     void setup_updated ();
@@ -213,7 +214,7 @@ namespace plstim
     void quit ();
     void glwidget_gl_initialised ();
     void glwidget_key_press_event (QKeyEvent* evt);
-    void gl_resized (int w, int h);
+    void can_run_trial ();
     void normal_screen_restored ();
     void open_recent ();
 
@@ -251,11 +252,6 @@ namespace plstim
     QAction* close_action;
 
     lua_State* lstate;
-
-    /**
-     * Waiting for a fullscreen event before starting the session.
-     */
-    bool waiting_fullscreen;
 
     /// Last opened directory in file dialog
     QString last_dialog_dir;

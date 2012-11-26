@@ -12,10 +12,6 @@
 
 - Seems that the first frame after fullscreen got displayed too early.
 
-[Code]
-
-- Keep resizeGL() inside MyGLWidget, emit can_run_trial().
-
 [Scripting]
 
 [GUI]

@@ -46,9 +46,11 @@ namespace plstim
     GLfloat vertices[12];
     GLuint current_frame;
 
+    bool waiting_fullscreen;
+
   signals:
     void gl_initialised ();
-    void gl_resized (int w, int h);
+    void can_run_trial ();
     void normal_screen_restored ();
     void key_press_event (QKeyEvent* evt);
 
@@ -61,7 +63,8 @@ namespace plstim
 	fshader (0), vshader (0), program (0),
 	vshader_attached (false),
 	first_shader_update (true),
-	current_frame (0)
+	current_frame (0),
+	waiting_fullscreen (false)
     {
       setFocusPolicy (Qt::StrongFocus);
     }
@@ -154,6 +157,8 @@ namespace plstim
     void full_screen () {
       setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
       setCursor (QCursor (Qt::BlankCursor));
+
+      waiting_fullscreen = true;
       showFullScreen ();
       //emit gl_resized (width (), height ());
 
@@ -436,7 +441,9 @@ namespace plstim
 
       //glClear (GL_COLOR_BUFFER_BIT);
 
-      emit gl_resized (w, h);
+      // TODO: we might want to check that the size is fullscreen
+      if (waiting_fullscreen)
+	emit can_run_trial ();
     }
 
     void paintGL ()
