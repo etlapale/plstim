@@ -294,7 +294,7 @@ MyGLWidget::update_shaders ()
   glVertexAttribPointer (ppos, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glClear (GL_COLOR_BUFFER_BIT);
 
-  paintGL ();
+  updateGL ();
 }
 
 void
