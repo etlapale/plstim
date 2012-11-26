@@ -3,6 +3,7 @@
 #ifndef __PLSTIM_QEXPERIMENT_H
 #define __PLSTIM_QEXPERIMENT_H
 
+#include <random>
 #include <set>
 
 #include <QApplication>
@@ -258,13 +259,13 @@ namespace plstim
   
   public:
     /// Random number generator
-    mt19937 twister;
+    std::mt19937 twister;
 
     /// Binary choice distribution
-    uniform_int_distribution<int> bin_dist;
+    std::uniform_int_distribution<int> bin_dist;
 
     /// Uniform double distribution in [0,1]
-    uniform_real_distribution<double> real_dist;
+    std::uniform_real_distribution<double> real_dist;
 
   protected:
     bool unusable;
