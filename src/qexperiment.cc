@@ -248,11 +248,14 @@ QExperiment::paint_page (Page* page,
 {
   QElapsedTimer timer;
   //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
+  
+  QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
   switch (page->type) {
   // Single frames
   case Page::Type::SINGLE:
     painter->begin (&img);
+    painter->setRenderHints (render_hints);
 
     lua_getglobal (lstate, "paint_frame");
     lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
@@ -287,6 +290,7 @@ QExperiment::paint_page (Page* page,
     for (int i = 0; i < page->frameCount (); i++) {
 
       painter->begin (&img);
+      painter->setRenderHints (render_hints);
 
       lua_getglobal (lstate, "paint_frame");
       lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
