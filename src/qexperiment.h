@@ -220,13 +220,17 @@ namespace plstim
     void can_run_trial ();
     void normal_screen_restored ();
     void open_recent ();
+    void xp_param_changed (double);
 
   protected:
     bool save_setup;
     QToolBar* toolbar;
     QToolBox* tbox;
+
     QWidget* xp_item;
     QSpinBox* ntrials_spin;
+    std::map<QString,QDoubleSpinBox*> param_spins;
+
     QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;

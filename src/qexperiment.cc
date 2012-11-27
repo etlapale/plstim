@@ -952,6 +952,8 @@ QExperiment::unload_experiment ()
     delete p;
   pages.clear ();
 
+  param_spins.clear ();
+
   delete xp_item;
 
   glwidget->delete_named_frames ();
@@ -970,7 +972,8 @@ QExperiment::load_experiment (const QString& path)
   if (unusable) return false;
 
   // Canonicalise the script path
-  auto script_path = QFileInfo (path).canonicalFilePath ();
+  QFileInfo fileinfo (path);
+  auto script_path = fileinfo.canonicalFilePath ();
 
   // Store the experiment path in the recent list
   auto rlist = settings->value ("recents").toStringList ();
@@ -1023,8 +1026,7 @@ QExperiment::load_experiment (const QString& path)
   if (! check_lua (luaL_loadfile (lstate, script_path.toLocal8Bit
 				  ().data ()))
       || ! check_lua (lua_pcall (lstate, 0, 0, 0))) {
-    lua_close (lstate);
-    lstate = NULL;
+    unload_experiment ();
     return false;
   }
 
@@ -1032,28 +1034,62 @@ QExperiment::load_experiment (const QString& path)
   // Setup an experiment item in the left toolbox
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
+  // Experiment name
+  flayout->addRow ("Experiment", new QLabel (fileinfo.fileName ()));
+  // Number of trials
   ntrials_spin = new QSpinBox;
   ntrials_spin->setRange (0, 8000);
   connect (ntrials_spin, SIGNAL (valueChanged (int)),
 	   this, SLOT (set_trial_count (int)));
   flayout->addRow ("Number of trials", ntrials_spin);
+  // Add spins for experiment specific parameters
+  lua_getglobal (lstate, "parameters");
+  if (lua_istable (lstate, -1)) {
+    lua_pushnil (lstate);
+    while (lua_next (lstate, -2) != 0) {
+      if (lua_isstring (lstate, -2)
+	  && lua_istable (lstate, -1)) {
+	QString param_name (lua_tostring (lstate, -2));
+
+	lua_rawgeti (lstate, -1, 1);
+	QString param_desc (lua_tostring (lstate, -1));
+	lua_pop (lstate, 1);
+
+	lua_rawgeti (lstate, -1, 2);
+	auto param_unit = QString (" %1").arg(lua_tostring (lstate, -1));
+	lua_pop (lstate, 1);
+
+	auto spin = new QDoubleSpinBox;
+	spin->setRange (-8000, 8000);
+	spin->setSuffix (param_unit);
+	spin->setProperty ("plstim_param_name", param_name);
+	connect (spin, SIGNAL (valueChanged (double)),
+		 this, SLOT (xp_param_changed (double)));
+	flayout->addRow (param_desc, spin);
+	
+	param_spins[param_name] = spin;
+      }
+      lua_pop (lstate, 1);
+    }
+  }
+  lua_pop (lstate, 1);
+  // Finish the experiment item
   xp_item->setLayout (flayout);
   tbox->addItem (xp_item, "Experiment");
   tbox->setCurrentWidget (xp_item);
 
-  // Fetch general experiment information
+  // Fetch experiment parameters
   lua_getglobal (lstate, "ntrials");
   if (lua_isnumber (lstate, -1)) {
     set_trial_count ((int) lua_tonumber (lstate, -1));
   }
   lua_pop (lstate, 1);
-
-
-  qDebug () << endl
-            << "Experiment loaded:" << endl
-	    << " " << ntrials << "trials" << endl
-	    << " " << pages.size () << "pages"
-	    << endl;
+  for (auto it : param_spins) {
+    lua_getglobal (lstate, it.first.toUtf8().data ());
+    if (lua_isnumber (lstate, -1))
+      it.second->setValue (lua_tonumber (lstate, -1));
+    lua_pop (lstate, 1);
+  }
 
   xp_label->setText (script_path);
 
@@ -1062,6 +1098,17 @@ QExperiment::load_experiment (const QString& path)
   setup_updated ();
 
   return true;
+}
+
+void
+QExperiment::xp_param_changed (double value)
+{
+  auto spin = qobject_cast<QDoubleSpinBox*> (sender());
+  if (spin) {
+    auto param = spin->property ("plstim_param_name").toString ();
+    lua_pushnumber (lstate, value);
+    lua_setglobal (lstate, param.toUtf8 ().data ());
+  }
 }
 
 void
