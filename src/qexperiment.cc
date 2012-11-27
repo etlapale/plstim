@@ -1033,6 +1033,7 @@ QExperiment::load_experiment (const QString& path)
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
   ntrials_spin = new QSpinBox;
+  ntrials_spin->setRange (0, 8000);
   connect (ntrials_spin, SIGNAL (valueChanged (int)),
 	   this, SLOT (set_trial_count (int)));
   flayout->addRow ("Number of trials", ntrials_spin);
