@@ -952,6 +952,8 @@ QExperiment::unload_experiment ()
     delete p;
   pages.clear ();
 
+  delete xp_item;
+
   glwidget->delete_named_frames ();
   glwidget->delete_unamed_frames ();
   // TODO: also delete shaders. put everything in cleanup ()
@@ -1018,19 +1020,33 @@ QExperiment::load_experiment (const QString& path)
   lua_pushcfunction (lstate, l_ds2pf);
   lua_setglobal (lstate, "ds2pf");
 
-  if (! check_lua (luaL_loadfile (lstate, script_path.toLocal8Bit ().data ())))
-    goto lerr;
+  if (! check_lua (luaL_loadfile (lstate, script_path.toLocal8Bit
+				  ().data ()))
+      || ! check_lua (lua_pcall (lstate, 0, 0, 0))) {
+    lua_close (lstate);
+    lstate = NULL;
+    return false;
+  }
 
-  if (! check_lua (lua_pcall (lstate, 0, 0, 0)))
-    goto lerr;
 
+  // Setup an experiment item in the left toolbox
+  xp_item = new QWidget;
+  auto flayout = new QFormLayout;
+  ntrials_spin = new QSpinBox;
+  connect (ntrials_spin, SIGNAL (valueChanged (int)),
+	   this, SLOT (set_trial_count (int)));
+  flayout->addRow ("Number of trials", ntrials_spin);
+  xp_item->setLayout (flayout);
+  tbox->addItem (xp_item, "Experiment");
+  tbox->setCurrentWidget (xp_item);
 
   // Fetch general experiment information
   lua_getglobal (lstate, "ntrials");
   if (lua_isnumber (lstate, -1)) {
-    ntrials = (int) lua_tonumber (lstate, -1);
+    set_trial_count ((int) lua_tonumber (lstate, -1));
   }
   lua_pop (lstate, 1);
+
 
   qDebug () << endl
             << "Experiment loaded:" << endl
@@ -1040,16 +1056,18 @@ QExperiment::load_experiment (const QString& path)
 
   xp_label->setText (script_path);
 
+
   // Initialise the experiment
   setup_updated ();
 
   return true;
+}
 
-  // Cleanup Lua engine on error
-lerr:
-  lua_close (lstate);
-  lstate = NULL;
-  return false;
+void
+QExperiment::set_trial_count (int num_trials)
+{
+  ntrials = num_trials;
+  ntrials_spin->setValue (ntrials);
 }
 
 void
@@ -1190,7 +1208,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   //action = 
 
   // Left toolbox
-  auto tbox = new QToolBox;
+  tbox = new QToolBox;
   splitter->addWidget (tbox);
 
   // Horizontal splitter (top: GLwidget, bottom: message box)
@@ -1236,7 +1254,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   flayout->addRow ("Refresh rate", refresh_edit);
   setup_widget->setLayout (flayout);
   tbox->addItem (setup_widget, "Setup");
-
   
   // Check for OpenGL
   if (! QGLFormat::hasOpenGL ()) {

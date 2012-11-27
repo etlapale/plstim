@@ -197,6 +197,8 @@ namespace plstim
     void run_session ();
     void run_session_inline ();
 
+    void set_trial_count (int ntrials);
+
   protected:
     void setup_updated ();
 
@@ -222,6 +224,9 @@ namespace plstim
   protected:
     bool save_setup;
     QToolBar* toolbar;
+    QToolBox* tbox;
+    QWidget* xp_item;
+    QSpinBox* ntrials_spin;
     QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
