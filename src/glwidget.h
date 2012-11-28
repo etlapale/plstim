@@ -25,8 +25,8 @@ namespace plstim
     GLuint program;
     bool vshader_attached;
 
-    std::vector<GLuint> unamed_frames;
-    std::map<QString,GLuint> named_frames;
+    std::map<QString,std::vector<GLuint>> animated_frames;
+    std::map<QString,GLuint> fixed_frames;
 
     GLint texloc;
 
@@ -54,19 +54,21 @@ namespace plstim
 
   public:
 
-    bool add_frame (const QImage& img);
+    bool add_animated_frame (const QString& name, const QImage& img);
 
-    void delete_unamed_frames ();
+    bool add_fixed_frame (const QString& name, const QImage& img);
 
-    void delete_named_frames ();
+    void delete_animated_frames (const QString& name);
 
-    bool add_frame (const QString& name, const QImage& img);
+    void delete_animated_frames ();
+
+    void delete_fixed_frames ();
 
     void empty_frame ();
 
-    void show_frame (const QString& name);
+    void show_fixed_frame (const QString& name);
 
-    void show_frames ();
+    void show_animated_frames (const QString& name);
 
     void full_screen ();
 

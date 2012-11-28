@@ -39,38 +39,53 @@ MyGLWidget::keyPressEvent (QKeyEvent* evt)
 }
 
 bool
-MyGLWidget::add_frame (const QImage& img)
+MyGLWidget::add_animated_frame (const QString& name,
+				const QImage& img)
 {
-  unamed_frames.push_back (bindTexture (img));
+  std::vector<GLuint>& frames = animated_frames[name];
+  frames.push_back (bindTexture (img));
   return true;
 }
 
 void
-MyGLWidget::delete_unamed_frames ()
+MyGLWidget::delete_animated_frames (const QString& name)
 {
-  for (auto f : unamed_frames)
-    deleteTexture (f);
+  std::vector<GLuint>& frames = animated_frames[name];
+  for (auto g : frames)
+    deleteTexture (g);
 
-  unamed_frames.clear ();
+  frames.clear ();
 }
 
 void
-MyGLWidget::delete_named_frames ()
+MyGLWidget::delete_animated_frames ()
 {
-  for (auto f : named_frames)
+  for (auto f : animated_frames) {
+    std::vector<GLuint>& frames = f.second;
+    for (auto g : frames)
+      deleteTexture (g);
+  }
+
+  animated_frames.clear ();
+}
+
+void
+MyGLWidget::delete_fixed_frames ()
+{
+  for (auto f : fixed_frames)
     deleteTexture (f.second);
 
-  named_frames.clear ();
+  fixed_frames.clear ();
 }
 
 bool
-MyGLWidget::add_frame (const QString& name, const QImage& img)
+MyGLWidget::add_fixed_frame (const QString& name, const QImage& img)
 {
   // Delete existing texture
-  if (named_frames.find (name) != named_frames.end ())
-    deleteTexture (named_frames[name]);
+  if (fixed_frames.find (name) != fixed_frames.end ())
+    deleteTexture (fixed_frames[name]);
 
-  named_frames[name] = bindTexture (img);
+  fixed_frames[name] = bindTexture (img);
   return true;
 }
 
@@ -85,9 +100,9 @@ MyGLWidget::empty_frame ()
 }
 
 void
-MyGLWidget::show_frame (const QString& name)
+MyGLWidget::show_fixed_frame (const QString& name)
 {
-  current_frame = named_frames[name];
+  current_frame = fixed_frames[name];
 
   qDebug () << "show frame" << name << ", at" << current_frame;
 
@@ -105,12 +120,12 @@ MyGLWidget::show_frame (const QString& name)
 }
 
 void
-MyGLWidget::show_frames ()
+MyGLWidget::show_animated_frames (const QString& name)
 {
   cout << "show multiple frames" << endl;
 
   makeCurrent ();
-  for (auto f : unamed_frames) {
+  for (auto f : animated_frames[name]) {
     current_frame = f;
 
     glClear (GL_COLOR_BUFFER_BIT);

@@ -275,7 +275,7 @@ QExperiment::paint_page (Page* page,
     painter->end ();
 
     //img.save (QString ("page-") + page->title + ".png");
-    glwidget->add_frame (page->title, img);
+    glwidget->add_fixed_frame (page->title, img);
     break;
 
   // Multiple frames
@@ -283,7 +283,7 @@ QExperiment::paint_page (Page* page,
     qDebug () << "painting" << page->frameCount () << "frames for" << page->title;
 
     //timer.start ();
-    glwidget->delete_unamed_frames ();
+    glwidget->delete_animated_frames (page->title);
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
     timer.start ();
 
@@ -313,7 +313,7 @@ QExperiment::paint_page (Page* page,
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       img.save (filename);
 #endif
-      glwidget->add_frame (img);
+      glwidget->add_animated_frame (page->title, img);
     }
     qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     break;
@@ -405,16 +405,16 @@ QExperiment::show_page (int index)
 
   switch (p->type) {
   case Page::Type::SINGLE:
-    glwidget->show_frame (p->title);
+    glwidget->show_fixed_frame (p->title);
     
     // Workaround a bug on initial frame after fullscreen
     // Maybe it’s a race condition?
     // TODO: in any cases, it should be tracked and solved
     if (current_trial == 0 && index == 0)
-      glwidget->show_frame (p->title);
+      glwidget->show_fixed_frame (p->title);
     break;
   case Page::Type::FRAMES:
-    glwidget->show_frames ();
+    glwidget->show_animated_frames (p->title);
     break;
   }
 
@@ -960,8 +960,8 @@ QExperiment::unload_experiment ()
 
   delete xp_item;
 
-  glwidget->delete_named_frames ();
-  glwidget->delete_unamed_frames ();
+  glwidget->delete_fixed_frames ();
+  glwidget->delete_animated_frames ();
   // TODO: also delete shaders. put everything in cleanup ()
 
   xp_label->setText ("No experiment loaded");
