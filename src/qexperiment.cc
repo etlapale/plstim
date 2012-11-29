@@ -959,6 +959,7 @@ QExperiment::unload_experiment ()
   param_spins.clear ();
 
   delete xp_item;
+  delete subject_item;
 
   glwidget->delete_fixed_frames ();
   glwidget->delete_animated_frames ();
@@ -1098,6 +1099,16 @@ QExperiment::load_experiment (const QString& path)
   xp_label->setText (script_path);
 
 
+  // Setup a subject item in the left toolbox
+  subject_item = new QWidget;
+  flayout = new QFormLayout;
+  subject_cbox = new QComboBox;
+  flayout->addRow ("Subject", subject_cbox);
+  subject_item->setLayout (flayout);
+  tbox->addItem (subject_item, "Subject");
+
+  // Load the available subject ids for the experiment
+
   // Initialise the experiment
   setup_updated ();
 
@@ -1214,26 +1225,26 @@ QExperiment::QExperiment (int & argc, char** argv)
   xp_menu = win->menuBar ()->addMenu (tr ("&Experiment"));
   // 
   auto action = xp_menu->addAction ("&Open");
-  action->setShortcut(tr("Ctrl+O"));
-  action->setStatusTip(tr("&Open an experiment"));
+  action->setShortcut (tr ("Ctrl+O"));
+  action->setStatusTip (tr ("&Open an experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
 
   // Run an experiment in full screen
   action = xp_menu->addAction ("&Run");
-  action->setShortcut(tr("Ctrl+R"));
-  action->setStatusTip(tr("&Run the experiment"));
+  action->setShortcut (tr ("Ctrl+R"));
+  action->setStatusTip (tr ("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
 
   // Run an experiment inside the main window
   action = xp_menu->addAction ("Run &inline");
-  action->setShortcut(tr("Ctrl+Shift+R"));
-  action->setStatusTip(tr("&Run the experiment inside the window"));
+  action->setShortcut (tr ("Ctrl+Shift+R"));
+  action->setStatusTip (tr ("&Run the experiment inside the window"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session_inline ()));
 
   // Close the current simulation
   close_action = xp_menu->addAction ("&Close");
-  close_action->setShortcut(tr("Ctrl+W"));
-  close_action->setStatusTip(tr("&Close the experiment"));
+  close_action->setShortcut (tr ("Ctrl+W"));
+  close_action->setStatusTip (tr ("&Close the experiment"));
   connect (close_action, SIGNAL (triggered ()), this, SLOT (unload_experiment ()));
   xp_menu->addSeparator ();
 
@@ -1254,6 +1265,13 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setShortcut(tr("Ctrl+Q"));
   action->setStatusTip(tr("&Quit the program"));
   connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
+
+  // Subject menu
+  auto menu = win->menuBar ()->addMenu (tr ("&Subject"));
+  action = menu->addAction (tr ("&New"));
+  action->setShortcut (tr ("Ctrl+N"));
+  action->setStatusTip (tr ("&Create a new subject"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (new_subject ()));
 
   // Top toolbar
   //toolbar = new QToolBar ("Simulation");
@@ -1408,6 +1426,36 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Close event termination
   connect (&app, SIGNAL (aboutToQuit ()),
 	   this, SLOT (about_to_quit ()));
+}
+
+void
+QExperiment::new_subject ()
+{
+  tbox->setCurrentWidget (subject_item);
+  subject_cbox->setEditable (true);
+  QLineEdit* le = subject_cbox->lineEdit ();
+  le->clear ();
+
+  connect (le, SIGNAL (returnPressed ()),
+	   this, SLOT (new_subject_validated ()));
+  auto trans = new QKeyEventTransition (le, QEvent::KeyPress, Qt::Key_Escape);
+  connect (trans, SIGNAL (triggered ()), SLOT (new_subject_cancelled ()));
+
+  QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
+  le->setValidator (new QRegExpValidator (rx));
+  subject_cbox->setFocus (Qt::OtherFocusReason);
+}
+
+void
+QExperiment::new_subject_validated ()
+{
+  subject_cbox->setEditable (false);
+}
+
+void
+QExperiment::new_subject_cancelled ()
+{
+  subject_cbox->setEditable (false);
 }
 
 void

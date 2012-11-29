@@ -189,6 +189,8 @@ namespace plstim
 
   public slots:
 
+    void new_subject ();
+
     /**
      * Run a session of multiple trials.
      * Sessions may run asynchronously, so this method may return
@@ -221,6 +223,8 @@ namespace plstim
     void normal_screen_restored ();
     void open_recent ();
     void xp_param_changed (double);
+    void new_subject_validated ();
+    void new_subject_cancelled ();
 
   protected:
     bool save_setup;
@@ -230,6 +234,9 @@ namespace plstim
     QWidget* xp_item;
     QSpinBox* ntrials_spin;
     std::map<QString,QDoubleSpinBox*> param_spins;
+
+    QWidget* subject_item;
+    QComboBox* subject_cbox;
 
     QSplitter* splitter;
     QComboBox* setup_cbox;
