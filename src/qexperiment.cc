@@ -1104,6 +1104,8 @@ QExperiment::load_experiment (const QString& path)
   flayout = new QFormLayout;
   subject_cbox = new QComboBox;
   flayout->addRow ("Subject", subject_cbox);
+  subject_databutton = new QPushButton ( tr( "Select data file"));
+  flayout->addRow ("Data file", subject_databutton);
   subject_item->setLayout (flayout);
   tbox->addItem (subject_item, "Subject");
 
@@ -1433,13 +1435,14 @@ QExperiment::new_subject ()
 {
   tbox->setCurrentWidget (subject_item);
   subject_cbox->setEditable (true);
-  QLineEdit* le = subject_cbox->lineEdit ();
+  auto le = new MyLineEdit;
+  subject_cbox->setLineEdit (le);
   le->clear ();
 
   connect (le, SIGNAL (returnPressed ()),
 	   this, SLOT (new_subject_validated ()));
-  auto trans = new QKeyEventTransition (le, QEvent::KeyPress, Qt::Key_Escape);
-  connect (trans, SIGNAL (triggered ()), SLOT (new_subject_cancelled ()));
+  connect (le, SIGNAL (escapePressed ()),
+	   this, SLOT (new_subject_cancelled ()));
 
   QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
   le->setValidator (new QRegExpValidator (rx));
@@ -1455,7 +1458,11 @@ QExperiment::new_subject_validated ()
 void
 QExperiment::new_subject_cancelled ()
 {
-  subject_cbox->setEditable (false);
+  auto le = qobject_cast<MyLineEdit*> (sender());
+  if (le) {
+    le->clear ();
+    subject_cbox->setEditable (false);
+  }
 }
 
 void

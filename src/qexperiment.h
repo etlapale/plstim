@@ -237,6 +237,7 @@ namespace plstim
 
     QWidget* subject_item;
     QComboBox* subject_cbox;
+    QPushButton* subject_databutton;
 
     QSplitter* splitter;
     QComboBox* setup_cbox;
@@ -289,6 +290,26 @@ namespace plstim
     bool unusable;
 
     QSpinBox* make_setup_spin (int min, int max, const char* suffix);
+  };
+
+  class MyLineEdit : public QLineEdit
+  {
+    Q_OBJECT
+  public:
+    MyLineEdit ()
+      : QLineEdit ()
+    {
+    }
+  signals: 
+    void escapePressed ();
+  protected:
+    virtual void keyPressEvent (QKeyEvent* event)
+    {
+      if (event->key () == Qt::Key_Escape)
+	emit escapePressed ();
+      else
+	QLineEdit::keyPressEvent (event);
+    }
   };
 }
 
