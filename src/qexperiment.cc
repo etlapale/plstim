@@ -1107,7 +1107,6 @@ QExperiment::load_experiment (const QString& path)
   // Finish the experiment item
   xp_item->setLayout (flayout);
   tbox->addItem (xp_item, "Experiment");
-  tbox->setCurrentWidget (xp_item);
 
   // Fetch experiment parameters
   lua_getglobal (lstate, "ntrials");
@@ -1129,10 +1128,12 @@ QExperiment::load_experiment (const QString& path)
   subject_item = new QWidget;
   flayout = new QFormLayout;
   subject_cbox = new QComboBox;
+  subject_cbox->addItem (tr ("None"));
   flayout->addRow ("Subject", subject_cbox);
   connect (subject_cbox, SIGNAL (currentIndexChanged (const QString&)),
 	   this, SLOT (subject_changed (const QString&)));
-  subject_databutton = new QPushButton ( tr( "Select data file"));
+  subject_databutton = new QPushButton ( tr( "Subject data file"));
+  subject_databutton->setDisabled (true);
   connect (subject_databutton, SIGNAL (clicked ()),
 	   this, SLOT (select_subject_datafile ()));
   flayout->addRow ("Data file", subject_databutton);
@@ -1140,6 +1141,14 @@ QExperiment::load_experiment (const QString& path)
   tbox->addItem (subject_item, "Subject");
 
   // Load the available subject ids for the experiment
+  QString subject_path ("experiments/%1/subjects");
+  settings->beginGroup (subject_path.arg (xp_name));
+  for (auto s : settings->childKeys ())
+    subject_cbox->addItem (s);
+  settings->endGroup ();
+
+  // Prepare for running the experiment
+  tbox->setCurrentWidget (subject_item);
 
   // Initialise the experiment
   setup_updated ();
@@ -1488,7 +1497,9 @@ QExperiment::new_subject_validated ()
     .arg (xp_name).arg (subject_id);
 
   // Make sure the subject ID is not already present
-  if (settings->contains (subject_path)) {
+  // and is not the ‘no subject’ option
+  if (subject_cbox->currentIndex () == 0
+      || settings->contains (subject_path)) {
     msgbox->add (new Message (Message::Type::ERROR,
 			      "Subject ID already existing"));
     return;
@@ -1503,7 +1514,12 @@ QExperiment::new_subject_validated ()
   if (fi.exists ())
     flags = H5F_ACC_RDWR;
 
+  // Set the datafile button info
+  subject_databutton->setText (fi.fileName ());
+  subject_databutton->setToolTip (fi.absoluteFilePath ());
+
   // Create the HDF5 file
+  // TODO: handle HDF5 exceptions here
   H5File hf (subject_datafile.toLocal8Bit ().data (), flags);
   hf.close ();
 
@@ -1534,10 +1550,30 @@ QExperiment::select_subject_datafile ()
 }
 
 void
-QExperiment::subject_changed (const QString& subject)
+QExperiment::subject_changed (const QString& subject_id)
 {
-  qDebug () << "Subject ID set to" << subject;
+  // Selection removal
+  if (subject_cbox->currentIndex () == 0) {
+    subject_databutton->setText (tr ("Subject data file"));
+    subject_databutton->setToolTip (QString ());
+    subject_databutton->setDisabled (true);
+  }
+  else {
+    auto subject_path = QString ("experiments/%1/subjects/%2")
+      .arg (xp_name).arg (subject_id);
 
+    auto datafile = settings->value (subject_path);
+    QFileInfo fi (datafile.toString ());
+
+    // Make sure the datafile still exists
+    if (! fi.exists ())
+      msgbox->add (new Message (Message::Type::ERROR,
+				tr ("Subject data file is missing")));
+
+    subject_databutton->setText (fi.fileName ());
+    subject_databutton->setToolTip (fi.absoluteFilePath ());
+    subject_databutton->setDisabled (false);
+  }
 }
 
 void
