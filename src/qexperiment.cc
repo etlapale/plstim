@@ -18,6 +18,12 @@ using namespace plstim;
 #include <QtDebug>
 
 
+#include <H5Cpp.h>
+#ifndef H5_NO_NAMESPACE
+using namespace H5;
+#endif
+
+
 
 void*
 operator new (std::size_t size, lua_State* lstate, const char* metaname)
@@ -951,6 +957,7 @@ QExperiment::unload_experiment ()
 
   abort_experiment ();
 
+  xp_name.clear ();
   ntrials = 0;
   for (auto p : pages)
     delete p;
@@ -991,6 +998,25 @@ QExperiment::load_experiment (const QString& path)
 
   // TODO: cleanup any existing experiment
   unload_experiment ();
+  
+  // Add the experiment to the settings
+  xp_name = fileinfo.fileName ();
+  if (xp_name.endsWith (".lua"))
+    xp_name = xp_name.left (xp_name.size () - 4);
+  settings->beginGroup (QString ("experiments/%1").arg (xp_name));
+  if (settings->contains ("path")) {
+    if (settings->value ("path").toString () != script_path) {
+      msgbox->add (new Message (Message::Type::ERROR,
+				"Homonymous experiment"));
+      xp_name.clear ();
+      return false;
+    }
+  }
+  else {
+    settings->setValue ("path", script_path);
+  }
+  settings->endGroup ();
+
 
   // Create a new Lua state
   lstate = lua_open ();
@@ -1040,7 +1066,7 @@ QExperiment::load_experiment (const QString& path)
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
   // Experiment name
-  flayout->addRow ("Experiment", new QLabel (fileinfo.fileName ()));
+  flayout->addRow ("Experiment", new QLabel (xp_name));
   // Number of trials
   ntrials_spin = new QSpinBox;
   ntrials_spin->setRange (0, 8000);
@@ -1104,7 +1130,11 @@ QExperiment::load_experiment (const QString& path)
   flayout = new QFormLayout;
   subject_cbox = new QComboBox;
   flayout->addRow ("Subject", subject_cbox);
+  connect (subject_cbox, SIGNAL (currentIndexChanged (const QString&)),
+	   this, SLOT (subject_changed (const QString&)));
   subject_databutton = new QPushButton ( tr( "Select data file"));
+  connect (subject_databutton, SIGNAL (clicked ()),
+	   this, SLOT (select_subject_datafile ()));
   flayout->addRow ("Data file", subject_databutton);
   subject_item->setLayout (flayout);
   tbox->addItem (subject_item, "Subject");
@@ -1452,7 +1482,33 @@ QExperiment::new_subject ()
 void
 QExperiment::new_subject_validated ()
 {
+  auto le = qobject_cast<MyLineEdit*> (sender());
+  auto subject_id = le->text ();
+  auto subject_path = QString ("experiments/%1/subjects/%2")
+    .arg (xp_name).arg (subject_id);
+
+  // Make sure the subject ID is not already present
+  if (settings->contains (subject_path)) {
+    msgbox->add (new Message (Message::Type::ERROR,
+			      "Subject ID already existing"));
+    return;
+  }
+
   subject_cbox->setEditable (false);
+
+  // Set a default datafile for the subject
+  auto subject_datafile = QString ("%1-%2.h5").arg (xp_name).arg (subject_id);
+  QFileInfo fi (subject_datafile);
+  int flags = H5F_ACC_EXCL;
+  if (fi.exists ())
+    flags = H5F_ACC_RDWR;
+
+  // Create the HDF5 file
+  H5File hf (subject_datafile.toLocal8Bit ().data (), flags);
+  hf.close ();
+
+  // Create a new subject
+  settings->setValue (subject_path, fi.absoluteFilePath ());
 }
 
 void
@@ -1463,6 +1519,33 @@ QExperiment::new_subject_cancelled ()
     le->clear ();
     subject_cbox->setEditable (false);
   }
+}
+
+void
+QExperiment::select_subject_datafile ()
+{
+  QFileDialog dialog (win, tr ("Select datafile"), last_datafile_dir);
+  dialog.setDefaultSuffix (".h5");
+  dialog.setNameFilter (tr ("Subject data (*.h5 *.hdf);;All files (*)"));
+  if (dialog.exec () == QDialog::Accepted) {
+    last_datafile_dir = dialog.directory ().absolutePath ();
+    set_subject_datafile (dialog.selectedFiles ().at (0));
+  }
+}
+
+void
+QExperiment::subject_changed (const QString& subject)
+{
+  qDebug () << "Subject ID set to" << subject;
+
+}
+
+void
+QExperiment::set_subject_datafile (const QString& path)
+{
+  QFileInfo fi (path);
+  subject_databutton->setText (fi.fileName ());
+  subject_databutton->setToolTip (path);
 }
 
 void

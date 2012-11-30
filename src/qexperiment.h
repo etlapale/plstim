@@ -201,6 +201,8 @@ namespace plstim
 
     void set_trial_count (int ntrials);
 
+    void set_subject_datafile (const QString& path);
+
   protected:
     void setup_updated ();
 
@@ -225,6 +227,8 @@ namespace plstim
     void xp_param_changed (double);
     void new_subject_validated ();
     void new_subject_cancelled ();
+    void select_subject_datafile ();
+    void subject_changed (const QString& subject);
 
   protected:
     bool save_setup;
@@ -263,6 +267,8 @@ namespace plstim
 
     QByteArray splitter_state;
 
+    QString xp_name;
+
     QMenu* xp_menu;
     int max_recents;
     QAction** recent_actions;
@@ -273,6 +279,8 @@ namespace plstim
 
     /// Last opened directory in file dialog
     QString last_dialog_dir;
+
+    QString last_datafile_dir;
   
   public:
     /// Random number generator

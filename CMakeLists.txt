@@ -15,9 +15,13 @@ include ( ${QT_USE_FILE} )
 find_package (Lua51 REQUIRED)
 include_directories (${LUA_INCLUDE_DIR})
 
+# Search for HDF5
+find_package (HDF5 REQUIRED COMPONENTS CXX)
+message ("HDF5 found at ${HDF5_FOUND}, libs at ${HDF5_LIBRARIES}")
+
 # Main program
 set (plstim_src src/qexperiment.cc src/messagebox.cc src/utils.cc src/glwidget.cc)
 set (plstim_hdr src/qexperiment.h src/messagebox.h src/glwidget.h)
 qt4_wrap_cpp (plstim_moc ${plstim_hdr})
 add_executable (plstim ${plstim_src} ${plstim_moc})
-target_link_libraries (plstim ${QT_LIBRARIES} ${LUA_LIBRARIES})
+target_link_libraries (plstim ${QT_LIBRARIES} ${LUA_LIBRARIES} ${HDF5_LIBRARIES})
