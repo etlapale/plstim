@@ -1088,16 +1088,35 @@ QExperiment::load_experiment (const QString& path)
   }
 
 
-  // Define the trial record
-  trial_record = malloc (record_size);
-  record_type = new CompType (record_size);
-  QString fmt ("%1_%2");
-  for (auto p : pages) {
-    auto page_name = p->title;
-    auto offset = record_offsets[page_name];
-    record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
+  // Append trial parameters to the record
+#if 0
+  lua_getglobal (lstate, "trial_parameters");
+  if (lua_istable (lstate, -1)) {
+    lua_pushnil (lstate, -1);
+    while (lua_next (lstate, -2) != 0) {
+      if (lua_isstring (lstate, -2)
+	  && lua_istable (lstate, -1)) {
+	QString param_name (lua_tostring (lstate, -2));
+	record_size += 
+      }
+      lua_pop (lstate, 1);
+    }
   }
-  qDebug () << "Trial record size:" << record_size;
+  lua_pop (lstate, 1);
+#endif
+
+  // Define the trial record
+  if (record_size) {
+    trial_record = malloc (record_size);
+    record_type = new CompType (record_size);
+    QString fmt ("%1_%2");
+    for (auto p : pages) {
+      auto page_name = p->title;
+      auto offset = record_offsets[page_name];
+      record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
+    }
+    qDebug () << "Trial record size:" << record_size;
+  }
 
 
   // Setup an experiment item in the left toolbox
