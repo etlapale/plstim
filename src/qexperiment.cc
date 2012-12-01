@@ -1079,7 +1079,7 @@ QExperiment::load_experiment (const QString& path)
   // Define the trial record
   trial_record = malloc (record_size);
   record_type = new CompType (record_size);
-  QString fmt ("%1-%2");
+  QString fmt ("%1_%2");
   for (auto it : record_offsets) {
     auto page_name = it.first;
     auto offset = it.second;
@@ -1200,7 +1200,7 @@ QExperiment::set_trial_count (int num_trials)
   ntrials_spin->setValue (ntrials);
 }
 
-static const QRegExp session_name_re ("session-[0-9]+");
+static const QRegExp session_name_re ("session_[0-9]+");
 
 herr_t
 find_session_maxi (hid_t group_id, const char * dset_name, void* data)
@@ -1231,7 +1231,7 @@ QExperiment::init_session ()
   hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
 
   // Give a number to the current block
-  auto session_name = QString ("session-%1").arg (session_maxi+1);
+  auto session_name = QString ("session_%1").arg (session_maxi+1);
 
   // Create a new dataset for the block/session
   hsize_t htrials = ntrials;
@@ -1251,6 +1251,11 @@ QExperiment::init_session ()
   StrType sysname_type (PredType::C_S1, hostname.size ());
   dset.createAttribute ("hostname", sysname_type, scalar_space)
     .write (sysname_type, hostname.data ());
+
+  // Save current date and time
+  qint64 now = QDateTime::currentMSecsSinceEpoch ();
+  dset.createAttribute ("datetime", PredType::STD_U64LE, scalar_space)
+    .write (PredType::NATIVE_UINT64, &now);
   
   hf->flush (H5F_SCOPE_GLOBAL);
 }
