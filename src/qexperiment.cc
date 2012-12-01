@@ -399,8 +399,16 @@ QExperiment::run_trial ()
 void
 QExperiment::show_page (int index)
 {
-  cout << "show page: " << index << endl;
   Page* p = pages[index];
+
+  // Save the time at which the page is displayed
+  size_t begin_offset = record_offsets[p->title];
+  qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+  qint64 nsecs = timer.nsecsElapsed ();
+  qDebug () << "timing page" << index << "aka" << p->title << "at" << nsecs;
+  *pos = nsecs;
+  //qint64* pos = ((char*) trial_record)
+  //*((qint64*) (((char*)trial_record)[begin_offset])) = timer.nsecsElapsed ();
 
   switch (p->type) {
   case Page::Type::SINGLE:
@@ -428,6 +436,14 @@ QExperiment::show_page (int index)
 void
 QExperiment::next_page ()
 {
+  // Save the page record on HDF5
+  hsize_t one = 1;
+  DataSpace fspace = dset.getSpace ();
+  hsize_t hframe = current_trial;
+  fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+  DataSpace mspace (1, &one);
+  dset.write (trial_record, *record_type, mspace, fspace);
+  
   // End of trial
   if ((int) (current_page + 1) == (int) (pages.size ())) {
     // Next trial
@@ -1076,9 +1092,9 @@ QExperiment::load_experiment (const QString& path)
   trial_record = malloc (record_size);
   record_type = new CompType (record_size);
   QString fmt ("%1_%2");
-  for (auto it : record_offsets) {
-    auto page_name = it.first;
-    auto offset = it.second;
+  for (auto p : pages) {
+    auto page_name = p->title;
+    auto offset = record_offsets[page_name];
     record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
   }
   qDebug () << "Trial record size:" << record_size;
@@ -1552,7 +1568,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Make sure the timer is monotonic
   if (! timer.isMonotonic ())
-    error ("no monotonic timer available on this platform");
+    error (tr ("No monotonic timer available on this platform"));
 }
 
 void
@@ -1593,8 +1609,7 @@ QExperiment::new_subject_validated ()
   // and is not the ‘no subject’ option
   if (subject_cbox->currentIndex () == 0
       || settings->contains (subject_path)) {
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Subject ID already existing"));
+    error (tr ("Subject ID already existing"));
     return;
   }
 
