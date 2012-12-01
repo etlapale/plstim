@@ -1200,13 +1200,37 @@ QExperiment::set_trial_count (int num_trials)
   ntrials_spin->setValue (ntrials);
 }
 
+static const QRegExp session_name_re ("session-[0-9]+");
+
+herr_t
+find_session_maxi (hid_t group_id, const char * dset_name, void* data)
+{
+  QString dset (dset_name);
+
+  // Check if the dataset is a session
+  if (session_name_re.exactMatch (dset)) {
+    int* maxi = (int*) data;
+    int num = dset.right (dset.size () - 8).toInt ();
+    if (num > *maxi)
+      *maxi = num;
+  }
+  return 0;
+}
+
+
 void
 QExperiment::init_session ()
 {
   current_trial = 0;
 
+  // Parse the HDF5 datasets to get a block number
+  int session_maxi = 0;
+  int idx = 0;
+  hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
+
   // Give a number to the current block
-  QString session_name ("session-1");
+  qDebug () << "session maxi:" << session_maxi;
+  auto session_name = QString ("session-%1").arg (session_maxi+1);
 
   // Create a new dataset for the block/session
   hsize_t htrials = ntrials;
