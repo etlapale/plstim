@@ -1205,6 +1205,8 @@ static const QRegExp session_name_re ("session-[0-9]+");
 herr_t
 find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 {
+  (void) group_id;	// Unused
+
   QString dset (dset_name);
 
   // Check if the dataset is a session
@@ -1229,7 +1231,6 @@ QExperiment::init_session ()
   hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
 
   // Give a number to the current block
-  qDebug () << "session maxi:" << session_maxi;
   auto session_name = QString ("session-%1").arg (session_maxi+1);
 
   // Create a new dataset for the block/session
@@ -1237,11 +1238,17 @@ QExperiment::init_session ()
   DataSpace dspace (1, &htrials);
   dset = hf->createDataSet (session_name.toUtf8 ().data (),
 			    *record_type, dspace);
+  
+  // Save subject ID
+  auto subject = subject_cbox->currentText ().toUtf8 ();
+  StrType str_type (PredType::C_S1, subject.size ());
+  DataSpace scalar_space (H5S_SCALAR);
+  dset.createAttribute ("subject", str_type, scalar_space)
+    .write (str_type, subject.data ());
 
   // Save machine information
   auto hostname = QHostInfo::localHostName ().toUtf8 ();
   StrType sysname_type (PredType::C_S1, hostname.size ());
-  DataSpace scalar_space (H5S_SCALAR);
   dset.createAttribute ("hostname", sysname_type, scalar_space)
     .write (sysname_type, hostname.data ());
   
