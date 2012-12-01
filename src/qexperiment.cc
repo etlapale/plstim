@@ -402,13 +402,14 @@ QExperiment::show_page (int index)
   Page* p = pages[index];
 
   // Save the time at which the page is displayed
-  size_t begin_offset = record_offsets[p->title];
-  qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
-  qint64 nsecs = timer.nsecsElapsed ();
-  qDebug () << "timing page" << index << "aka" << p->title << "at" << nsecs;
-  *pos = nsecs;
-  //qint64* pos = ((char*) trial_record)
-  //*((qint64*) (((char*)trial_record)[begin_offset])) = timer.nsecsElapsed ();
+  auto it = record_offsets.find (p->title);
+  if (it != record_offsets.end ()) {
+    size_t begin_offset = it->second;
+    qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+    qint64 nsecs = timer.nsecsElapsed ();
+    qDebug () << "timing page" << index << "aka" << p->title << "at" << nsecs;
+    *pos = nsecs;
+  }
 
   switch (p->type) {
   case Page::Type::SINGLE:
@@ -437,12 +438,14 @@ void
 QExperiment::next_page ()
 {
   // Save the page record on HDF5
-  hsize_t one = 1;
-  DataSpace fspace = dset.getSpace ();
-  hsize_t hframe = current_trial;
-  fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
-  DataSpace mspace (1, &one);
-  dset.write (trial_record, *record_type, mspace, fspace);
+  if (hf != NULL) {
+    hsize_t one = 1;
+    DataSpace fspace = dset.getSpace ();
+    hsize_t hframe = current_trial;
+    fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+    DataSpace mspace (1, &one);
+    dset.write (trial_record, *record_type, mspace, fspace);
+  }
   
   // End of trial
   if ((int) (current_page + 1) == (int) (pages.size ())) {
@@ -452,7 +455,8 @@ QExperiment::next_page ()
     }
     // End of session
     else {
-      hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+      if (hf != NULL)
+	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
       glwidget->normal_screen ();
       session_running = false;
     }
@@ -1256,39 +1260,42 @@ QExperiment::init_session ()
 {
   current_trial = 0;
 
-  // Parse the HDF5 datasets to get a block number
-  int session_maxi = 0;
-  int idx = 0;
-  hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
+  // Check if a subject datafile is opened
+  if (hf != NULL) {
+    // Parse the HDF5 datasets to get a block number
+    int session_maxi = 0;
+    int idx = 0;
+    hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
 
-  // Give a number to the current block
-  auto session_name = QString ("session_%1").arg (session_maxi+1);
+    // Give a number to the current block
+    auto session_name = QString ("session_%1").arg (session_maxi+1);
 
-  // Create a new dataset for the block/session
-  hsize_t htrials = ntrials;
-  DataSpace dspace (1, &htrials);
-  dset = hf->createDataSet (session_name.toUtf8 ().data (),
-			    *record_type, dspace);
-  
-  // Save subject ID
-  auto subject = subject_cbox->currentText ().toUtf8 ();
-  StrType str_type (PredType::C_S1, subject.size ());
-  DataSpace scalar_space (H5S_SCALAR);
-  dset.createAttribute ("subject", str_type, scalar_space)
-    .write (str_type, subject.data ());
+    // Create a new dataset for the block/session
+    hsize_t htrials = ntrials;
+    DataSpace dspace (1, &htrials);
+    dset = hf->createDataSet (session_name.toUtf8 ().data (),
+			      *record_type, dspace);
+    
+    // Save subject ID
+    auto subject = subject_cbox->currentText ().toUtf8 ();
+    StrType str_type (PredType::C_S1, subject.size ());
+    DataSpace scalar_space (H5S_SCALAR);
+    dset.createAttribute ("subject", str_type, scalar_space)
+      .write (str_type, subject.data ());
 
-  // Save machine information
-  auto hostname = QHostInfo::localHostName ().toUtf8 ();
-  StrType sysname_type (PredType::C_S1, hostname.size ());
-  dset.createAttribute ("hostname", sysname_type, scalar_space)
-    .write (sysname_type, hostname.data ());
+    // Save machine information
+    auto hostname = QHostInfo::localHostName ().toUtf8 ();
+    StrType sysname_type (PredType::C_S1, hostname.size ());
+    dset.createAttribute ("hostname", sysname_type, scalar_space)
+      .write (sysname_type, hostname.data ());
 
-  // Save current date and time
-  qint64 now = QDateTime::currentMSecsSinceEpoch ();
-  dset.createAttribute ("datetime", PredType::STD_U64LE, scalar_space)
-    .write (PredType::NATIVE_UINT64, &now);
-  
-  hf->flush (H5F_SCOPE_GLOBAL);
+    // Save current date and time
+    qint64 now = QDateTime::currentMSecsSinceEpoch ();
+    dset.createAttribute ("datetime", PredType::STD_U64LE, scalar_space)
+      .write (PredType::NATIVE_UINT64, &now);
+    
+    hf->flush (H5F_SCOPE_GLOBAL);
+  }
 }
 
 void
