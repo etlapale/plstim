@@ -182,7 +182,6 @@ Page::Page (Page::Type t, const QString& page_title)
   : type (t), title (page_title),
     duration (0)
 {
-  qDebug () << "Creating a page with title" << page_title << endl;
   switch (type) {
   case Page::Type::SINGLE:
     wait_for_key = true;
@@ -223,6 +222,13 @@ Page::accept_key (int key)
 void
 QExperiment::add_page (Page* page)
 {
+  // Check for an existing page with the same name
+  for (auto p : pages) {
+    if (p->title == page->title) {
+      error (tr ("Duplicate page name detected"));
+      return;
+    }
+  }
   pages.push_back (page);
 }
 
@@ -498,57 +504,6 @@ QExperiment::can_run_trial ()
 
 static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 
-
-static int
-l_add_page (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Page information
-  auto page_name = luaL_checkstring (lstate, 1);
-  auto page_type = Page::Type::SINGLE;
-  float duration = 0;
-  std::set<int> accepted_keys;
-
-  if (lua_gettop (lstate) >= 2) {
-    // Animated frames
-    if (lua_isnumber (lstate, 2)) {
-      page_type = Page::Type::FRAMES;
-      duration = lua_tonumber (lstate, 2);
-    }
-    // Key wait
-    else {
-      auto str = QString (luaL_checkstring (lstate, 2));
-      auto keys = str.split (" ", QString::SkipEmptyParts);
-      for (auto k : keys) {
-	auto it = xp->key_mapping.find (k.toUtf8 ().data ());
-	if (it == xp->key_mapping.end ()) {
-	  qDebug () << "error: no mapping for key " << k;
-	}
-	else {
-	  accepted_keys.insert (it->second);
-	}
-      }
-    }
-    lua_pop (lstate, 1);
-  }
-
-  // Create a new page and add it to the experiment
-  auto page = new Page (page_type, page_name);
-  page->duration = duration;
-  page->accepted_keys = accepted_keys;
-  xp->add_page (page);
-
-  // Compute required memory for the page
-  xp->record_offsets[page_name] = xp->record_size;
-  xp->record_size += sizeof (qint64);	// Start page presentation
-
-  return 0;
-}
 
 static int
 l_bin_random (lua_State* lstate)
@@ -980,7 +935,8 @@ QExperiment::unload_experiment ()
   param_spins.clear ();
 
   delete xp_item;
-  delete subject_item;
+  if (subject_item)
+    delete subject_item;
 
   if (trial_record != NULL) {
     free (trial_record);
@@ -1067,10 +1023,6 @@ QExperiment::load_experiment (const QString& path)
   // Register wrappers
   luaopen_plstim (lstate);
 
-  // Register add_page ()
-  lua_pushcfunction (lstate, l_add_page);
-  lua_setglobal (lstate, "add_page");
-
   // Register random functions
   lua_pushcfunction (lstate, l_random);
   lua_setglobal (lstate, "random");
@@ -1089,6 +1041,68 @@ QExperiment::load_experiment (const QString& path)
       || ! check_lua (lua_pcall (lstate, 0, 0, 0))) {
     unload_experiment ();
     return false;
+  }
+
+  // Create the pages defined in the experiment
+  lua_getglobal (lstate, "pages");
+  if (lua_istable (lstate, -1)) {
+    size_t plen = lua_objlen (lstate, -1);
+    for (size_t i = 1; i <= plen; i++) {
+      lua_rawgeti (lstate, -1, i);
+      if (lua_istable (lstate, -1)) {
+	// Page information
+	QString page_title;
+	auto page_type = Page::Type::SINGLE;
+	float page_duration = 0;
+	std::set<int> accepted_keys;
+
+	// Process each page parameter
+	lua_pushnil (lstate);
+	while (lua_next (lstate, -2) != 0) {
+	  if (lua_isstring (lstate, -2)) {
+	    QString param (lua_tostring (lstate, -2));
+	    if (param == "name" && lua_isstring (lstate, -1)) {
+	      page_title = lua_tostring (lstate, -1);
+	    }
+	    else if (param == "animated"
+		&& lua_isboolean (lstate, -1)) {
+	      page_type = lua_toboolean (lstate, -1)
+		? Page::Type::FRAMES : Page::Type::SINGLE;
+	    }
+	    else if (param == "duration"
+		     && lua_isnumber (lstate, -1)) {
+	      page_duration = lua_tonumber (lstate, -1);
+	    }
+	    else if (param == "keys"
+		     && lua_isstring (lstate, -1)) {
+	      QString str (lua_tostring (lstate, -1));
+	      auto keys = str.split (" ", QString::SkipEmptyParts);
+	      for (auto k : keys) {
+		auto it = key_mapping.find (k.toUtf8 ().data ());
+		if (it == key_mapping.end ()) {
+		  qDebug () << "error: no mapping for key " << k;
+		}
+		else {
+		  accepted_keys.insert (it->second);
+		}
+	      }
+	    }
+	  }
+	  lua_pop (lstate, 1);
+	}
+
+	// Create a new page and add it to the experiment
+	auto page = new Page (page_type, page_title);
+	page->duration = page_duration;
+	page->accepted_keys = accepted_keys;
+	add_page (page);
+	
+	// Compute required memory for the page
+	record_offsets[page_title] = record_size;
+	record_size += sizeof (qint64);	// Start page presentation
+      }
+      lua_pop (lstate, 1);
+    }
   }
 
 
@@ -1363,6 +1377,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   win = new QMainWindow;
   lstate = NULL;
+  subject_item = NULL;
+  record_type = NULL;
 
   session_running = false;
   
