@@ -12,6 +12,9 @@
 // Lua interpreter
 #include <lua.hpp>
 
+// HDF5 C++ library
+#include <H5Cpp.h>
+
 #include "glwidget.h"
 #include "messagebox.h"
 #include "utils.h"
@@ -204,6 +207,8 @@ namespace plstim
     void set_subject_datafile (const QString& path);
 
   protected:
+    void init_session ();
+
     void setup_updated ();
 
     void paint_page (Page* page, QImage& img, QPainter* painter);
@@ -281,8 +286,9 @@ namespace plstim
     QString last_dialog_dir;
 
     QString last_datafile_dir;
-  
+
   public:
+  
     /// Random number generator
     std::mt19937 twister;
 
@@ -293,9 +299,27 @@ namespace plstim
     std::uniform_real_distribution<double> real_dist;
 
     std::map<std::string,int> key_mapping;
-
   protected:
     bool unusable;
+
+  public:
+
+    /// Memory for the trial record
+    void* trial_record;
+
+    /// Memory size required by a trial record
+    size_t record_size;
+
+    /// Record offsets for each page
+    std::map<QString,size_t> record_offsets;
+
+    H5::CompType* record_type;
+
+    H5::H5File* hf;
+    H5::DataSet dset;
+
+
+  protected:
 
     QSpinBox* make_setup_spin (int min, int max, const char* suffix);
   };

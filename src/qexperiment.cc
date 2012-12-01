@@ -17,11 +17,7 @@ using namespace plstim;
 #include <QHostInfo>
 #include <QtDebug>
 
-
-#include <H5Cpp.h>
-#ifndef H5_NO_NAMESPACE
 using namespace H5;
-#endif
 
 
 
@@ -531,7 +527,9 @@ l_add_page (lua_State* lstate)
   page->accepted_keys = accepted_keys;
   xp->add_page (page);
 
-  // Return the created page
+  // Compute required memory for the page
+  xp->record_offsets[page_name] = xp->record_size;
+  xp->record_size += sizeof (qint64);	// Start page presentation
 
   return 0;
 }
@@ -968,9 +966,25 @@ QExperiment::unload_experiment ()
   delete xp_item;
   delete subject_item;
 
+  if (trial_record != NULL) {
+    free (trial_record);
+    trial_record = NULL;
+  }
+  if (record_type != NULL) {
+    delete record_type;
+    record_type = NULL;
+  }
+  record_size = 0;
+  record_offsets.clear ();
+  if (hf != NULL) {
+    hf->close ();
+    hf = NULL;
+  }
+
   glwidget->delete_fixed_frames ();
   glwidget->delete_animated_frames ();
   // TODO: also delete shaders. put everything in cleanup ()
+
 
   xp_label->setText ("No experiment loaded");
 
@@ -1060,6 +1074,18 @@ QExperiment::load_experiment (const QString& path)
     unload_experiment ();
     return false;
   }
+
+
+  // Define the trial record
+  trial_record = malloc (record_size);
+  record_type = new CompType (record_size);
+  QString fmt ("%1-%2");
+  for (auto it : record_offsets) {
+    auto page_name = it.first;
+    auto offset = it.second;
+    record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
+  }
+  qDebug () << "Trial record size:" << record_size;
 
 
   // Setup an experiment item in the left toolbox
@@ -1175,14 +1201,34 @@ QExperiment::set_trial_count (int num_trials)
 }
 
 void
-QExperiment::run_session ()
+QExperiment::init_session ()
 {
-  // Save the splitter position
-  splitter_state = splitter->saveState ();
-
   current_trial = 0;
 
-  // Set the GL scene full screen
+  // Give a number to the current block
+  QString session_name ("session-1");
+
+  // Create a new dataset for the block/session
+  hsize_t htrials = ntrials;
+  DataSpace dspace (1, &htrials);
+  dset = hf->createDataSet (session_name.toUtf8 ().data (),
+			    *record_type, dspace);
+
+  // Save machine information
+  auto hostname = QHostInfo::localHostName ().toUtf8 ();
+  StrType sysname_type (PredType::C_S1, hostname.size ());
+  DataSpace scalar_space (H5S_SCALAR);
+  dset.createAttribute ("hostname", sysname_type, scalar_space)
+    .write (sysname_type, hostname.data ());
+  
+  hf->flush (H5F_SCOPE_GLOBAL);
+}
+
+void
+QExperiment::run_session ()
+{
+  splitter_state = splitter->saveState ();
+  init_session ();
   glwidget->full_screen ();
 }
 
@@ -1190,7 +1236,7 @@ void
 QExperiment::run_session_inline ()
 {
   glwidget->setFocus (Qt::OtherFocusReason);
-  current_trial = 0;
+  init_session ();
   can_run_trial ();
 }
 
@@ -1234,7 +1280,10 @@ QExperiment::QExperiment (int & argc, char** argv)
     glwidget_initialised (false),
     bin_dist (0, 1),
     real_dist (0, 1),
-    unusable (false)
+    unusable (false),
+    trial_record (NULL),
+    record_size (0),
+    hf (NULL)
 {
   plstim::initialise ();
 
@@ -1244,6 +1293,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   session_running = false;
   
   // Initialise the random number generator
+  // TODO: make that configurable
   twister.seed (time (NULL));
   for (int i = 0; i < 10000; i++)
     (void) bin_dist (twister);
@@ -1520,8 +1570,11 @@ QExperiment::new_subject_validated ()
 
   // Create the HDF5 file
   // TODO: handle HDF5 exceptions here
-  H5File hf (subject_datafile.toLocal8Bit ().data (), flags);
-  hf.close ();
+  if (hf != NULL) {
+    hf->close ();
+    hf = NULL;
+  }
+  hf = new H5File (subject_datafile.toLocal8Bit ().data (), flags);
 
   // Create a new subject
   settings->setValue (subject_path, fi.absoluteFilePath ());
@@ -1562,13 +1615,23 @@ QExperiment::subject_changed (const QString& subject_id)
     auto subject_path = QString ("experiments/%1/subjects/%2")
       .arg (xp_name).arg (subject_id);
 
-    auto datafile = settings->value (subject_path);
-    QFileInfo fi (datafile.toString ());
+    auto datafile = settings->value (subject_path).toString ();
+    QFileInfo fi (datafile);
 
     // Make sure the datafile still exists
     if (! fi.exists ())
       msgbox->add (new Message (Message::Type::ERROR,
 				tr ("Subject data file is missing")));
+    // Open the HDF5 datafile
+    else {
+      // TODO: handle HDF5 exceptions here
+      if (hf != NULL) {
+	hf->close ();
+	hf = NULL;
+      }
+      hf = new H5File (datafile.toLocal8Bit ().data (),
+		       H5F_ACC_RDWR);
+    }
 
     subject_databutton->setText (fi.fileName ());
     subject_databutton->setToolTip (fi.absoluteFilePath ());
