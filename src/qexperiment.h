@@ -318,10 +318,13 @@ namespace plstim
     H5::H5File* hf;
     H5::DataSet dset;
 
+    QElapsedTimer timer;
 
   protected:
 
     QSpinBox* make_setup_spin (int min, int max, const char* suffix);
+
+    void error (const QString& msg);
   };
 
   class MyLineEdit : public QLineEdit

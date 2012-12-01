@@ -248,9 +248,6 @@ QExperiment::paint_page (Page* page,
 			 QImage& img,
 			 QPainter* painter)
 {
-  QElapsedTimer timer;
-  //cout << "timer is monotonic: " << timer.isMonotonic () << endl;
-  
   QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
   switch (page->type) {
@@ -287,7 +284,7 @@ QExperiment::paint_page (Page* page,
     //timer.start ();
     glwidget->delete_animated_frames (page->title);
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
-    timer.start ();
+    //timer.start ();
 
     for (int i = 0; i < page->frameCount (); i++) {
 
@@ -317,7 +314,7 @@ QExperiment::paint_page (Page* page,
 #endif
       glwidget->add_animated_frame (page->title, img);
     }
-    qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
+    //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     break;
   }
 }
@@ -356,7 +353,7 @@ QExperiment::check_lua (int retcode)
 void
 QExperiment::run_trial ()
 {
-  cout << "Starting trial " << current_trial << endl;
+  timer.start ();
 
   // Call the new_trial () callback
   lua_getglobal (lstate, "new_trial");
@@ -439,14 +436,13 @@ QExperiment::next_page ()
     }
     // End of session
     else {
-      cout << "end of session" << endl;
+      hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
       glwidget->normal_screen ();
       session_running = false;
     }
   }
   // There is a next page
   else {
-    cout << "showing next page" << endl;
     show_page (current_page + 1);
   }
 }
@@ -1553,6 +1549,17 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Close event termination
   connect (&app, SIGNAL (aboutToQuit ()),
 	   this, SLOT (about_to_quit ()));
+
+  // Make sure the timer is monotonic
+  if (! timer.isMonotonic ())
+    error ("no monotonic timer available on this platform");
+}
+
+void
+QExperiment::error (const QString& msg)
+{
+  msgbox->add (new Message (Message::Type::ERROR, msg));
+
 }
 
 void
