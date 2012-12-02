@@ -310,7 +310,10 @@ namespace plstim
     /// Memory size required by a trial record
     size_t record_size;
 
-    /// Record offsets for each page
+    /// Trial record offsets
+    std::map<QString,size_t> trial_offsets;
+
+    /// Page record offsets
     std::map<QString,size_t> record_offsets;
 
     H5::CompType* record_type;

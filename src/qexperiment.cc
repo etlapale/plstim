@@ -224,7 +224,7 @@ QExperiment::add_page (Page* page)
 {
   // Check for an existing page with the same name
   for (auto p : pages) {
-    if (p->title == page->title) {
+    if (! p->title.isEmpty () && p->title == page->title) {
       error (tr ("Duplicate page name detected"));
       return;
     }
@@ -285,8 +285,6 @@ QExperiment::paint_page (Page* page,
 
   // Multiple frames
   case Page::Type::FRAMES:
-    qDebug () << "painting" << page->frameCount () << "frames for" << page->title;
-
     //timer.start ();
     glwidget->delete_animated_frames (page->title);
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
@@ -397,6 +395,21 @@ QExperiment::run_trial ()
     lua_settable (lstate, LUA_REGISTRYINDEX);
   }
 
+  // Record trial parameters
+  for (auto it : trial_offsets) {
+    const QString& param_name = it.first;
+    auto name = it.first.toUtf8 ();
+    size_t offset = it.second;
+
+    lua_getglobal (lstate, name.data ());
+    if (lua_isnumber (lstate, -1)) {
+      double* pos = (double*) (((char*) trial_record)+offset);
+      *pos = lua_tonumber (lstate, -1);
+      qDebug () << "storing" << *pos << "for" << param_name;
+    }
+    lua_pop (lstate, 1);
+  }
+
   current_page = -1;
   //show_page (current_page);
   next_page ();
@@ -413,7 +426,6 @@ QExperiment::show_page (int index)
     size_t begin_offset = it->second;
     qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
     qint64 nsecs = timer.nsecsElapsed ();
-    qDebug () << "timing page" << index << "aka" << p->title << "at" << nsecs;
     *pos = nsecs;
   }
 
@@ -488,7 +500,6 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
     if (page->accepted_keys.empty ()
 	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
       page->emit_key_pressed (evt);
-      cout << endl;
       next_page ();
     }
   }
@@ -947,6 +958,7 @@ QExperiment::unload_experiment ()
     record_type = NULL;
   }
   record_size = 0;
+  trial_offsets.clear ();
   record_offsets.clear ();
   if (hf != NULL) {
     hf->close ();
@@ -1043,6 +1055,23 @@ QExperiment::load_experiment (const QString& path)
     return false;
   }
 
+  // Add trial parameters to the record
+  lua_getglobal (lstate, "trial_parameters");
+  if (lua_istable (lstate, -1)) {
+    lua_pushnil (lstate);
+    while (lua_next (lstate, -2) != 0) {
+      if (lua_isstring (lstate, -2)
+	  && lua_istable (lstate, -1)) {
+	QString param_name (lua_tostring (lstate, -2));
+	trial_offsets[param_name] = record_size;
+	record_size += sizeof (double);
+	qDebug () << "Adding a trial parameter to the record";
+      }
+      lua_pop (lstate, 1);
+    }
+  }
+  lua_pop (lstate, 1);
+
   // Create the pages defined in the experiment
   lua_getglobal (lstate, "pages");
   if (lua_istable (lstate, -1)) {
@@ -1105,32 +1134,21 @@ QExperiment::load_experiment (const QString& path)
     }
   }
 
-
-  // Append trial parameters to the record
-#if 0
-  lua_getglobal (lstate, "trial_parameters");
-  if (lua_istable (lstate, -1)) {
-    lua_pushnil (lstate, -1);
-    while (lua_next (lstate, -2) != 0) {
-      if (lua_isstring (lstate, -2)
-	  && lua_istable (lstate, -1)) {
-	QString param_name (lua_tostring (lstate, -2));
-	record_size += 
-      }
-      lua_pop (lstate, 1);
-    }
-  }
-  lua_pop (lstate, 1);
-#endif
-
   // Define the trial record
   if (record_size) {
     trial_record = malloc (record_size);
     record_type = new CompType (record_size);
+    // Add trial info to the record
+    for (auto it : trial_offsets) {
+      qDebug () << "  Trial for" << it.first << "at" << it.second;
+      record_type->insertMember (it.first.toUtf8 ().data (), it.second, PredType::NATIVE_DOUBLE);
+    }
+    // Add pages info to the record
     QString fmt ("%1_%2");
     for (auto p : pages) {
       auto page_name = p->title;
       auto offset = record_offsets[page_name];
+      qDebug () << "  Record for" << page_name << "at" << offset;
       record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
     }
     qDebug () << "Trial record size:" << record_size;
@@ -1140,9 +1158,7 @@ QExperiment::load_experiment (const QString& path)
   // Setup an experiment item in the left toolbox
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
-  // Experiment name
-  flayout->addRow ("Experiment", new QLabel (xp_name));
-  // Number of trials
+  // Experiment name flayout->addRow ("Experiment", new QLabel (xp_name)); // Number of trials
   ntrials_spin = new QSpinBox;
   ntrials_spin->setRange (0, 8000);
   connect (ntrials_spin, SIGNAL (valueChanged (int)),

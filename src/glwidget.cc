@@ -31,7 +31,6 @@ MyGLWidget::MyGLWidget (const QGLFormat& format, QWidget* parent)
 void
 MyGLWidget::keyPressEvent (QKeyEvent* evt)
 {
-  qDebug () << "key press";
   if (evt->key () == Qt::Key_Escape)
     normal_screen ();
   else
@@ -92,8 +91,6 @@ MyGLWidget::add_fixed_frame (const QString& name, const QImage& img)
 void
 MyGLWidget::empty_frame ()
 {
-  cout << "displaying an empty frame" << endl;
-
   makeCurrent ();
   glClear (GL_COLOR_BUFFER_BIT);
   swapBuffers ();
@@ -103,8 +100,6 @@ void
 MyGLWidget::show_fixed_frame (const QString& name)
 {
   current_frame = fixed_frames[name];
-
-  qDebug () << "show frame" << name << ", at" << current_frame;
 
   makeCurrent ();
   glClear (GL_COLOR_BUFFER_BIT);
@@ -122,8 +117,6 @@ MyGLWidget::show_fixed_frame (const QString& name)
 void
 MyGLWidget::show_animated_frames (const QString& name)
 {
-  cout << "show multiple frames" << endl;
-
   makeCurrent ();
   for (auto f : animated_frames[name]) {
     current_frame = f;
