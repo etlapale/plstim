@@ -314,7 +314,7 @@ namespace plstim
     std::map<QString,size_t> trial_offsets;
 
     /// Page record offsets
-    std::map<QString,size_t> record_offsets;
+    std::map<QString,std::map<QString,size_t>> record_offsets;
 
     H5::CompType* record_type;
 

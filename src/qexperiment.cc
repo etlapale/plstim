@@ -311,7 +311,7 @@ QExperiment::paint_page (Page* page,
       }
 
       painter->end ();
-#if 1
+#if 0
       QString filename;
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       img.save (filename);
@@ -420,13 +420,28 @@ QExperiment::show_page (int index)
 {
   Page* p = pages[index];
 
-  // Save the time at which the page is displayed
+  // Save page parameters
   auto it = record_offsets.find (p->title);
   if (it != record_offsets.end ()) {
-    size_t begin_offset = it->second;
-    qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
-    qint64 nsecs = timer.nsecsElapsed ();
-    *pos = nsecs;
+    const std::map<QString,size_t>& params = it->second;
+    for (auto jt : params) {
+      auto param_name = jt.first;
+      size_t begin_offset = jt.second;
+      if (param_name == "begin") {
+	qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+	qint64 nsecs = timer.nsecsElapsed ();
+	*pos = nsecs;
+      }
+      else if (param_name == "key") {
+	// Key will be known at the end of the page
+      }
+      else {
+	/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
+	double value = timer.nsecsElapsed ();
+	*pos = nsecs;*/
+	qDebug () << "NYI page param";
+      }
+    }
   }
 
   switch (p->type) {
@@ -500,6 +515,21 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
     if (page->accepted_keys.empty ()
 	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
       page->emit_key_pressed (evt);
+
+      // Save pressed key
+      if (! page->accepted_keys.empty ()) {
+	auto it = record_offsets.find (page->title);
+	if (it != record_offsets.end ()) {
+	  const std::map<QString,size_t>& params = it->second;
+	  auto jt = params.find ("key");
+	  if (jt != params.end ()) {
+	    size_t key_offset = jt->second;
+	    int* pos = (int*) (((char*) trial_record)+key_offset);
+	    *pos = evt->key ();
+	  }
+	}
+      }
+
       next_page ();
     }
   }
@@ -1127,8 +1157,12 @@ QExperiment::load_experiment (const QString& path)
 	add_page (page);
 	
 	// Compute required memory for the page
-	record_offsets[page_title] = record_size;
+	record_offsets[page_title]["begin"] = record_size;
 	record_size += sizeof (qint64);	// Start page presentation
+	if (! accepted_keys.empty ()) {
+	  record_offsets[page_title]["key"] = record_size;
+	  record_size += sizeof (int);	// Pressed key
+	}
       }
       lua_pop (lstate, 1);
     }
@@ -1136,6 +1170,7 @@ QExperiment::load_experiment (const QString& path)
 
   // Define the trial record
   if (record_size) {
+    qDebug () << "record size set to" << record_size;
     trial_record = malloc (record_size);
     record_type = new CompType (record_size);
     // Add trial info to the record
@@ -1147,9 +1182,19 @@ QExperiment::load_experiment (const QString& path)
     QString fmt ("%1_%2");
     for (auto p : pages) {
       auto page_name = p->title;
-      auto offset = record_offsets[page_name];
-      qDebug () << "  Record for" << page_name << "at" << offset;
-      record_type->insertMember (fmt.arg (page_name).arg ("begin").toUtf8 ().data (), offset, PredType::NATIVE_LONG);
+      for (auto param : record_offsets[page_name]) {
+	auto param_name = param.first;
+	auto offset = param.second;
+	H5::DataType param_type;
+	if (param_name == "begin")
+	  param_type = PredType::NATIVE_LONG;
+	else if (param_name == "key")
+	  param_type = PredType::NATIVE_INT;
+	else
+	  param_type = PredType::NATIVE_DOUBLE;
+	qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
+	record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
+      }
     }
     qDebug () << "Trial record size:" << record_size;
   }
