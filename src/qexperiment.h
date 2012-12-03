@@ -298,7 +298,7 @@ namespace plstim
     /// Uniform double distribution in [0,1]
     std::uniform_real_distribution<double> real_dist;
 
-    std::map<std::string,int> key_mapping;
+    std::map<QString,int> key_mapping;
   protected:
     bool unusable;
 
@@ -315,6 +315,9 @@ namespace plstim
 
     /// Page record offsets
     std::map<QString,std::map<QString,size_t>> record_offsets;
+
+    // List of key accepted across the experiment
+    std::set<QString> xp_keys;
 
     H5::CompType* record_type;
 

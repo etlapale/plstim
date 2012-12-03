@@ -990,6 +990,7 @@ QExperiment::unload_experiment ()
   record_size = 0;
   trial_offsets.clear ();
   record_offsets.clear ();
+  xp_keys.clear ();
   if (hf != NULL) {
     hf->close ();
     hf = NULL;
@@ -1137,12 +1138,13 @@ QExperiment::load_experiment (const QString& path)
 	      QString str (lua_tostring (lstate, -1));
 	      auto keys = str.split (" ", QString::SkipEmptyParts);
 	      for (auto k : keys) {
-		auto it = key_mapping.find (k.toUtf8 ().data ());
+		auto it = key_mapping.find (k);
 		if (it == key_mapping.end ()) {
 		  qDebug () << "error: no mapping for key " << k;
 		}
 		else {
 		  accepted_keys.insert (it->second);
+		  xp_keys.insert (k);
 		}
 	      }
 	    }
@@ -1155,7 +1157,7 @@ QExperiment::load_experiment (const QString& path)
 	page->duration = page_duration;
 	page->accepted_keys = accepted_keys;
 	add_page (page);
-	
+
 	// Compute required memory for the page
 	record_offsets[page_title]["begin"] = record_size;
 	record_size += sizeof (qint64);	// Start page presentation
@@ -1368,8 +1370,38 @@ QExperiment::init_session ()
     qint64 now = QDateTime::currentMSecsSinceEpoch ();
     dset.createAttribute ("datetime", PredType::STD_U64LE, scalar_space)
       .write (PredType::NATIVE_UINT64, &now);
-    
+
+    // Save key mapping
+    size_t rowsize = sizeof (int) + sizeof (char*);
+    char* km = new char[xp_keys.size () * rowsize];
+    unsigned int i = 0;
+    for (auto k : xp_keys) {
+      auto utf_key = k.toUtf8 ();
+
+      int* code = (int*) (km+rowsize*i);
+      char** name = (char**) (km+rowsize*i+sizeof (int));
+
+      *code = key_mapping[k];
+      *name = strdup (utf_key.data ());
+      i++;
+    }
+    StrType keys_type (PredType::C_S1, H5T_VARIABLE);
+    keys_type.setCset (H5T_CSET_UTF8);
+    hsize_t nkeys = xp_keys.size ();
+    DataSpace kspace (1, &nkeys);
+
+    CompType km_type (rowsize);
+    km_type.insertMember ("code", 0, PredType::NATIVE_INT);
+    km_type.insertMember ("name", sizeof (int), keys_type);
+    dset.createAttribute ("keys", km_type, kspace)
+      .write (km_type, km);
+
     hf->flush (H5F_SCOPE_GLOBAL);
+    for (i = 0; i < nkeys; i++) {
+      char** name = (char**) (km+rowsize*i+sizeof (int));
+      free (*name);
+    }
+    delete [] km;
   }
 }
 
