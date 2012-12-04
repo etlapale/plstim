@@ -87,7 +87,7 @@ namespace plstim
 
     QDesktopWidget dsk;
 
-    MessageBox* msgbox;
+    //MessageBox* msgbox;
     //Message* res_msg;
     //Message* match_res_msg;
 
@@ -330,7 +330,7 @@ namespace plstim
 
     QSpinBox* make_setup_spin (int min, int max, const char* suffix);
 
-    void error (const QString& msg);
+    void error (const QString& msg, const QString& desc="");
   };
 
   class MyLineEdit : public QLineEdit

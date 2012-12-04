@@ -8,17 +8,16 @@
 
 namespace plstim
 {
+  enum MessageType {
+    MESSAGE_TYPE_WARNING,
+    MESSAGE_TYPE_ERROR
+  };
   class Message {
   public:
-    enum Type {
-      WARNING,
-      ERROR
-    };
+    Message (MessageType t, const QString& title);
+    Message (MessageType t, const QString& title, const QString& description);
   public:
-    Message (Message::Type t, const QString& title);
-    Message (Message::Type t, const QString& title, const QString& description);
-  public:
-    Message::Type type;
+    MessageType type;
     QString title;
     QString description;
     QList<QWidget*> widgets;

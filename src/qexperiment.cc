@@ -1,13 +1,10 @@
 // plstim/qexperiment.cc – Base class for experimental stimuli
 
-//#include <unistd.h>
-
 
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 using namespace std;
-
 
 #include "qexperiment.h"
 using namespace plstim;
@@ -330,24 +327,16 @@ QExperiment::check_lua (int retcode)
   case 0:
     return true;
   case LUA_ERRERR:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Problem in error handler",
-			      lua_tostring (lstate, -1)));
+    error ("Problem in error handler", lua_tostring (lstate, -1));
     break;
   case LUA_ERRMEM:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Memory allocation error",
-			      lua_tostring (lstate, -1)));
+    error ("Memory allocation error", lua_tostring (lstate, -1));
     break;
   case LUA_ERRRUN:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Runtime error",
-			      lua_tostring (lstate, -1)));
+    error ("Runtime error", lua_tostring (lstate, -1));
     break;
   case LUA_ERRSYNTAX:
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Syntax error",
-			      lua_tostring (lstate, -1)));
+    error ("Syntax error", lua_tostring (lstate, -1));
     break;
   }
   lua_pop (lstate, 1);
@@ -1035,8 +1024,7 @@ QExperiment::load_experiment (const QString& path)
   settings->beginGroup (QString ("experiments/%1").arg (xp_name));
   if (settings->contains ("path")) {
     if (settings->value ("path").toString () != script_path) {
-      msgbox->add (new Message (Message::Type::ERROR,
-				"Homonymous experiment"));
+      error ("Homonymous experiment");
       xp_name.clear ();
       return false;
     }
@@ -1382,7 +1370,8 @@ QExperiment::init_session ()
       char** name = (char**) (km+rowsize*i+sizeof (int));
 
       *code = key_mapping[k];
-      *name = strdup (utf_key.data ());
+      *name = new char[utf_key.size ()];
+      memcpy (*name, utf_key.data (), utf_key.size ());
       i++;
     }
     StrType keys_type (PredType::C_S1, H5T_VARIABLE);
@@ -1399,7 +1388,8 @@ QExperiment::init_session ()
     hf->flush (H5F_SCOPE_GLOBAL);
     for (i = 0; i < nkeys; i++) {
       char** name = (char**) (km+rowsize*i+sizeof (int));
-      free (*name);
+      //free (*name);
+      delete [] (*name);
     }
     delete [] km;
   }
@@ -1559,8 +1549,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   hsplitter = new QSplitter (Qt::Vertical);
   hsplitter->addWidget (splitter);
   logtab = new QTabWidget;
-  msgbox = new MessageBox;
-  logtab->addTab (msgbox, "Messages");
+  //msgbox = new MessageBox;
+  //logtab->addTab (msgbox, "Messages");
   hsplitter->addWidget (logtab);
 
   win->setCentralWidget (hsplitter);
@@ -1601,16 +1591,14 @@ QExperiment::QExperiment (int & argc, char** argv)
   
   // Check for OpenGL
   if (! QGLFormat::hasOpenGL ()) {
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "OpenGL not found"));
+    error ("OpenGL not found");
     unusable = true;
     return;
   }
 
   auto flags = QGLFormat::openGLVersionFlags ();
   if (! (flags & QGLFormat::OpenGL_Version_3_0)) {
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "OpenGL 3.0 not supported"));
+    error ("OpenGL 3.0 not supported");
     unusable = true;
     return;
   }
@@ -1628,8 +1616,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
   // Check for double buffering
   if (! glwidget->format ().doubleBuffer ()) {
-    msgbox->add (new Message (Message::Type::ERROR,
-			      "Missing double buffering support"));
+    error ("Missing double buffering support");
     unusable = true;
     return;
   }
@@ -1707,10 +1694,10 @@ QExperiment::QExperiment (int & argc, char** argv)
 }
 
 void
-QExperiment::error (const QString& msg)
+QExperiment::error (const QString& msg, const QString& desc)
 {
-  msgbox->add (new Message (Message::Type::ERROR, msg));
-
+  //msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
+  qDebug () << "error:" << msg << desc;
 }
 
 void
@@ -1813,8 +1800,7 @@ QExperiment::subject_changed (const QString& subject_id)
 
     // Make sure the datafile still exists
     if (! fi.exists ())
-      msgbox->add (new Message (Message::Type::ERROR,
-				tr ("Subject data file is missing")));
+      error (tr ("Subject data file is missing"));
     // Open the HDF5 datafile
     else {
       // TODO: handle HDF5 exceptions here

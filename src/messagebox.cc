@@ -4,12 +4,12 @@
 using namespace plstim;
 
 
-Message::Message (Type t, const QString& str)
+Message::Message (MessageType t, const QString& str)
   : type(t), title (str)
 {
 }
 
-Message::Message (Type t, const QString& str, const QString& desc)
+Message::Message (MessageType t, const QString& str, const QString& desc)
   : type(t), title (str), description (desc)
 {
 }
@@ -25,10 +25,11 @@ MessageEntry::MessageEntry (Message* msg)
   QStyle::StandardPixmap spix;
   
   switch (msg->type) {
-  case Message::Type::WARNING:
+  case MESSAGE_TYPE_WARNING:
     spix = QStyle::SP_MessageBoxWarning;
     break;
-  case Message::Type::ERROR:
+  case MESSAGE_TYPE_ERROR:
+  default:
     spix = QStyle::SP_MessageBoxCritical;
     break;
   }
@@ -66,7 +67,7 @@ MessageBox::add (Message* msg)
   // Mark associated widgets
   for (auto w : msg->widgets) {
     auto p = w->palette ();
-    if (msg->type == Message::Type::WARNING)
+    if (msg->type == MESSAGE_TYPE_WARNING)
       p.setColor (QPalette::Base, QColor (0xfe, 0xc9, 0x7d));
     else
       p.setColor (QPalette::Base, QColor (0xfe, 0xab, 0xa0));
