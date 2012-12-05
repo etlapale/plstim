@@ -17,6 +17,7 @@ include_directories (${LUA_INCLUDE_DIR})
 
 # Search for HDF5
 find_package (HDF5 REQUIRED COMPONENTS CXX)
+include_directories (${HDF5_INCLUDE_DIRS})
 message ("HDF5 found at ${HDF5_FOUND}, libs at ${HDF5_LIBRARIES}")
 
 # Main program
