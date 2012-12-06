@@ -70,7 +70,7 @@ namespace plstim
 
     void show_animated_frames (const QString& name);
 
-    void full_screen ();
+    void full_screen (int x=0, int y=0);
 
     void normal_screen ();
 

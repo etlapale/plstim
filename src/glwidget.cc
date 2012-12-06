@@ -132,11 +132,16 @@ MyGLWidget::show_animated_frames (const QString& name)
 }
 
 void
-MyGLWidget::full_screen ()
+MyGLWidget::full_screen (int x, int y)
 {
   setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
   setCursor (QCursor (Qt::BlankCursor));
 
+  qDebug () << "Moving window to " << x << y;
+
+  show ();
+  move (x, y);
+  
   waiting_fullscreen = true;
   showFullScreen ();
 }

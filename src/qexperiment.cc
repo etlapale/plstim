@@ -437,7 +437,7 @@ QExperiment::show_page (int index)
   case Page::Type::SINGLE:
     glwidget->show_fixed_frame (p->title);
     
-    // Workaround a bug on initial frame after fullscreen
+    // Workaround a bug on initial frame after ullscreen
     // Maybe it’s a race condition?
     // TODO: in any cases, it should be tracked and solved
     if (current_trial == 0 && index == 0)
@@ -1400,7 +1400,7 @@ QExperiment::run_session ()
 {
   splitter_state = splitter->saveState ();
   init_session ();
-  glwidget->full_screen ();
+  glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
 }
 
 void
@@ -1566,6 +1566,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   connect (screen_sbox, SIGNAL (valueChanged (int)),
 	   this, SLOT (setup_param_changed ()));
   // Set minimum to mode 13h, and maximum to 4320p
+  off_x_edit = make_setup_spin (0, 7680, " px");
+  off_y_edit = make_setup_spin (0, 4320, " px");
   res_x_edit = make_setup_spin (320, 7680, " px");
   res_y_edit = make_setup_spin (200, 4320, " px");
   phy_width_edit = make_setup_spin (10, 8000, " mm");
@@ -1578,6 +1580,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   auto flayout = new QFormLayout;
   flayout->addRow ("Setup name", setup_cbox);
   flayout->addRow ("Screen", screen_sbox);
+  flayout->addRow ("Horizontal offset", off_x_edit);
+  flayout->addRow ("Vertical offset", off_y_edit);
   flayout->addRow ("Horizontal resolution", res_x_edit);
   flayout->addRow ("Vertical resolution", res_y_edit);
   flayout->addRow ("Physical width", phy_width_edit);
@@ -1596,9 +1600,30 @@ QExperiment::QExperiment (int & argc, char** argv)
     return;
   }
 
+  /*
+  auto gdsk = dsk.screenGeometry ();
+  QString dsk_msg ("Found %1 screens in a %2 desktop of %3×%4");
+  error (dsk_msg.arg (dsk.screenCount ()).arg (dsk.isVirtualDesktop () ? "virtual" : "normal").arg (gdsk.width ()).arg (gdsk.height ()));
+  */
+
   auto flags = QGLFormat::openGLVersionFlags ();
   if (! (flags & QGLFormat::OpenGL_Version_3_0)) {
-    error ("OpenGL 3.0 not supported");
+    QString found ("unknown");
+    if (flags & QGLFormat::OpenGL_Version_2_1)
+      found = "2.1";
+    else if (flags & QGLFormat::OpenGL_Version_2_0)
+      found = "2.0";
+    else if (flags & QGLFormat::OpenGL_Version_1_5)
+      found = "1.5";
+    else if (flags & QGLFormat::OpenGL_Version_1_4)
+      found = "1.4";
+    else if (flags & QGLFormat::OpenGL_Version_1_3)
+      found = "1.3";
+    else if (flags & QGLFormat::OpenGL_Version_1_2)
+      found = "1.2";
+    else if (flags & QGLFormat::OpenGL_Version_1_1)
+      found = "1.1";
+    error (QString ("OpenGL 3.0 not supported (limited to %1)").arg (found));
     unusable = true;
     return;
   }
@@ -2124,6 +2149,8 @@ QExperiment::setup_param_changed ()
   settings->beginGroup ("setups");
   settings->beginGroup (setup_cbox->currentText ());
   settings->setValue ("scr", screen_sbox->value ());
+  settings->setValue ("off_x", off_x_edit->value ());
+  settings->setValue ("off_y", off_y_edit->value ());
   settings->setValue ("res_x", res_x_edit->value ());
   settings->setValue ("res_y", res_y_edit->value ());
   settings->setValue ("phy_w", phy_width_edit->value ());
@@ -2148,6 +2175,8 @@ QExperiment::update_setup ()
   settings->beginGroup ("setups");
   settings->beginGroup (sname);
   screen_sbox->setValue (settings->value ("scr").toInt ());
+  off_x_edit->setValue (settings->value ("off_x").toInt ());
+  off_y_edit->setValue (settings->value ("off_y").toInt ());
   res_x_edit->setValue (settings->value ("res_x").toInt ());
   res_y_edit->setValue (settings->value ("res_y").toInt ());
   phy_width_edit->setValue (settings->value ("phy_w").toInt ());

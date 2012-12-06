@@ -251,6 +251,8 @@ namespace plstim
     QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
+    QSpinBox* off_x_edit;
+    QSpinBox* off_y_edit;
     QSpinBox* res_x_edit;
     QSpinBox* res_y_edit;
     QSpinBox* phy_width_edit;
