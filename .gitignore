@@ -15,3 +15,6 @@ CMakeFiles
 */moc_*.cxx
 simple-experiment
 /plstim
+Makefile.Debug
+Makefile.Release
+*.dll

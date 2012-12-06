@@ -7,6 +7,7 @@
 using namespace std;
 
 #include "qexperiment.h"
+#include "messagebox.h"
 using namespace plstim;
 
 
@@ -15,7 +16,6 @@ using namespace plstim;
 #include <QtDebug>
 
 using namespace H5;
-
 
 
 void*
@@ -1549,8 +1549,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   hsplitter = new QSplitter (Qt::Vertical);
   hsplitter->addWidget (splitter);
   logtab = new QTabWidget;
-  //msgbox = new MessageBox;
-  //logtab->addTab (msgbox, "Messages");
+  msgbox = new MyMessageBox;
+  logtab->addTab (msgbox, "Messages");
   hsplitter->addWidget (logtab);
 
   win->setCentralWidget (hsplitter);
@@ -1696,8 +1696,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 void
 QExperiment::error (const QString& msg, const QString& desc)
 {
-  //msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
-  qDebug () << "error:" << msg << desc;
+  msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
 }
 
 void

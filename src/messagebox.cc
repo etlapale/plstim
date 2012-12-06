@@ -3,7 +3,6 @@
 #include "messagebox.h"
 using namespace plstim;
 
-
 Message::Message (MessageType t, const QString& str)
   : type(t), title (str)
 {
@@ -47,7 +46,7 @@ MessageEntry::MessageEntry (Message* msg)
   layout->addWidget (description, 1, 1);
 }
 
-MessageBox::MessageBox (QWidget* parent)
+MyMessageBox::MyMessageBox (QWidget* parent)
   : QWidget (parent)
 {
   layout = new QVBoxLayout;
@@ -55,7 +54,7 @@ MessageBox::MessageBox (QWidget* parent)
 }
 
 void
-MessageBox::add (Message* msg)
+MyMessageBox::add (Message* msg)
 {
   // Store the message
   messages << msg;
@@ -76,7 +75,7 @@ MessageBox::add (Message* msg)
 }
 
 void
-MessageBox::remove (Message* msg)
+MyMessageBox::remove (Message* msg)
 {
   messages.removeOne (msg);
 

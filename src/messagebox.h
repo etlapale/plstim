@@ -33,9 +33,10 @@ namespace plstim
     QLabel* description;
   };
 
-  class MessageBox : public QWidget {
+  class MyMessageBox : public QWidget {
+  Q_OBJECT
   public:
-    MessageBox (QWidget* parent=NULL);
+    MyMessageBox (QWidget* parent=NULL);
     void add (Message* msg);
     void remove (Message* msg);
   protected:

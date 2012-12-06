@@ -87,7 +87,7 @@ namespace plstim
 
     QDesktopWidget dsk;
 
-    MessageBox* msgbox;
+    MyMessageBox* msgbox;
     //Message* res_msg;
     //Message* match_res_msg;
 
