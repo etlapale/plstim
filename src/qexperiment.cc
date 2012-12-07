@@ -1928,6 +1928,9 @@ QExperiment::setup_updated ()
       qDebug () << "Swap interval:" << coef;
       set_swap_interval (coef);
     }
+    else {
+      set_swap_interval (1);
+    }
     lua_pop (lstate, 1);
 
     // Compute the minimal texture size
@@ -2025,8 +2028,10 @@ void
 QExperiment::normal_screen_restored ()
 {
   qDebug () << "normal screen restored";
-  splitter->addWidget (glwidget);
-  splitter->restoreState (splitter_state);
+  if (glwidget->parent () != splitter) {
+    splitter->addWidget (glwidget);
+    splitter->restoreState (splitter_state);
+  }
 }
 
 void

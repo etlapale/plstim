@@ -181,7 +181,7 @@ namespace plstim
     }
 
     float ds2pf (float speed) const {
-      return deg2pix (speed/refresh_edit->value ());
+      return deg2pix (speed/refresh_edit->value ()*swap_interval);
     }
 
     void set_glformat (QGLFormat glformat);

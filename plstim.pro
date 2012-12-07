@@ -4,7 +4,7 @@ SOURCES += src/qexperiment.cc src/glwidget.cc src/messagebox.cc src/utils.cc
 HEADERS += src/glwidget.h src/messagebox.h src/plstim.h src/qexperiment.h src/utils.h
 TARGET = plstim
 QMAKE_CXXFLAGS += -std=c++0x
-LIBS += -lhdf5_cpp -lhdf5
+LIBS += -lhdf5_cpp -lhdf5 -leyelink_core
 
 unix {
   LIBS += -llua
