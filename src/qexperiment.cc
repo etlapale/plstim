@@ -1530,8 +1530,14 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setStatusTip(tr("&Quit the program"));
   connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
 
+  // Setup menu
+  auto menu = win->menuBar ()->addMenu (tr ("&Setup"));
+  action = menu->addAction (tr ("&New"));
+  action->setStatusTip (tr ("&Create a new setup"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (new_setup ()));
+
   // Subject menu
-  auto menu = win->menuBar ()->addMenu (tr ("&Subject"));
+  menu = win->menuBar ()->addMenu (tr ("&Subject"));
   action = menu->addAction (tr ("&New"));
   action->setShortcut (tr ("Ctrl+N"));
   action->setStatusTip (tr ("&Create a new subject"));
@@ -1560,8 +1566,10 @@ QExperiment::QExperiment (int & argc, char** argv)
   win->statusBar ()->addWidget (xp_label);
 
   // Experimental setup
-  auto setup_widget = new QWidget;
+  setup_item = new QWidget;
   setup_cbox = new QComboBox;
+  connect (setup_cbox, SIGNAL (currentIndexChanged (const QString&)),
+	   this, SLOT (setup_changed (const QString&)));
   screen_sbox = new QSpinBox;
   connect (screen_sbox, SIGNAL (valueChanged (int)),
 	   this, SLOT (setup_param_changed ()));
@@ -1590,8 +1598,8 @@ QExperiment::QExperiment (int & argc, char** argv)
   flayout->addRow ("Minimum luminance", lum_min_edit);
   flayout->addRow ("Maximum luminance", lum_max_edit);
   flayout->addRow ("Refresh rate", refresh_edit);
-  setup_widget->setLayout (flayout);
-  tbox->addItem (setup_widget, "Setup");
+  setup_item->setLayout (flayout);
+  tbox->addItem (setup_item, "Setup");
   
   // Check for OpenGL
   if (! QGLFormat::hasOpenGL ()) {
@@ -1744,6 +1752,51 @@ QExperiment::new_subject ()
 }
 
 void
+QExperiment::new_setup ()
+{
+  tbox->setCurrentWidget (setup_item);
+  setup_cbox->setEditable (true);
+  auto le = new MyLineEdit;
+  setup_cbox->setLineEdit (le);
+  le->clear ();
+
+  connect (le, SIGNAL (returnPressed ()),
+	   this, SLOT (new_setup_validated ()));
+  connect (le, SIGNAL (escapePressed ()),
+	   this, SLOT (new_setup_cancelled ()));
+
+  QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
+  le->setValidator (new QRegExpValidator (rx));
+  setup_cbox->setFocus (Qt::OtherFocusReason);
+}
+
+void
+QExperiment::new_setup_validated ()
+{
+  auto le = qobject_cast<MyLineEdit*> (sender());
+  auto setup_name = le->text ();
+  auto setup_path = QString ("setups/%1").arg (setup_name);
+  
+  // Make sure the setup name is not already present
+  if (settings->contains (setup_path)) {
+    error (tr ("Setup name already existing"));
+    return;
+  }
+
+  setup_cbox->setEditable (false);
+}
+
+void
+QExperiment::new_setup_cancelled ()
+{
+  auto le = qobject_cast<MyLineEdit*> (sender());
+  if (le) {
+    le->clear ();
+    setup_cbox->setEditable (false);
+  }
+}
+
+void
 QExperiment::new_subject_validated ()
 {
   auto le = qobject_cast<MyLineEdit*> (sender());
@@ -1804,6 +1857,12 @@ QExperiment::select_subject_datafile ()
     last_datafile_dir = dialog.directory ().absolutePath ();
     set_subject_datafile (dialog.selectedFiles ().at (0));
   }
+}
+
+void
+QExperiment::setup_changed (const QString& subject_id)
+{
+  update_setup ();
 }
 
 void

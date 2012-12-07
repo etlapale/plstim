@@ -192,6 +192,7 @@ namespace plstim
 
   public slots:
 
+    void new_setup ();
     void new_subject ();
 
     /**
@@ -230,15 +231,20 @@ namespace plstim
     void normal_screen_restored ();
     void open_recent ();
     void xp_param_changed (double);
+    void new_setup_validated ();
+    void new_setup_cancelled ();
     void new_subject_validated ();
     void new_subject_cancelled ();
     void select_subject_datafile ();
+    void setup_changed (const QString& subject);
     void subject_changed (const QString& subject);
 
   protected:
     bool save_setup;
     QToolBar* toolbar;
     QToolBox* tbox;
+
+    QWidget* setup_item;
 
     QWidget* xp_item;
     QSpinBox* ntrials_spin;
