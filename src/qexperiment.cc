@@ -477,8 +477,17 @@ QExperiment::next_page ()
     }
     // End of session
     else {
-      if (hf != NULL)
+      if (hf != NULL) {
+#if HAVE_EYELINK
+	// Choose a name for the local EDF
+	auto subject_id = subject_cbox->currentText ();
+	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+	check_eyelink (close_data_file ());
+	// Buggy Eyelink headers do not care about const
+	check_eyelink (receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0));
+#endif // HAVE_EYELINK
 	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+      }
       glwidget->normal_screen ();
       session_running = false;
     }
@@ -527,6 +536,10 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 void
 QExperiment::can_run_trial ()
 {
+#ifdef HAVE_EYELINK
+  calibrate_eyelink ();
+#endif // HAVE_EYELINK
+
   session_running = true;
   run_trial ();
 }
@@ -956,6 +969,11 @@ QExperiment::unload_experiment ()
 
   abort_experiment ();
 
+#ifdef HAVE_EYELINK
+  if (eyelink_connected)
+    close_eyelink_connection ();
+#endif
+
   xp_name.clear ();
   ntrials = 0;
   for (auto p : pages)
@@ -1085,6 +1103,25 @@ QExperiment::load_experiment (const QString& path)
 	trial_offsets[param_name] = record_size;
 	record_size += sizeof (double);
 	qDebug () << "Adding a trial parameter to the record";
+      }
+      lua_pop (lstate, 1);
+    }
+  }
+  lua_pop (lstate, 1);
+  
+  // Check for modules to be loaded
+  lua_getglobal (lstate, "modules");
+  if (lua_istable (lstate, -1)) {
+    size_t mlen = lua_objlen (lstate, -1);
+    for (size_t i = 1; i <= mlen; i++) {
+      lua_rawgeti (lstate, -1, i);
+      if (lua_isstring (lstate, -1)) {
+	QString mod_name (lua_tostring (lstate, -1));
+#ifdef HAVE_EYELINK
+	if (mod_name == "eyelink") {
+	  load_eyelink ();
+	}
+#endif
       }
       lua_pop (lstate, 1);
     }
@@ -1331,9 +1368,10 @@ QExperiment::init_session ()
     int session_maxi = 0;
     int idx = 0;
     hf->iterateElems ("/", &idx, find_session_maxi, &session_maxi);
+    session_number = session_maxi + 1;
 
     // Give a number to the current block
-    auto session_name = QString ("session_%1").arg (session_maxi+1);
+    auto session_name = QString ("session_%1").arg (session_number);
 
     // Create a new dataset for the block/session
     hsize_t htrials = ntrials;
@@ -1392,6 +1430,17 @@ QExperiment::init_session ()
       delete [] (*name);
     }
     delete [] km;
+
+#ifdef HAVE_EYELINK
+    // Note, we do not record EyeTracker session if we 
+    // do not have an HDF5 datafile were to reference it
+    auto edf_name = QString ("plst-%1.edf").arg (session_number);
+    qDebug () << "storing in temporary EDF" << edf_name;
+    open_data_file (edf_name.toLocal8Bit ().data ());
+    // Data stored in the EDF file
+    eyecmd_printf ("file_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS");
+    eyecmd_printf ("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE");
+#endif // HAVE_EYELINK
   }
 }
 
@@ -1464,6 +1513,11 @@ QExperiment::QExperiment (int & argc, char** argv)
   record_type = NULL;
 
   session_running = false;
+
+#ifdef HAVE_EYELINK
+  eyelink_connected = false;
+  eyelink_dummy = true;
+#endif
   
   // Initialise the random number generator
   // TODO: make that configurable
@@ -1569,7 +1623,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   setup_item = new QWidget;
   setup_cbox = new QComboBox;
   connect (setup_cbox, SIGNAL (currentIndexChanged (const QString&)),
-	   this, SLOT (setup_changed (const QString&)));
+	   this, SLOT (update_setup ()));
   screen_sbox = new QSpinBox;
   connect (screen_sbox, SIGNAL (valueChanged (int)),
 	   this, SLOT (setup_param_changed ()));
@@ -1857,12 +1911,6 @@ QExperiment::select_subject_datafile ()
     last_datafile_dir = dialog.directory ().absolutePath ();
     set_subject_datafile (dialog.selectedFiles ().at (0));
   }
-}
-
-void
-QExperiment::setup_changed (const QString& subject_id)
-{
-  update_setup ();
 }
 
 void
@@ -2272,13 +2320,4 @@ QExperiment::open ()
     last_dialog_dir = dialog.directory ().absolutePath ();
     load_experiment (dialog.selectedFiles ().at (0));
   }
-}
-
-
-int
-main (int argc, char* argv[])
-{
-  QExperiment xp (argc, argv);
-  cout << xp.exec () << endl;
-  return 0;
 }

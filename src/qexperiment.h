@@ -15,6 +15,10 @@
 // HDF5 C++ library
 #include <H5Cpp.h>
 
+#ifdef HAVE_EYELINK
+#include <core_expt.h>
+#endif
+
 #include "glwidget.h"
 #include "messagebox.h"
 #include "utils.h"
@@ -236,7 +240,6 @@ namespace plstim
     void new_subject_validated ();
     void new_subject_cancelled ();
     void select_subject_datafile ();
-    void setup_changed (const QString& subject);
     void subject_changed (const QString& subject);
 
   protected:
@@ -281,6 +284,7 @@ namespace plstim
     QByteArray splitter_state;
 
     QString xp_name;
+    int session_number;
 
     QMenu* xp_menu;
     int max_recents;
@@ -338,7 +342,18 @@ namespace plstim
 
     QSpinBox* make_setup_spin (int min, int max, const char* suffix);
 
+  public:
     void error (const QString& msg, const QString& desc="");
+
+#ifdef HAVE_EYELINK
+  protected:
+    bool eyelink_connected;
+    bool eyelink_dummy;
+  public:
+    void load_eyelink ();
+    void calibrate_eyelink ();
+    bool check_eyelink (INT16 errcode);
+#endif
   };
 
   class MyLineEdit : public QLineEdit
