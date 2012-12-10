@@ -16,8 +16,10 @@
 
 [Real time]
 
-- Check for monotonic and monotonic raw in Qt.
 - Increase thread priority.
 - Check how to disable interrupts.
 
 [GUI]
+
+[Settings]
+- Setups are sometimes badly saved.
