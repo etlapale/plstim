@@ -1,14 +1,15 @@
-CONFIG += qt eyelink debug
+CONFIG += qt -eyelink debug
 QT += core gui opengl network
 SOURCES += src/qexperiment.cc src/glwidget.cc src/messagebox.cc src/utils.cc src/main.cc
 HEADERS += src/glwidget.h src/messagebox.h src/plstim.h src/qexperiment.h src/utils.h src/elcalibration.h
 TARGET = plstim
 QMAKE_CXXFLAGS += -std=c++0x
-LIBS += -lhdf5_cpp -lhdf5 -leyelink_core
+LIBS += -lhdf5_cpp -lhdf5
 
 eyelink {
   DEFINES += HAVE_EYELINK DUMMY_EYELINK
   SOURCES += src/eyelink.cc
+  LIBS += -leyelink_core
 }
 
 unix {

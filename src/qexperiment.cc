@@ -276,7 +276,7 @@ QExperiment::paint_page (Page* page,
 
     painter->end ();
 
-    //img.save (QString ("page-") + page->title + ".png");
+    img.save (QString ("page-") + page->title + ".png");
     glwidget->add_fixed_frame (page->title, img);
     break;
 
@@ -308,7 +308,7 @@ QExperiment::paint_page (Page* page,
       }
 
       painter->end ();
-#if 0
+#if 1
       QString filename;
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       img.save (filename);
@@ -1436,11 +1436,11 @@ QExperiment::init_session ()
     // Data stored in the EDF file
     eyecmd_printf ("file_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS");
     eyecmd_printf ("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE");
+
+    // Run the calibration (no need to wait OpenGL full screen)
+    calibrate_eyelink ();
 #endif // HAVE_EYELINK
   }
-
-  // Run the calibration (no need to wait OpenGL full screen)
-  calibrate_eyelink ();
 }
 
 void
@@ -1750,7 +1750,14 @@ QExperiment::QExperiment (int & argc, char** argv)
     }
     settings->endGroup ();
 
-    // TODO: check if there was a ‘last’ setup
+    // Check if there was a ‘last’ setup
+    if (settings->contains ("last_setup")) {
+      auto last = settings->value ("last_setup").toString ();
+      // Make sure the setup still exists
+      int idx = setup_cbox->findText (last);
+      if (idx >= 0)
+	setup_cbox->setCurrentIndex (idx);
+    }
     
     // Restore setup
     update_setup ();
@@ -2302,6 +2309,8 @@ QExperiment::update_setup ()
   refresh_edit->setValue (settings->value ("rate").toInt ());
   settings->endGroup ();
   settings->endGroup ();
+
+  settings->setValue ("last_setup", sname);
 
   setup_updated ();
 }
