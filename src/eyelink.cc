@@ -106,10 +106,36 @@ el_printf_hook (void* userdata, const char* msg)
   xp->error (msg);
   return 0;
 }
+
 static INT16 ELCALLBACK
 el_setup_display (void* userdata)
 {
-  qDebug () << "Setup calibration display";
+  qDebug () << "Setup EyeLink calibration display";
+  auto xp = static_cast<QExperiment*> (userdata);
+
+  xp->calibrator = new EyeLinkCalibrator ();
+  //xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
+#if 0
+  xp->calibrator->setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
+  xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
+
+  // Put the calibration window at the correct position
+  xp->calibrator->show ();
+  xp->calibrator->move (xp->off_x_edit->value (), xp->off_y_edit->value ());
+
+  // Display the calibrator in full screen
+  xp->calibrator->showFullScreen ();
+#endif
+
+  return 0;
+}
+
+static INT16 ELCALLBACK
+el_exit_cal_display (void* userdata)
+{
+  qDebug () << "Exit calibration display";
+  auto xp = static_cast<QExperiment*> (userdata);
+  //delete xp->calibrator;
   return 0;
 }
 
@@ -129,7 +155,8 @@ QExperiment::calibrate_eyelink ()
   hooks.userData = (void*) this;
   // Calibration display setup
   hooks.setup_cal_display_hook = el_setup_display;
-  // No special cleanup in hooks.exit_cal_display_hook
+  // Cleanup display setup
+  hooks.exit_cal_display_hook = el_exit_cal_display;
   // Dimension of the camera image
   hooks.setup_image_display_hook = el_setup_image_display;
   // Title of the camera image
@@ -153,6 +180,42 @@ QExperiment::calibrate_eyelink ()
   // Register the calibration hooks
   check_eyelink (setup_graphic_hook_functions_V2 (&hooks));
 
+#ifdef DUMMY_EYELINK
+  auto worker = new CalibrationWorker (&hooks);
+  auto thread = new QThread (this);
+  connect (thread, SIGNAL (started ()),
+	   worker, SLOT (run_calibration ()));
+  connect (thread, SIGNAL (finished ()),
+	   worker, SLOT (deleteLater ()));
+  worker->moveToThread (thread);
+  thread->start ();
+  thread->wait ();
+#else
   // Run the calibration
   check_eyelink (do_tracker_setup ());
+#endif
 }
+
+
+EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
+  : QGraphicsView ()//parent)
+{
+  qDebug () << "scene set to" << scene ();
+}
+
+CalibrationWorker::CalibrationWorker (HOOKFCNS2* hooks)
+{
+  this->hooks = *hooks;
+}
+
+void
+CalibrationWorker::run_calibration ()
+{
+  qDebug () << "starting EyeLink calibration thread";
+
+  hooks.setup_cal_display_hook (hooks.userData);
+  hooks.exit_cal_display_hook (hooks.userData);
+
+  QThread::currentThread ()->quit ();
+}
+

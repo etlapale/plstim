@@ -536,10 +536,6 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 void
 QExperiment::can_run_trial ()
 {
-#ifdef HAVE_EYELINK
-  calibrate_eyelink ();
-#endif // HAVE_EYELINK
-
   session_running = true;
   run_trial ();
 }
@@ -1408,8 +1404,8 @@ QExperiment::init_session ()
       char** name = (char**) (km+rowsize*i+sizeof (int));
 
       *code = key_mapping[k];
-      *name = new char[utf_key.size ()];
-      memcpy (*name, utf_key.data (), utf_key.size ());
+      *name = new char[utf_key.size ()+1];
+      strcpy (*name, utf_key.data ());
       i++;
     }
     StrType keys_type (PredType::C_S1, H5T_VARIABLE);
@@ -1442,21 +1438,24 @@ QExperiment::init_session ()
     eyecmd_printf ("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE");
 #endif // HAVE_EYELINK
   }
+
+  // Run the calibration (no need to wait OpenGL full screen)
+  calibrate_eyelink ();
 }
 
 void
 QExperiment::run_session ()
 {
-  splitter_state = splitter->saveState ();
   init_session ();
+  splitter_state = splitter->saveState ();
   glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
 }
 
 void
 QExperiment::run_session_inline ()
 {
-  glwidget->setFocus (Qt::OtherFocusReason);
   init_session ();
+  glwidget->setFocus (Qt::OtherFocusReason);
   can_run_trial ();
 }
 
@@ -1516,7 +1515,11 @@ QExperiment::QExperiment (int & argc, char** argv)
 
 #ifdef HAVE_EYELINK
   eyelink_connected = false;
+#ifdef DUMMY_EYELINK
   eyelink_dummy = true;
+#else
+  eyelink_dummy = false;
+#endif
 #endif
   
   // Initialise the random number generator

@@ -17,6 +17,7 @@
 
 #ifdef HAVE_EYELINK
 #include <core_expt.h>
+#include "elcalibration.h"
 #endif
 
 #include "glwidget.h"
@@ -260,10 +261,12 @@ namespace plstim
     QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
+  public:
     QSpinBox* off_x_edit;
     QSpinBox* off_y_edit;
     QSpinBox* res_x_edit;
     QSpinBox* res_y_edit;
+  protected:
     QSpinBox* phy_width_edit;
     QSpinBox* phy_height_edit;
     QSpinBox* dst_edit;
@@ -349,6 +352,8 @@ namespace plstim
   protected:
     bool eyelink_connected;
     bool eyelink_dummy;
+  public:
+    EyeLinkCalibrator* calibrator;
   public:
     void load_eyelink ();
     void calibrate_eyelink ();
