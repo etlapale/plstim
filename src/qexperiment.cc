@@ -327,16 +327,16 @@ QExperiment::check_lua (int retcode)
   case 0:
     return true;
   case LUA_ERRERR:
-    error ("Problem in error handler", lua_tostring (lstate, -1));
+    error ("Problem in Lua error handler", lua_tostring (lstate, -1));
     break;
   case LUA_ERRMEM:
-    error ("Memory allocation error", lua_tostring (lstate, -1));
+    error ("Lua memory allocation error", lua_tostring (lstate, -1));
     break;
   case LUA_ERRRUN:
-    error ("Runtime error", lua_tostring (lstate, -1));
+    error ("Lua runtime error", lua_tostring (lstate, -1));
     break;
   case LUA_ERRSYNTAX:
-    error ("Syntax error", lua_tostring (lstate, -1));
+    error ("Lua syntax error", lua_tostring (lstate, -1));
     break;
   }
   lua_pop (lstate, 1);
@@ -553,7 +553,7 @@ static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 
 
 static int
-l_bin_random (lua_State* lstate)
+l_randbool (lua_State* lstate)
 {
   // Search for the experiment
   lua_pushstring (lstate, PLSTIM_EXPERIMENT);
@@ -584,6 +584,33 @@ l_bin_random (lua_State* lstate)
     // Generate the random number
     int num = xp->bin_dist (xp->twister);
     lua_pushboolean (lstate, num);
+  }
+  
+  return 1;
+}
+
+static int
+l_randint (lua_State* lstate)
+{
+  // Search for the experiment
+  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
+  lua_gettable (lstate, LUA_REGISTRYINDEX);
+  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
+  lua_pop (lstate, 1);
+
+  // Make sure we have a bounding argument
+  if (lua_gettop (lstate) >= 1) {
+    // Get the bounds
+    auto maxval = luaL_checkinteger (lstate, -1);
+    lua_pop (lstate, 1);
+
+    // Create an integer distribution
+    // TODO: might be slow, we could cache them
+    std::uniform_int_distribution<int> distrib (0, maxval);
+
+    // Generate a random number
+    int num = distrib (xp->twister);
+    lua_pushinteger (lstate, num);
   }
   
   return 1;
@@ -998,7 +1025,8 @@ QExperiment::unload_experiment ()
 
   param_spins.clear ();
 
-  delete xp_item;
+  if (xp_item)
+    delete xp_item;
   if (subject_item)
     delete subject_item;
 
@@ -1091,8 +1119,10 @@ QExperiment::load_experiment (const QString& path)
   // Register random functions
   lua_pushcfunction (lstate, l_random);
   lua_setglobal (lstate, "random");
-  lua_pushcfunction (lstate, l_bin_random);
-  lua_setglobal (lstate, "bin_random");
+  lua_pushcfunction (lstate, l_randint);
+  lua_setglobal (lstate, "randint");
+  lua_pushcfunction (lstate, l_randbool);
+  lua_setglobal (lstate, "randbool");
 
   // Register deg2pix ()
   lua_pushcfunction (lstate, l_deg2pix);
@@ -1533,6 +1563,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   win = new QMainWindow;
   lstate = NULL;
+  xp_item = NULL;
   subject_item = NULL;
   record_type = NULL;
 
