@@ -349,6 +349,8 @@ namespace plstim
   public:
     void error (const QString& msg, const QString& desc="");
 
+    QColor get_colour (const char* name) const;
+
 #ifdef HAVE_EYELINK
   protected:
     bool eyelink_connected;

@@ -150,6 +150,10 @@ el_setup_display (void* userdata)
   xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
   // Set the correct dimensions for the scene
   xp->calibrator->sc.setSceneRect (0, 0, xp->res_x_edit->value (), xp->res_y_edit->value ());
+  // Set calibrator colours
+  auto bg = xp->get_colour ("eyelink_background");
+  if (! bg.spec () == QColor::Invalid)
+    xp->calibrator->sc.setBackgroundBrush (bg);
 
   return 0;
 }

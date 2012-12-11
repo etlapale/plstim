@@ -667,16 +667,28 @@ get_colour (lua_State* lstate, int index)
     return col;
   }
 
-  lua_pushinteger (lstate, 1);
-  lua_gettable (lstate, index);
+  lua_rawgeti (lstate, index, 1);
   col.setRedF (luaL_checknumber (lstate, -1));
-  lua_pushinteger (lstate, 2);
-  lua_gettable (lstate, index);
+  lua_pop (lstate, 1);
+  lua_rawgeti (lstate, index, 2);
   col.setGreenF (luaL_checknumber (lstate, -1));
-  lua_pushinteger (lstate, 3);
-  lua_gettable (lstate, index);
+  lua_pop (lstate, 1);
+  lua_rawgeti (lstate, index, 3);
   col.setBlueF (luaL_checknumber (lstate, -1));
+  lua_pop (lstate, 1);
 
+  return col;
+}
+
+QColor
+QExperiment::get_colour (const char* name) const
+{
+  qDebug () << "Getting Lua global" << name;
+  lua_getglobal (lstate, name);
+  qDebug () << "calling ::get_colour ()";
+  QColor col = ::get_colour (lstate, -1);
+  qDebug () << "colour returned:" << col;
+  lua_pop (lstate, 1);
   return col;
 }
 
