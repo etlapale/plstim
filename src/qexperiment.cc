@@ -485,7 +485,18 @@ QExperiment::next_page ()
 	auto subject_id = subject_cbox->currentText ();
 	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
 	// Buggy Eyelink headers do not care about const
-	check_eyelink (receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0), "receive_data_file");
+	auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+	switch (res) {
+	case 0:
+	  error ("EyeLink data file transfer cancelled");
+	  break;
+	case FILE_CANT_OPEN:
+	  error ("Cannot open EyeLink data file");
+	  break;
+	case FILE_XFER_ABORTED:
+	  error ("EyeLink data file transfer aborted");
+	  break;
+	}
 	check_eyelink (close_data_file (), "close_data_file");
 #endif // HAVE_EYELINK
 	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
