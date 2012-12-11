@@ -62,7 +62,20 @@ el_image_title (void* userdata, char* title)
 static INT16 ELCALLBACK
 el_draw_image (void* userdata, INT16 width, INT16 height, byte* pixels)
 {
-  qDebug () << "Receiving camera image of size" << width << "×" << height;
+  auto xp = static_cast<QExperiment*> (userdata);
+  auto calib = xp->calibrator;
+  if (calib != NULL) {
+    QImage simg (pixels, width, height, QImage::Format_ARGB32);
+    auto rimg = simg.rgbSwapped ();
+    auto pixmap = QPixmap::fromImage (rimg);
+    if (calib->camera)
+      calib->camera->setPixmap (pixmap);
+    else
+      calib->camera = calib->sc.addPixmap (pixmap);
+    // Center the camera image on screen
+    calib->camera->setOffset ((calib->sc.width () - width)/2,
+			      (calib->sc.height () - height)/2);
+  }
   return 0;
 }
 
@@ -71,7 +84,8 @@ el_clear_cal_display (void* userdata)
 {
   auto xp = static_cast<QExperiment*> (userdata);
   auto calib = xp->calibrator;
-  calib->clear ();
+  if (calib != NULL)
+    calib->clear ();
   return 0;
 }
 
@@ -161,18 +175,20 @@ el_setup_display (void* userdata)
 static INT16 ELCALLBACK
 el_exit_cal_display (void* userdata)
 {
-  qDebug () << "Exit calibration display";
   auto xp = static_cast<QExperiment*> (userdata);
-  delete xp->calibrator;
+  if (xp->calibrator) {
+    xp->calibrator->hide ();
+    delete xp->calibrator;
+    xp->calibrator = NULL;
+  }
   return 0;
 }
 
 static INT16 ELCALLBACK
 el_exit_image_display (void* userdata)
 {
-  qDebug () << "Exit image display";
-  //auto xp = static_cast<QExperiment*> (userdata);
-  //delete xp->calibrator;
+  auto xp = static_cast<QExperiment*> (userdata);
+  xp->calibrator->remove_camera ();
   return 0;
 }
 
@@ -221,12 +237,20 @@ QExperiment::calibrate_eyelink ()
 
   // Run the calibration
   check_eyelink (do_tracker_setup ());
+
+  // Remove the calibration window
+  if (calibrator) {
+    calibrator->hide ();
+    delete calibrator;
+    calibrator = NULL;
+  }
 }
 
 
 EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
   : QGraphicsView (),
     target (NULL),
+    camera (NULL),
     target_size (10)
 {
   setScene (&sc);
@@ -324,7 +348,6 @@ EyeLinkCalibrator::add_key_event (QKeyEvent* event, bool pressed)
   else
     ki->unicode = 0;
 
-  qDebug () << "Adding translated key event to the queue";
   key_queue.enqueue (ki);
 }
 
@@ -354,6 +377,15 @@ EyeLinkCalibrator::erase_target ()
   if (target != NULL) {
     sc.removeItem (target);
     target = NULL;
+  }
+}
+
+void
+EyeLinkCalibrator::remove_camera ()
+{
+  if (camera != NULL) {
+    sc.removeItem (camera);
+    camera = NULL;
   }
 }
 

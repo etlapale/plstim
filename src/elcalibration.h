@@ -12,6 +12,9 @@ namespace plstim
   {
   protected:
     QGraphicsItem* target;
+  public:
+    QGraphicsPixmapItem* camera;
+  protected:
     float target_size;
   public:
     QGraphicsScene sc;
@@ -24,6 +27,7 @@ namespace plstim
     EyeLinkCalibrator (QWidget* parent=NULL);
     void add_target (float x, float y);
     void erase_target ();
+    void remove_camera ();
     void clear ();
   };
 }
