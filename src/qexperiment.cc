@@ -276,7 +276,7 @@ QExperiment::paint_page (Page* page,
 
     painter->end ();
 
-    img.save (QString ("page-") + page->title + ".png");
+    //img.save (QString ("page-") + page->title + ".png");
     glwidget->add_fixed_frame (page->title, img);
     break;
 
@@ -308,7 +308,7 @@ QExperiment::paint_page (Page* page,
       }
 
       painter->end ();
-#if 1
+#if 0
       QString filename;
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       img.save (filename);
@@ -1436,11 +1436,13 @@ QExperiment::init_session ()
     // Data stored in the EDF file
     eyecmd_printf ("file_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS");
     eyecmd_printf ("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE");
+#endif // HAVE_EYELINK
+  }
 
+#ifdef HAVE_EYELINK
     // Run the calibration (no need to wait OpenGL full screen)
     calibrate_eyelink ();
 #endif // HAVE_EYELINK
-  }
 }
 
 void

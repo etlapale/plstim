@@ -81,9 +81,10 @@ namespace plstim
     Q_OBJECT
     Q_PROPERTY (float monitor_rate READ monitor_rate)
     Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
-  protected:
+  public:
     /// Associated Qt application
     QApplication app;
+  protected:
     QMainWindow* win;
     MyGLWidget* glwidget;
 
@@ -358,6 +359,7 @@ namespace plstim
     void load_eyelink ();
     void calibrate_eyelink ();
     bool check_eyelink (INT16 errcode);
+    bool check_eyelink (INT16 errcode, const QString& func_name);
 #endif
   };
 

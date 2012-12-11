@@ -1,9 +1,21 @@
 #include <iostream>
 using namespace std;
 
+#include "elcalibration.h"
 #include "qexperiment.h"
 using namespace plstim;
 
+bool
+QExperiment::check_eyelink (INT16 errcode, const QString & func_name)
+{
+  if (errcode) {
+    error (QString ("EyeLink error: %1")
+	   .arg (eyelink_get_error (errcode,
+				    func_name.toLocal8Bit ().data ())));
+    return false;
+  }
+  return true;
+}
 
 bool
 QExperiment::check_eyelink (INT16 errcode)
@@ -21,7 +33,8 @@ void
 QExperiment::load_eyelink ()
 {
   qDebug () << "opening EyeLink";
-  if (! check_eyelink (open_eyelink_connection (eyelink_dummy))) {
+  if (! check_eyelink (open_eyelink_connection (eyelink_dummy),
+		       "open_eyelink_connection")) {
     eyelink_connected = false;
     return;
   }
@@ -86,17 +99,21 @@ static bool key_up = true;
 static INT16 ELCALLBACK
 el_get_input_key (void* userdata, InputEvent* event)
 {
-  qDebug () << "get input key";
-  KeyInput& key_event = event->key;
-  key_event.type = KEYINPUT_EVENT;
-  key_event.state = key_up ? ELKEY_DOWN : ELKEY_UP;
-  key_up = !key_up;
-  key_event.key = ENTER_KEY;
-  key_event.modifier = ELKMOD_NONE;
-  key_event.unicode = '\n';
-  string str;
-  cin >> str;
-  return 1;
+  auto xp = static_cast<QExperiment*> (userdata);
+
+  // Process any event in the application
+  xp->app.processEvents ();
+  // Check for key events in the queue
+  auto calib = xp->calibrator;
+  if (! calib->key_queue.isEmpty ()) {
+    qDebug () << "found a key event in the queue";
+    KeyInput* ki = calib->key_queue.dequeue ();
+    memcpy (event, ki, sizeof (KeyInput));
+    delete ki;
+    return 1;
+  }
+  
+  return 0;
 }
 
 static INT16 ELCALLBACK
@@ -114,17 +131,17 @@ el_setup_display (void* userdata)
   auto xp = static_cast<QExperiment*> (userdata);
 
   xp->calibrator = new EyeLinkCalibrator ();
-  //xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
-#if 0
-  xp->calibrator->setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
-  xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
-
+  xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
   // Put the calibration window at the correct position
   xp->calibrator->show ();
   xp->calibrator->move (xp->off_x_edit->value (), xp->off_y_edit->value ());
-
   // Display the calibrator in full screen
   xp->calibrator->showFullScreen ();
+  // Focus the new widget
+  xp->calibrator->setFocus (Qt::OtherFocusReason);
+#if 0
+  xp->calibrator->setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
+  xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
 #endif
 
   return 0;
@@ -135,6 +152,15 @@ el_exit_cal_display (void* userdata)
 {
   qDebug () << "Exit calibration display";
   auto xp = static_cast<QExperiment*> (userdata);
+  delete xp->calibrator;
+  return 0;
+}
+
+static INT16 ELCALLBACK
+el_exit_image_display (void* userdata)
+{
+  qDebug () << "Exit image display";
+  //auto xp = static_cast<QExperiment*> (userdata);
   //delete xp->calibrator;
   return 0;
 }
@@ -159,6 +185,8 @@ QExperiment::calibrate_eyelink ()
   hooks.exit_cal_display_hook = el_exit_cal_display;
   // Dimension of the camera image
   hooks.setup_image_display_hook = el_setup_image_display;
+  // Dimension of the camera image
+  hooks.exit_image_display_hook = el_exit_image_display;
   // Title of the camera image
   hooks.image_title_hook = el_image_title;
   // Camera image
@@ -201,8 +229,85 @@ EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
   : QGraphicsView ()//parent)
 {
   qDebug () << "scene set to" << scene ();
+  //setScene (&sc);
+  qDebug () << "scene set to" << scene ();
 }
 
+void
+EyeLinkCalibrator::add_key_event (QKeyEvent* event, bool pressed)
+{
+  auto ki = new KeyInput;
+  ki->type = KEYINPUT_EVENT;
+  ki->state = pressed ? ELKEY_DOWN : ELKEY_UP;
+  switch (event->key ()) {
+  case Qt::Key_Up:
+    ki->key = CURS_UP;
+    break;
+  case Qt::Key_Down:
+    ki->key = CURS_DOWN;
+    break;
+  case Qt::Key_Left:
+    ki->key = CURS_LEFT;
+    break;
+  case Qt::Key_Right:
+    ki->key = CURS_RIGHT;
+    break;
+  case Qt::Key_Escape:
+    ki->key = ESC_KEY;
+    break;
+  case Qt::Key_Return:
+    ki->key = ENTER_KEY;
+    break;
+  case Qt::Key_PageUp:
+    ki->key = PAGE_UP;
+    break;
+  case Qt::Key_PageDown:
+    ki->key = PAGE_DOWN;
+    break;
+  default:
+    qDebug () << "unknown key press in EyeLink calibrator" << event->key ();
+    ki->key = event->key ();
+    //return;
+  }
+  // Translate modifiers
+  ki->modifier = 0;
+  auto mods = event->modifiers ();
+  if (mods & Qt::ShiftModifier)
+    ki->modifier |= ELKMOD_LSHIFT;
+  else if (mods & Qt::ControlModifier)
+    ki->modifier |= ELKMOD_LCTRL;
+  else if (mods & Qt::AltModifier)
+    ki->modifier |= ELKMOD_LALT;
+  else if (mods & Qt::MetaModifier)
+    ki->modifier |= ELKMOD_LMETA;
+  else if (mods & Qt::KeypadModifier)
+    ki->modifier |= ELKMOD_NUM;
+  else if (mods & Qt::GroupSwitchModifier)
+    ki->modifier |= ELKMOD_MODE;
+  // Translate the unicode value
+  auto txt = event->text ();
+  if (txt.size () == 1)
+    ki->unicode = txt.at (0).unicode ();
+  else
+    ki->unicode = 0;
+
+  qDebug () << "Adding translated key event to the queue";
+  key_queue.enqueue (ki);
+}
+
+void
+EyeLinkCalibrator::keyPressEvent (QKeyEvent* event)
+{
+  add_key_event (event, true);
+}
+
+void
+EyeLinkCalibrator::keyReleaseEvent (QKeyEvent* event)
+{
+  add_key_event (event, false);
+}
+
+#ifdef DUMMY_EYELINK
 CalibrationWorker::CalibrationWorker (HOOKFCNS2* hooks)
 {
   this->hooks = *hooks;
@@ -218,4 +323,5 @@ CalibrationWorker::run_calibration ()
 
   QThread::currentThread ()->quit ();
 }
+#endif // DUMMY_EYELINK
 
