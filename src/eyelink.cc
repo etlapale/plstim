@@ -9,24 +9,13 @@ bool
 QExperiment::check_eyelink (INT16 errcode, const QString & func_name)
 {
   if (errcode) {
-    error (QString ("EyeLink error: %1")
+    error (QString ("EyeLink error on %1: %2")
+	   .arg (func_name)
 	   .arg (eyelink_get_error (errcode,
 				    func_name.toLocal8Bit ().data ())));
     return false;
   }
   return true;
-}
-
-bool
-QExperiment::check_eyelink (INT16 errcode)
-{
-  switch (errcode) {
-  case 0:
-    return true;
-  default:
-    error (QString ("Unknown EyeLink error: %1").arg (errcode));
-  }
-  return false;
 }
 
 void
@@ -41,8 +30,8 @@ QExperiment::load_eyelink ()
   eyelink_connected = true;
 
   // Data sent during the experiment
-  check_eyelink (eyecmd_printf ("link_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS"));
-  check_eyelink (eyecmd_printf ("link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE"));
+  check_eyelink (eyecmd_printf ("link_sample_data = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS"), "eyecmd_printf");
+  check_eyelink (eyecmd_printf ("link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE"), "eyecmd_printf");
 }
 
 static INT16 ELCALLBACK
@@ -233,10 +222,11 @@ QExperiment::calibrate_eyelink ()
   hooks.alert_printf_hook = el_printf_hook;
 
   // Register the calibration hooks
-  check_eyelink (setup_graphic_hook_functions_V2 (&hooks));
+  check_eyelink (setup_graphic_hook_functions_V2 (&hooks),
+		 "setup_graphic_hook_functions_V2");
 
   // Run the calibration
-  check_eyelink (do_tracker_setup ());
+  check_eyelink (do_tracker_setup (), "do_tracker_setup");
 
   // Remove the calibration window
   if (calibrator) {
@@ -244,6 +234,13 @@ QExperiment::calibrate_eyelink ()
     delete calibrator;
     calibrator = NULL;
   }
+
+  // De-register the calibration hooks
+  // since they interfer with EDF file transfers
+  memset (&hooks, 0, sizeof (HOOKFCNS2));
+  hooks.major = 1;
+  check_eyelink (setup_graphic_hook_functions_V2 (&hooks),
+		 "setup_graphic_hook_functions_V2");
 }
 
 

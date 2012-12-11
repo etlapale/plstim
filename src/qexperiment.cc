@@ -437,7 +437,7 @@ QExperiment::show_page (int index)
   case Page::Type::SINGLE:
     glwidget->show_fixed_frame (p->title);
     
-    // Workaround a bug on initial frame after ullscreen
+    // Workaround a bug on initial frame after fullscreen
     // Maybe it’s a race condition?
     // TODO: in any cases, it should be tracked and solved
     if (current_trial == 0 && index == 0)
@@ -479,12 +479,14 @@ QExperiment::next_page ()
     else {
       if (hf != NULL) {
 #if HAVE_EYELINK
+	// Stop recording
+	stop_recording ();
 	// Choose a name for the local EDF
 	auto subject_id = subject_cbox->currentText ();
 	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-	check_eyelink (close_data_file ());
 	// Buggy Eyelink headers do not care about const
-	check_eyelink (receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0));
+	check_eyelink (receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0), "receive_data_file");
+	check_eyelink (close_data_file (), "close_data_file");
 #endif // HAVE_EYELINK
 	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
       }
@@ -1501,6 +1503,8 @@ QExperiment::run_session ()
 #ifdef HAVE_EYELINK
   // Run the calibration (no need to wait OpenGL full screen)
   calibrate_eyelink ();
+  // Start recording eye movements
+  start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
   splitter_state = splitter->saveState ();
   glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());

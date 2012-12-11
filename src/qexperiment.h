@@ -368,7 +368,6 @@ namespace plstim
   public:
     void load_eyelink ();
     void calibrate_eyelink ();
-    bool check_eyelink (INT16 errcode);
     bool check_eyelink (INT16 errcode, const QString& func_name);
 #endif
   };
