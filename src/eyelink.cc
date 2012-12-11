@@ -69,27 +69,35 @@ el_draw_image (void* userdata, INT16 width, INT16 height, byte* pixels)
 static INT16 ELCALLBACK
 el_clear_cal_display (void* userdata)
 {
-  qDebug () << "Clear display";
+  auto xp = static_cast<QExperiment*> (userdata);
+  auto calib = xp->calibrator;
+  calib->clear ();
   return 0;
 }
 
 static INT16 ELCALLBACK
 el_erase_cal_target (void* userdata)
 {
-  qDebug () << "Erase calibration target";
+  auto xp = static_cast<QExperiment*> (userdata);
+  auto calib = xp->calibrator;
+  calib->erase_target ();
   return 0;
 }
 
 static INT16 ELCALLBACK
 el_draw_cal_target (void* userdata, float x, float y)
 {
-  qDebug () << "Calibration target at" << x << y;
+  auto xp = static_cast<QExperiment*> (userdata);
+  auto calib = xp->calibrator;
+  calib->add_target (x, y);
   return 0;
 }
 
 static INT16 ELCALLBACK
 el_play_target_beep (void* userdata, EL_CAL_BEEP beep_type)
 {
+  auto xp = static_cast<QExperiment*> (userdata);
+  xp->app.beep ();
   qDebug () << "beep";
   return 0;
 }
@@ -106,7 +114,6 @@ el_get_input_key (void* userdata, InputEvent* event)
   // Check for key events in the queue
   auto calib = xp->calibrator;
   if (! calib->key_queue.isEmpty ()) {
-    qDebug () << "found a key event in the queue";
     KeyInput* ki = calib->key_queue.dequeue ();
     memcpy (event, ki, sizeof (KeyInput));
     delete ki;
@@ -139,10 +146,10 @@ el_setup_display (void* userdata)
   xp->calibrator->showFullScreen ();
   // Focus the new widget
   xp->calibrator->setFocus (Qt::OtherFocusReason);
-#if 0
-  xp->calibrator->setParent (NULL, Qt::Dialog|Qt::FramelessWindowHint);
+  // Remove mouse pointer on the calibrator
   xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
-#endif
+  // Set the correct dimensions for the scene
+  xp->calibrator->sc.setSceneRect (0, 0, xp->res_x_edit->value (), xp->res_y_edit->value ());
 
   return 0;
 }
@@ -226,11 +233,11 @@ QExperiment::calibrate_eyelink ()
 
 
 EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
-  : QGraphicsView ()//parent)
+  : QGraphicsView (),
+    target (NULL),
+    target_size (10)
 {
-  qDebug () << "scene set to" << scene ();
-  //setScene (&sc);
-  qDebug () << "scene set to" << scene ();
+  setScene (&sc);
 }
 
 void
@@ -305,6 +312,29 @@ void
 EyeLinkCalibrator::keyReleaseEvent (QKeyEvent* event)
 {
   add_key_event (event, false);
+}
+
+void
+EyeLinkCalibrator::add_target (float x, float y)
+{
+  target = sc.addEllipse (x-target_size/2, y-target_size/2,
+			  target_size, target_size,
+			  Qt::NoPen, Qt::red);
+}
+
+void
+EyeLinkCalibrator::erase_target ()
+{
+  if (target != NULL) {
+    sc.removeItem (target);
+    target = NULL;
+  }
+}
+
+void
+EyeLinkCalibrator::clear ()
+{
+  sc.clear ();
 }
 
 #ifdef DUMMY_EYELINK
