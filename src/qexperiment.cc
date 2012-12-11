@@ -1450,17 +1450,16 @@ QExperiment::init_session ()
     eyecmd_printf ("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE");
 #endif // HAVE_EYELINK
   }
-
-#ifdef HAVE_EYELINK
-    // Run the calibration (no need to wait OpenGL full screen)
-    calibrate_eyelink ();
-#endif // HAVE_EYELINK
 }
 
 void
 QExperiment::run_session ()
 {
   init_session ();
+#ifdef HAVE_EYELINK
+  // Run the calibration (no need to wait OpenGL full screen)
+  calibrate_eyelink ();
+#endif // HAVE_EYELINK
   splitter_state = splitter->saveState ();
   glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
 }
