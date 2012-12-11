@@ -19,3 +19,4 @@ Makefile.Debug
 Makefile.Release
 *.dll
 moc_*.cpp
+*.edf
