@@ -265,6 +265,39 @@ EyeLinkCalibrator::add_key_event (QKeyEvent* event, bool pressed)
   case Qt::Key_PageDown:
     ki->key = PAGE_DOWN;
     break;
+  case Qt::Key_Tab:
+    ki->key = '\t';
+    break;
+  case Qt::Key_F1:
+    ki->key = F1_KEY;
+    break;
+  case Qt::Key_F2:
+    ki->key = F2_KEY;
+    break;
+  case Qt::Key_F3:
+    ki->key = F3_KEY;
+    break;
+  case Qt::Key_F4:
+    ki->key = F4_KEY;
+    break;
+  case Qt::Key_F5:
+    ki->key = F5_KEY;
+    break;
+  case Qt::Key_F6:
+    ki->key = F6_KEY;
+    break;
+  case Qt::Key_F7:
+    ki->key = F7_KEY;
+    break;
+  case Qt::Key_F8:
+    ki->key = F8_KEY;
+    break;
+  case Qt::Key_F9:
+    ki->key = F9_KEY;
+    break;
+  case Qt::Key_F10:
+    ki->key = F10_KEY;
+    break;
   default:
     ki->key = event->key ();
   }
