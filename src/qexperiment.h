@@ -53,6 +53,11 @@ namespace plstim
     /// Duration of the animation in milliseconds
     float duration;
 
+#ifdef HAVE_EYELINK
+    /// Duration of the required fixation
+    float fixation;
+#endif // HAVE_EYELINK
+
     /// Actual number of frames in the page
     int nframes;
 

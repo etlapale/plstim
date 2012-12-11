@@ -509,6 +509,14 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 
   // Go to the next page
   if (page->wait_for_key) {
+#ifdef HAVE_EYELINK
+    // Allows EyeLink calibration and validation
+    if (page->fixation > 0
+	&& evt->key () == Qt::Key_C) {
+      calibrate_eyelink ();
+      return;
+    }
+#endif // HAVE_EYELINK
     // Check if the key is accepted
     if (page->accepted_keys.empty ()
 	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
@@ -1181,6 +1189,10 @@ QExperiment::load_experiment (const QString& path)
 		}
 	      }
 	    }
+#if HAVE_EYELINK
+	    else if (param == "fixation") {
+	    }
+#endif // HAVE_EYELINK
 	  }
 	  lua_pop (lstate, 1);
 	}
