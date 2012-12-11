@@ -219,20 +219,8 @@ QExperiment::calibrate_eyelink ()
   // Register the calibration hooks
   check_eyelink (setup_graphic_hook_functions_V2 (&hooks));
 
-#if 0//def DUMMY_EYELINK
-  auto worker = new CalibrationWorker (&hooks);
-  auto thread = new QThread (this);
-  connect (thread, SIGNAL (started ()),
-	   worker, SLOT (run_calibration ()));
-  connect (thread, SIGNAL (finished ()),
-	   worker, SLOT (deleteLater ()));
-  worker->moveToThread (thread);
-  thread->start ();
-  thread->wait ();
-#else
   // Run the calibration
   check_eyelink (do_tracker_setup ());
-#endif
 }
 
 
@@ -340,22 +328,3 @@ EyeLinkCalibrator::clear ()
 {
   sc.clear ();
 }
-
-#ifdef DUMMY_EYELINK
-CalibrationWorker::CalibrationWorker (HOOKFCNS2* hooks)
-{
-  this->hooks = *hooks;
-}
-
-void
-CalibrationWorker::run_calibration ()
-{
-  qDebug () << "starting EyeLink calibration thread";
-
-  hooks.setup_cal_display_hook (hooks.userData);
-  hooks.exit_cal_display_hook (hooks.userData);
-
-  QThread::currentThread ()->quit ();
-}
-#endif // DUMMY_EYELINK
-
