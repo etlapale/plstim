@@ -227,6 +227,9 @@ namespace plstim
 
     bool check_lua (int retcode);
 
+  protected:
+    bool creating_subject;
+
   protected slots:
     //void screen_param_changed ();
     void setup_param_changed ();

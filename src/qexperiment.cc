@@ -1537,6 +1537,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   record_type = NULL;
 
   session_running = false;
+  creating_subject = false;
 
 #ifdef HAVE_EYELINK
   eyelink_connected = false;
@@ -1824,6 +1825,8 @@ QExperiment::error (const QString& msg, const QString& desc)
 void
 QExperiment::new_subject ()
 {
+  creating_subject = true;
+
   tbox->setCurrentWidget (subject_item);
   subject_cbox->setEditable (true);
   auto le = new MyLineEdit;
@@ -1888,6 +1891,8 @@ QExperiment::new_setup_cancelled ()
 void
 QExperiment::new_subject_validated ()
 {
+  creating_subject = false;
+
   auto le = qobject_cast<MyLineEdit*> (sender());
   auto subject_id = le->text ();
   auto subject_path = QString ("experiments/%1/subjects/%2")
@@ -1900,8 +1905,6 @@ QExperiment::new_subject_validated ()
     error (tr ("Subject ID already existing"));
     return;
   }
-
-  subject_cbox->setEditable (false);
 
   // Set a default datafile for the subject
   auto subject_datafile = QString ("%1-%2.h5").arg (xp_name).arg (subject_id);
@@ -1921,6 +1924,9 @@ QExperiment::new_subject_validated ()
     hf = NULL;
   }
   hf = new H5File (subject_datafile.toLocal8Bit ().data (), flags);
+  hf->flush (H5F_SCOPE_GLOBAL);
+
+  subject_cbox->setEditable (false);
 
   // Create a new subject
   settings->setValue (subject_path, fi.absoluteFilePath ());
@@ -1929,6 +1935,8 @@ QExperiment::new_subject_validated ()
 void
 QExperiment::new_subject_cancelled ()
 {
+  creating_subject = false;
+
   auto le = qobject_cast<MyLineEdit*> (sender());
   if (le) {
     le->clear ();
@@ -1951,6 +1959,9 @@ QExperiment::select_subject_datafile ()
 void
 QExperiment::subject_changed (const QString& subject_id)
 {
+  if (creating_subject)
+    return;
+
   // Selection removal
   if (subject_cbox->currentIndex () == 0) {
     subject_databutton->setText (tr ("Subject data file"));
