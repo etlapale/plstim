@@ -399,6 +399,12 @@ QExperiment::run_trial ()
     lua_pop (lstate, 1);
   }
 
+#ifdef HAVE_EYELINK
+  // Save trial timestamp in EDF file
+  if (hf != NULL)
+    eyemsg_printf ("trial %d", current_trial+1);
+#endif // HAVE_EYELINK
+
   current_page = -1;
   //show_page (current_page);
   next_page ();
@@ -432,6 +438,12 @@ QExperiment::show_page (int index)
       }
     }
   }
+
+#ifdef HAVE_EYELINK
+  // Save page timestamp in EDF file
+  if (hf != NULL)
+    eyemsg_printf ("showing page %s", p->title.toUtf8 ().data ());
+#endif // HAVE_EYELINK
 
   switch (p->type) {
   case Page::Type::SINGLE:

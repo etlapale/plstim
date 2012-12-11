@@ -20,3 +20,4 @@ Makefile.Release
 *.dll
 moc_*.cpp
 *.edf
+*.asc
