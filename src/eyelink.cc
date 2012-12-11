@@ -215,7 +215,7 @@ QExperiment::calibrate_eyelink ()
   // Register the calibration hooks
   check_eyelink (setup_graphic_hook_functions_V2 (&hooks));
 
-#ifdef DUMMY_EYELINK
+#if 0//def DUMMY_EYELINK
   auto worker = new CalibrationWorker (&hooks);
   auto thread = new QThread (this);
   connect (thread, SIGNAL (started ()),
@@ -238,6 +238,8 @@ EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
     target_size (10)
 {
   setScene (&sc);
+  setVerticalScrollBarPolicy (Qt::ScrollBarAlwaysOff);
+  setHorizontalScrollBarPolicy (Qt::ScrollBarAlwaysOff);
 }
 
 void
@@ -272,9 +274,7 @@ EyeLinkCalibrator::add_key_event (QKeyEvent* event, bool pressed)
     ki->key = PAGE_DOWN;
     break;
   default:
-    qDebug () << "unknown key press in EyeLink calibrator" << event->key ();
     ki->key = event->key ();
-    //return;
   }
   // Translate modifiers
   ki->modifier = 0;

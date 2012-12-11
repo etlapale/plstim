@@ -19,6 +19,16 @@
 - Increase thread priority.
 - Check how to disable interrupts.
 
+[EyeLink]
+
+- Change colours.
+- Help menu.
+- Move mouse on calibration.
+- Parametrisable.
+- Handle exit through window.
+- Implement forced exit.
+- Read images.
+
 [GUI]
 
 [Settings]
