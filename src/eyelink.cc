@@ -232,6 +232,7 @@ EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
   setScene (&sc);
   setVerticalScrollBarPolicy (Qt::ScrollBarAlwaysOff);
   setHorizontalScrollBarPolicy (Qt::ScrollBarAlwaysOff);
+  setFrameStyle (QFrame::NoFrame);
 }
 
 void

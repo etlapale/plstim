@@ -7,7 +7,7 @@ QMAKE_CXXFLAGS += -std=c++0x
 LIBS += -lhdf5_cpp -lhdf5
 
 eyelink {
-  DEFINES += HAVE_EYELINK DUMMY_EYELINK
+  DEFINES += HAVE_EYELINK
   SOURCES += src/eyelink.cc
   LIBS += -leyelink_core
 }
