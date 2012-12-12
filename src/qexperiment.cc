@@ -179,6 +179,9 @@ Page::Page (Page::Type t, const QString& page_title)
   : type (t), title (page_title),
     duration (0)
 {
+#ifdef HAVE_EYELINK
+  fixation = 0;
+#endif // HAVE_EYELINK
   switch (type) {
   case Page::Type::SINGLE:
     wait_for_key = true;
@@ -439,6 +442,7 @@ QExperiment::show_page (int index)
     }
   }
 
+  qDebug () << "showing page" << p->title;
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
@@ -462,6 +466,51 @@ QExperiment::show_page (int index)
 
   current_page = index;
   p->make_active ();
+
+#ifdef HAVE_EYELINK
+  // Check for maintained fixation
+  if (p->fixation) {
+    qDebug () << "page" << p->title << "wants a" << p->fixation << "ms fixation";
+    QElapsedTimer timer;
+    // Target
+    float tx = (float) res_x_edit->value () / 2.0;
+    float ty = (float) res_y_edit->value () / 2.0;
+    float fix_threshold = deg2pix (1.0);
+    qDebug () << "checking for fix at" << tx << ty << "threshold is" << fix_threshold << "px";
+
+    waiting_fixation = true;
+    timer.start ();
+
+    float dst = 2*fix_threshold;
+    while (waiting_fixation
+	   && (dst > fix_threshold
+	       || timer.elapsed () < p->fixation)) {
+      // Check for eye data
+      if (eyelink_newest_float_sample (NULL) > 0) {
+	// Get eye position
+	ALLF_DATA evt;
+	eyelink_newest_float_sample (&evt);
+	// Compute distance to the target
+	float gx = evt.fs.gx[RIGHT_EYE];
+	float gy = evt.fs.gy[RIGHT_EYE];
+	//qDebug () << "eye at" << gx << gy;
+	float dx = gx - tx;
+	float dy = gy - ty;
+	//qDebug () << "X/Y distances" << dx << dy;
+	dst = sqrt (dx*dx + dy*dy);
+	//qDebug () << "distance:" << dst << "pixels";
+	if (dst > fix_threshold)
+	  timer.restart ();
+      }
+      // Allow calibration and forced skip
+      else
+	app.processEvents ();
+    }
+
+    waiting_fixation = false;
+    next_page ();
+  }
+#endif // HAVE_EYELINK
 
   // If no keyboard event expected, go to the next page
   if (! p->wait_for_key)
@@ -561,6 +610,15 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 	}
       }
 
+#ifdef HAVE_EYELINK
+      // Exit the inner loop processing events
+      if (waiting_fixation) {
+	// TODO: record event
+	qDebug () << "aborting fixation";
+	waiting_fixation = false;
+	return;
+      }
+#endif // HAVE_EYELINK
       next_page ();
     }
   }
@@ -1210,6 +1268,7 @@ QExperiment::load_experiment (const QString& path)
 	QString page_title;
 	auto page_type = Page::Type::SINGLE;
 	float page_duration = 0;
+	float page_fixation = 0;
 	std::set<int> accepted_keys;
 
 	// Process each page parameter
@@ -1245,7 +1304,9 @@ QExperiment::load_experiment (const QString& path)
 	      }
 	    }
 #if HAVE_EYELINK
-	    else if (param == "fixation") {
+	    else if (param == "fixation"
+		     && lua_isnumber (lstate, -1)) {
+	      page_fixation = lua_tonumber (lstate, -1);
 	    }
 #endif // HAVE_EYELINK
 	  }
@@ -1255,6 +1316,7 @@ QExperiment::load_experiment (const QString& path)
 	// Create a new page and add it to the experiment
 	auto page = new Page (page_type, page_title);
 	page->duration = page_duration;
+	page->fixation = page_fixation;
 	page->accepted_keys = accepted_keys;
 	add_page (page);
 

@@ -363,6 +363,7 @@ namespace plstim
   protected:
     bool eyelink_connected;
     bool eyelink_dummy;
+    bool waiting_fixation;
   public:
     EyeLinkCalibrator* calibrator;
   public:
