@@ -1522,6 +1522,10 @@ QExperiment::init_session ()
 void
 QExperiment::run_session ()
 {
+  // No experiment loaded
+  if (lstate == NULL)
+    return;
+
   init_session ();
 #ifdef HAVE_EYELINK
   // Run the calibration (no need to wait OpenGL full screen)
@@ -1536,6 +1540,10 @@ QExperiment::run_session ()
 void
 QExperiment::run_session_inline ()
 {
+  // No experiment loaded
+  if (lstate == NULL)
+    return;
+
   init_session ();
   glwidget->setFocus (Qt::OtherFocusReason);
   can_run_trial ();
