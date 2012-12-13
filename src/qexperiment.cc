@@ -1669,6 +1669,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
 #ifdef HAVE_EYELINK
   eyelink_connected = false;
+  waiting_fixation = false;
 #ifdef DUMMY_EYELINK
   eyelink_dummy = true;
 #else
