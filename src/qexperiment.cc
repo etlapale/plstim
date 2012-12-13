@@ -512,6 +512,12 @@ QExperiment::show_page (int index)
   }
 #endif // HAVE_EYELINK
 
+  // Fixed frame of defined duration
+  if (p->duration && p->type == Page::Type::SINGLE) {
+    qDebug () << "fixed frame for" << p->duration << "ms";
+    QTimer::singleShot (p->duration, this, SLOT (next_page ()));
+  }
+
   // If no keyboard event expected, go to the next page
   if (! p->wait_for_key)
     next_page ();

@@ -165,6 +165,8 @@ namespace plstim
 
     void abort_experiment ();
 
+    void next_page ();
+
   public:
     bool exec ();
 
@@ -174,8 +176,6 @@ namespace plstim
     void run_trial ();
 
     void show_page (int index);
-
-    void next_page ();
 
     /// Define a special frame
     bool gen_frame (const std::string& frame_name);
