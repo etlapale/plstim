@@ -393,11 +393,23 @@ QExperiment::run_trial ()
     auto name = it.first.toUtf8 ();
     size_t offset = it.second;
 
+    // TODO: we should check that we have the correct type here
+
     lua_getglobal (lstate, name.data ());
     if (lua_isnumber (lstate, -1)) {
       double* pos = (double*) (((char*) trial_record)+offset);
       *pos = lua_tonumber (lstate, -1);
       qDebug () << "storing" << *pos << "for" << param_name;
+    }
+    else if (lua_istable (lstate, -1)) {
+      double* pos = (double*) (((char*) trial_record)+offset);
+      size_t len = lua_objlen (lstate, -1);
+      for (int i = 1; i <= len; i++) {
+	lua_rawgeti (lstate, -1, i);
+	pos[i-1] = lua_tonumber (lstate, -1);
+	lua_pop (lstate, 1);
+      }
+      qDebug () << "storing" << "array" << "for" << param_name;
     }
     lua_pop (lstate, 1);
   }
@@ -1235,9 +1247,49 @@ QExperiment::load_experiment (const QString& path)
       if (lua_isstring (lstate, -2)
 	  && lua_istable (lstate, -1)) {
 	QString param_name (lua_tostring (lstate, -2));
-	trial_offsets[param_name] = record_size;
-	record_size += sizeof (double);
-	qDebug () << "Adding a trial parameter to the record";
+	// Get the current value of the parameter to
+	// check it’s type
+	lua_getglobal (lstate, lua_tostring (lstate, -2));
+
+	// Double parameter (assumed if not found)
+	if (lua_isnil (lstate, -1)
+	    || lua_isnumber (lstate, -1)) {
+	  qDebug () << "Adding trial parameter" << param_name << "as double";
+	  trial_types[param_name] = PredType::NATIVE_DOUBLE;
+	  trial_offsets[param_name] = record_size;
+	  record_size += sizeof (double);
+	}
+	// Array of doubles
+	else if (lua_istable (lstate, -1)) {
+	  // Check for size in parameter description
+	  // TODO: convert that to the ‘page’ style
+	  size_t len = lua_objlen (lstate, -2);
+	  if (len >= 3) {
+	    lua_rawgeti (lstate, -2, 3);
+	    if (lua_isnumber (lstate, -1))
+	      len = lua_tointeger (lstate, -1);
+	    lua_pop (lstate, 1);
+	  }
+	  else {
+	    len = 0;
+	  }
+	  qDebug () << "description length:" << len;
+	  
+	  // Get the current size of the array
+	  if (len == 0)
+	    len = lua_objlen (lstate, -1);
+	  qDebug () << "Adding trial parameter" << param_name << "as double array of" << len << "elements";
+	  hsize_t hlen = len;
+	  trial_types[param_name] = ArrayType (PredType::NATIVE_DOUBLE, 1, &hlen);
+	  trial_offsets[param_name] = record_size;
+	  record_size += len * sizeof (double);
+	}
+	// Unknown parameter type
+	else {
+	  error (QString ("Unknown parameter type for %1").arg (param_name));
+	}
+	// Remove parameter current value from the stack
+	lua_pop (lstate, 1);
       }
       lua_pop (lstate, 1);
     }
@@ -1322,7 +1374,9 @@ QExperiment::load_experiment (const QString& path)
 	// Create a new page and add it to the experiment
 	auto page = new Page (page_type, page_title);
 	page->duration = page_duration;
+#ifdef HAVE_EYELINK
 	page->fixation = page_fixation;
+#endif // HAVE_EYELINK
 	page->accepted_keys = accepted_keys;
 	add_page (page);
 
@@ -1345,8 +1399,9 @@ QExperiment::load_experiment (const QString& path)
     record_type = new CompType (record_size);
     // Add trial info to the record
     for (auto it : trial_offsets) {
+      const QString & param_name = it.first;
       qDebug () << "  Trial for" << it.first << "at" << it.second;
-      record_type->insertMember (it.first.toUtf8 ().data (), it.second, PredType::NATIVE_DOUBLE);
+      record_type->insertMember (param_name.toUtf8 ().data (), it.second, trial_types[param_name]);
     }
     // Add pages info to the record
     QString fmt ("%1_%2");

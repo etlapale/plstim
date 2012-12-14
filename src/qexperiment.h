@@ -340,6 +340,9 @@ namespace plstim
     /// Page record offsets
     std::map<QString,std::map<QString,size_t>> record_offsets;
 
+    /// Trial record types
+    std::map<QString,H5::DataType> trial_types;
+
     // List of key accepted across the experiment
     std::set<QString> xp_keys;
 

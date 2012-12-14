@@ -1,4 +1,4 @@
-CONFIG += qt -debug release eyelink
+CONFIG += qt -debug release -eyelink
 QT += core gui opengl network
 SOURCES += src/qexperiment.cc src/glwidget.cc src/messagebox.cc src/utils.cc src/main.cc
 HEADERS += src/glwidget.h src/messagebox.h src/plstim.h src/qexperiment.h src/utils.h src/elcalibration.h
