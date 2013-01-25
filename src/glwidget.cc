@@ -357,7 +357,7 @@ MyGLWidget::initializeGL ()
   std::cout << "initializeGL() " << hex << (long) this << dec << std::endl;
   initializeGLFunctions ();
 
-  glClearColor (0.1, 0, 0.1, 0);
+  glClearColor (0.0, 0, 0.0, 0);
 
   // Create textures for the main frames
   std::cout << "  creating " << nframes << " textures" << endl;

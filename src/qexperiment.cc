@@ -404,7 +404,7 @@ QExperiment::run_trial ()
     else if (lua_istable (lstate, -1)) {
       double* pos = (double*) (((char*) trial_record)+offset);
       size_t len = lua_objlen (lstate, -1);
-      for (int i = 1; i <= len; i++) {
+      for (size_t i = 1; i <= len; i++) {
 	lua_rawgeti (lstate, -1, i);
 	pos[i-1] = lua_tonumber (lstate, -1);
 	lua_pop (lstate, 1);
@@ -593,6 +593,13 @@ QExperiment::next_page ()
 void
 QExperiment::glwidget_key_press_event (QKeyEvent* evt)
 {
+  // Show controls
+  if ((evt->modifiers () & Qt::ShiftModifier)
+      && evt->key () == Qt::Key_H) {
+    show_hide_controls ();
+    return;
+  }
+
   // Keyboard events are only handled in sessions
   if (! session_running)
     return;
@@ -1661,6 +1668,43 @@ QExperiment::run_session ()
 }
 
 void
+QExperiment::show_hide_controls ()
+{
+  qDebug () << "show/hide controls";
+
+  if (win->menuBar ()->isVisible ()) {
+    // Hide splitters
+    splitter_state = splitter->saveState ();
+    splitter_width = splitter->handleWidth ();
+    hsplitter_state = hsplitter->saveState ();
+    hsplitter_width = hsplitter->handleWidth ();
+    QList<int> sizes = splitter->sizes ();
+    sizes.first () = 0;
+    splitter->setSizes (sizes);
+    splitter->setHandleWidth (1);
+    sizes = hsplitter->sizes ();
+    sizes.last () = 0;
+    hsplitter->setSizes (sizes);
+    hsplitter->setHandleWidth (1);
+
+    win->menuBar ()->setVisible (false);
+    win->statusBar ()->setVisible (false);
+
+    // GLWidget is the only visible widget now, so give it focus
+    glwidget->setFocus (Qt::OtherFocusReason);
+  }
+  else {
+    win->menuBar ()->setVisible (true);
+    win->statusBar ()->setVisible (true);
+
+    splitter->setHandleWidth (splitter_width);
+    splitter->restoreState (splitter_state);
+    hsplitter->setHandleWidth (hsplitter_width);
+    hsplitter->restoreState (hsplitter_state);
+  }
+}
+
+void
 QExperiment::run_session_inline ()
 {
   // No experiment loaded
@@ -1771,12 +1815,25 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setShortcut (tr ("Ctrl+R"));
   action->setStatusTip (tr ("&Run the experiment"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
-
+  
   // Run an experiment inside the main window
   action = xp_menu->addAction ("Run &inline");
   action->setShortcut (tr ("Ctrl+Shift+R"));
   action->setStatusTip (tr ("&Run the experiment inside the window"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session_inline ()));
+
+  // Hide the GUI controls
+  action = xp_menu->addAction ("&Hide controls");
+  action->setShortcut (tr ("Ctrl+Shift+H"));
+  action->setStatusTip (tr ("&Hide every control on the GUI"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (show_hide_controls ()));
+  xp_menu->addSeparator ();
+
+  // Open an existing experiment
+  action = xp_menu->addAction ("&Open");
+  action->setShortcut (tr ("Ctrl+O"));
+  action->setStatusTip (tr ("&Open an experiment"));
+  connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
 
   // Close the current simulation
   close_action = xp_menu->addAction ("&Close");

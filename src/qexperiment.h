@@ -214,6 +214,8 @@ namespace plstim
     void run_session ();
     void run_session_inline ();
 
+    void show_hide_controls ();
+
     void set_trial_count (int ntrials);
 
     void set_subject_datafile (const QString& path);
@@ -294,6 +296,9 @@ namespace plstim
     bool session_running;
 
     QByteArray splitter_state;
+    QByteArray hsplitter_state;
+    int splitter_width;
+    int hsplitter_width;
 
     QString xp_name;
     int session_number;
