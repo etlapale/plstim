@@ -133,6 +133,9 @@ namespace plstim
     /// Current trial number
     int current_trial;
 
+    /// Accepted keys to switch to next page
+    std::set<int> next_page_keys;
+
   public:
     /// Number of trials in a session
     int ntrials;

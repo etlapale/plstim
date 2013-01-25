@@ -617,7 +617,9 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
     }
 #endif // HAVE_EYELINK
     // Check if the key is accepted
-    if (page->accepted_keys.empty ()
+    if ((page->accepted_keys.empty () &&
+	 next_page_keys.find (evt->key ()) != next_page_keys.end ()
+	)
 	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
       page->emit_key_pressed (evt);
 
@@ -1794,6 +1796,11 @@ QExperiment::QExperiment (int & argc, char** argv)
   key_mapping["left"] = Qt::Key_Left;
   key_mapping["right"] = Qt::Key_Right;
   key_mapping["up"] = Qt::Key_Up;
+
+  // Accepted keys for next page presentation
+  next_page_keys.insert (Qt::Key_Return);
+  next_page_keys.insert (Qt::Key_Enter);
+  next_page_keys.insert (Qt::Key_Space);
   
 
   // Get the experimental setup
