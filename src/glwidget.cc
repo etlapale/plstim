@@ -28,6 +28,19 @@ MyGLWidget::MyGLWidget (const QGLFormat& format, QWidget* parent)
   setAutoBufferSwap (false);
 }
 
+#ifdef HAVE_POWERMATE
+bool
+MyGLWidget::event (QEvent* event)
+{
+  if (event->type () == PowerMateEvent::EventType) {
+    auto evt = static_cast<PowerMateEvent*> (event);
+    emit powermate_event (evt);
+    return true;
+  }
+  return QGLWidget::event (event);
+}
+#endif // HAVE_POWERMATE
+
 void
 MyGLWidget::keyPressEvent (QKeyEvent* evt)
 {

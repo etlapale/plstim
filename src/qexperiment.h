@@ -20,6 +20,10 @@
 #include "elcalibration.h"
 #endif
 
+#ifdef HAVE_POWERMATE
+#include "powermate.h"
+#endif // HAVE_POWERMATE
+
 #include "glwidget.h"
 #include "messagebox.h"
 #include "utils.h"
@@ -246,6 +250,9 @@ namespace plstim
     void quit ();
     void glwidget_gl_initialised ();
     void glwidget_key_press_event (QKeyEvent* evt);
+#ifdef HAVE_POWERMATE
+    void powermate_event (PowerMateEvent* evt);
+#endif // HAVE_POWERMATE
     void can_run_trial ();
     void normal_screen_restored ();
     void open_recent ();

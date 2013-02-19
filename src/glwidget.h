@@ -7,6 +7,9 @@
 #include <QtOpenGL>
 #include <QGLFunctions>
 
+#ifdef HAVE_POWERMATE
+#include "powermate.h"
+#endif // HAVE_POWERMATE
 
 namespace plstim
 {
@@ -45,11 +48,17 @@ namespace plstim
     void can_run_trial ();
     void normal_screen_restored ();
     void key_press_event (QKeyEvent* evt);
+#ifdef HAVE_POWERMATE
+    void powermate_event (PowerMateEvent* evt);
+#endif // HAVE_POWERMATE
 
   public:
     MyGLWidget (const QGLFormat& format, QWidget* parent);
 
   protected:
+#ifdef HAVE_POWERMATE
+    virtual bool event (QEvent* event);
+#endif // HAVE_POWERMATE
     virtual void keyPressEvent (QKeyEvent* evt);
 
   public:

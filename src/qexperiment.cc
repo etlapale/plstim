@@ -244,6 +244,16 @@ QExperiment::exec ()
     load_experiment (args.at (1));
   }
 
+#ifdef HAVE_POWERMATE
+  // Watch for PowerMate events in a background thread
+  PowerMateWatcher watcher;
+  QThread thread;
+  //QObject::connect (&thread, &QThread
+  connect (&thread, SIGNAL (started ()), &watcher, SLOT (watch ()));
+  watcher.moveToThread (&thread);
+  thread.start ();
+#endif // HAVE_POWERMATE
+
 
   cout << "exec()" << endl;
   return app.exec () == 0;
@@ -589,6 +599,14 @@ QExperiment::next_page ()
     show_page (current_page + 1);
   }
 }
+
+#ifdef HAVE_POWERMATE
+void
+QExperiment::powermate_event (PowerMateEvent* evt)
+{
+  qDebug () << "PowerMate event with step of" << evt->step;
+}
+#endif // HAVE_POWERMATE
 
 void
 QExperiment::glwidget_key_press_event (QKeyEvent* evt)
@@ -2417,6 +2435,10 @@ QExperiment::set_glformat (QGLFormat glformat)
 	   this, SLOT (can_run_trial ()));
   connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
 	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
+#ifdef HAVE_POWERMATE
+  connect (glwidget, SIGNAL (powermate_event (PowerMateEvent*)),
+	   this, SLOT (powermate_event (PowerMateEvent*)));
+#endif // HAVE_POWERMATE
 
   splitter->addWidget (glwidget);
   splitter->restoreState (splitter_state);
