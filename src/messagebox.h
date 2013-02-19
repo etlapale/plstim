@@ -4,6 +4,7 @@
 #define __PLSTIM_MESSAGEBOX_H
 
 #include <QtGui>
+#include <QtWidgets>
 
 
 namespace plstim

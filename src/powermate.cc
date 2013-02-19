@@ -88,7 +88,7 @@ PowerMateWatcher::watch ()
 	  // Create and send a PowerMate event
 	  PowerMateEvent event ((int) ibuf[i].value);
 	  // Get the focused object
-#if 0
+#if 1
 	  auto obj = QGuiApplication::focusObject ();
 #else
 	  auto obj = QApplication::focusWidget ();
