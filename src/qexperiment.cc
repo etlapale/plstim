@@ -465,7 +465,7 @@ QExperiment::show_page (int index)
     }
   }
 
-  qDebug () << "showing page" << p->title;
+  qDebug () << ">>> showing page" << p->title;
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
@@ -474,6 +474,7 @@ QExperiment::show_page (int index)
 
   switch (p->type) {
   case Page::Type::SINGLE:
+    stim->showFixedFrame (p->title);
     glwidget->show_fixed_frame (p->title);
     
     // Workaround a bug on initial frame after fullscreen
@@ -1688,9 +1689,9 @@ QExperiment::run_session ()
   //glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
   
   // Launch a stimulus window
-  stim = new StimWindow;
-  stim->resize (400, 400);
+  stim->resize (1024, 1024);
   stim->show ();
+  can_run_trial ();
 }
 
 void
@@ -1830,6 +1831,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Get the experimental setup
 
   glwidget = NULL;
+  stim = NULL;
 
   splitter = new QSplitter;
 
@@ -2005,6 +2007,9 @@ QExperiment::QExperiment (int & argc, char** argv)
   fmt.setDepth (false);
   fmt.setSwapInterval (1);
   set_glformat (fmt);
+
+  stim = new StimWindow;
+
   // Show OpenGL version in GUI
   QString glfmt ("%1.%2");
   flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
@@ -2345,6 +2350,7 @@ QExperiment::setup_updated ()
 
     // Notify the GLWidget of a new texture size
     glwidget->update_texture_size (tex_size, tex_size);
+    stim->setTextureSize (tex_size, tex_size);
 
     // Image on which the frames are painted
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
