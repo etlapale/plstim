@@ -291,6 +291,7 @@ QExperiment::paint_page (Page* page,
 
     //img.save (QString ("page-") + page->title + ".png");
     glwidget->add_fixed_frame (page->title, img);
+    stim->addFixedFrame (page->title, img);
     break;
 
   // Multiple frames
@@ -1684,7 +1685,12 @@ QExperiment::run_session ()
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
   splitter_state = splitter->saveState ();
-  glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
+  //glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
+  
+  // Launch a stimulus window
+  stim = new StimWindow;
+  stim->resize (400, 400);
+  stim->show ();
 }
 
 void

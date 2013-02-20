@@ -104,6 +104,7 @@ MyGLWidget::add_fixed_frame (const QString& name, const QImage& img)
 void
 MyGLWidget::empty_frame ()
 {
+  qDebug () << "showing an empty frame!";
   makeCurrent ();
   glClear (GL_COLOR_BUFFER_BIT);
   swapBuffers ();
@@ -112,6 +113,7 @@ MyGLWidget::empty_frame ()
 void
 MyGLWidget::show_fixed_frame (const QString& name)
 {
+  qDebug () << "showing fixed frame" << name;
   current_frame = fixed_frames[name];
 
   makeCurrent ();
@@ -130,6 +132,7 @@ MyGLWidget::show_fixed_frame (const QString& name)
 void
 MyGLWidget::show_animated_frames (const QString& name)
 {
+  qDebug () << "showing animated frames";
   makeCurrent ();
   for (auto f : animated_frames[name]) {
     current_frame = f;
@@ -140,7 +143,9 @@ MyGLWidget::show_animated_frames (const QString& name)
     glUniform1i (texloc, 0);
 
     glDrawArrays (GL_TRIANGLES, 0, 6);
+    qDebug () << "  swapping buffers";
     swapBuffers ();
+    QThread::msleep (1000);
   }
 }
 

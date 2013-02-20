@@ -25,6 +25,7 @@
 #endif // HAVE_POWERMATE
 
 #include "glwidget.h"
+#include "stimwindow.h"
 #include "messagebox.h"
 #include "utils.h"
 
@@ -96,6 +97,9 @@ namespace plstim
   protected:
     QMainWindow* win;
     MyGLWidget* glwidget;
+
+    /// Stimulus OpenGL window
+    StimWindow* stim;
 
     /// Application settings
     QSettings* settings;
