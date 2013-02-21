@@ -3,8 +3,6 @@
 
 using namespace std;
 
-#include <QGLWidget>
-
 #include "stimwindow.h"
 using namespace plstim;
 
@@ -54,7 +52,7 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 
 	glGenTextures (1, &texid);
 	glBindTexture (GL_TEXTURE_2D, texid);
-	QImage glimg = QGLWidget::convertToGLFormat (img);
+	QImage glimg = img.rgbSwapped ().mirrored ();
 	glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
 		glimg.width (), glimg.height (), 0, GL_RGBA,
 		GL_UNSIGNED_BYTE, glimg.bits ());
