@@ -1811,13 +1811,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   action->setStatusTip (tr ("&Run the experiment inside the window"));
   connect (action, SIGNAL (triggered ()), this, SLOT (run_session_inline ()));
 
-  // Hide the GUI controls
-  action = xp_menu->addAction ("&Hide controls");
-  action->setShortcut (tr ("Ctrl+Shift+H"));
-  action->setStatusTip (tr ("&Hide every control on the GUI"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (show_hide_controls ()));
-  xp_menu->addSeparator ();
-
   // Open an existing experiment
   action = xp_menu->addAction ("&Open");
   action->setShortcut (tr ("Ctrl+O"));
