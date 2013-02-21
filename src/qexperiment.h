@@ -24,7 +24,6 @@
 #include "powermate.h"
 #endif // HAVE_POWERMATE
 
-#include "glwidget.h"
 #include "stimwindow.h"
 #include "messagebox.h"
 #include "utils.h"
@@ -96,7 +95,6 @@ namespace plstim
     QApplication app;
   protected:
     QMainWindow* win;
-    MyGLWidget* glwidget;
 
     /// Stimulus OpenGL window
     StimWindow* stim;
@@ -206,11 +204,11 @@ namespace plstim
       return deg2pix (speed/refresh_edit->value ()*swap_interval);
     }
 
-    void set_glformat (QGLFormat glformat);
+    //void set_glformat (QGLFormat glformat);
 
     float monitor_rate () const;
 
-    void set_swap_interval (int swap_interval);
+    //void set_swap_interval (int swap_interval);
 
   public slots:
 
@@ -224,8 +222,6 @@ namespace plstim
      */
     void run_session ();
     void run_session_inline ();
-
-    void show_hide_controls ();
 
     void set_trial_count (int ntrials);
 
@@ -252,13 +248,10 @@ namespace plstim
     void about_to_quit ();
     void open ();
     void quit ();
-    void glwidget_gl_initialised ();
-    void glwidget_key_press_event (QKeyEvent* evt);
+    void keyPressed (QKeyEvent* evt);
 #ifdef HAVE_POWERMATE
     void powermate_event (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
-    void can_run_trial ();
-    void normal_screen_restored ();
     void open_recent ();
     void xp_param_changed (double);
     void new_setup_validated ();
@@ -306,7 +299,6 @@ namespace plstim
     float distance;
     float px_mm;
 
-    bool glwidget_initialised;
     bool session_running;
 
     QByteArray splitter_state;
@@ -406,12 +398,12 @@ namespace plstim
   signals: 
     void escapePressed ();
   protected:
-    virtual void keyPressEvent (QKeyEvent* event)
+    virtual void keyPressEvent (QKeyEvent* evt)
     {
-      if (event->key () == Qt::Key_Escape)
+      if (evt->key () == Qt::Key_Escape)
 	emit escapePressed ();
       else
-	QLineEdit::keyPressEvent (event);
+	QLineEdit::keyPressEvent (evt);
     }
   };
 }

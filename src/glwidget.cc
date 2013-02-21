@@ -145,7 +145,7 @@ MyGLWidget::show_animated_frames (const QString& name)
     glDrawArrays (GL_TRIANGLES, 0, 6);
     qDebug () << "  swapping buffers";
     swapBuffers ();
-    QThread::msleep (1000);
+    //QThread::msleep (1000);
   }
 }
 

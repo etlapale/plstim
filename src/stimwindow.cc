@@ -34,11 +34,31 @@ StimWindow::~StimWindow ()
     qDebug () << "destroying a stimulus window";
 }
 
+static GLuint
+bindTexture (const QImage& img)
+{
+    // Convert pixel data from Qt to OpenGL format
+    QImage glimg = img.rgbSwapped ().mirrored ();
+
+    GLuint texid;
+
+    glGenTextures (1, &texid);
+    glBindTexture (GL_TEXTURE_2D, texid);
+
+    glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
+	    glimg.width (), glimg.height (), 0, GL_RGBA,
+	    GL_UNSIGNED_BYTE, glimg.bits ());
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return texid;
+}
+
 void
 StimWindow::addFixedFrame (const QString& name, const QImage& img)
 {
     if (isExposed ()) {
-	qDebug () << "binding texture" << name;
+	qDebug () << "binding fixed texture" << name;
 	
 	GLuint texid;
 
@@ -50,14 +70,7 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 
 	m_context->makeCurrent (this);
 
-	glGenTextures (1, &texid);
-	glBindTexture (GL_TEXTURE_2D, texid);
-	QImage glimg = img.rgbSwapped ().mirrored ();
-	glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
-		glimg.width (), glimg.height (), 0, GL_RGBA,
-		GL_UNSIGNED_BYTE, glimg.bits ());
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	texid = bindTexture (img);
 	m_fixedFrames[name] = texid;
     }
     // Mark the texture for later binding
@@ -65,6 +78,41 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 	m_tobind[name] = img;
     }
 
+}
+
+void
+StimWindow::addAnimatedFrame (const QString& name, const QImage& img)
+{
+    if (isExposed ()) {
+	m_context->makeCurrent (this);
+
+	auto& frames = m_animatedFrames[name];
+	GLuint texid = bindTexture (img);
+	frames.append (texid);
+    }
+    else {
+	m_toabind[name].append (img);
+    }
+}
+
+void
+StimWindow::deleteAnimatedFrames (const QString& name)
+{
+    if (m_animatedFrames.contains (name)) {
+	m_context->makeCurrent (this);
+
+	auto& frames = m_animatedFrames[name];
+	for (auto texid : frames)
+	    glDeleteTextures (1, &texid);
+
+	frames.clear ();
+	m_animatedFrames.remove (name);
+    }
+    if (m_toabind.contains (name)) {
+	auto& frames = m_toabind[name];
+	frames.clear ();
+	m_toabind.remove (name);
+    }
 }
 
 bool
@@ -88,10 +136,25 @@ StimWindow::exposeEvent (QExposeEvent* evt)
 }
 
 void
+StimWindow::keyPressEvent (QKeyEvent* evt)
+{
+    emit keyPressed (evt);
+}
+
+void
+StimWindow::showFullScreen (int offx, int offy)
+{
+    setX (offx); setY (offy);
+    QWindow::showFullScreen ();
+}
+
+void
 StimWindow::renderNow ()
 {
-    if (! isExposed ())
+    if (! isExposed ()) {
+	qDebug () << "cannot renderNow since not exposed";
 	return;
+    }
 
     bool needInit = false;
 
@@ -111,6 +174,7 @@ StimWindow::renderNow ()
     }
 
     // Render the frame, and swap the buffers
+    qDebug () << "rendering and swapping";
     render ();
     m_context->swapBuffers (this);
 }
@@ -245,13 +309,26 @@ StimWindow::initialize ()
     }
     m_tobind.clear ();
 
+    // Bind deferred animations
+    QMapIterator<QString,QVector<QImage>> ait (m_toabind);
+    while (ait.hasNext ()) {
+	ait.next ();
+	const QVector<QImage>& frames = ait.value ();
+	for (auto& frame : frames)
+	    addAnimatedFrame (ait.key (), frame);
+    }
+    m_toabind.clear ();
+
     glClearColor (1, 0, 0, 0);
 
     updateShaders ();
 
     // Show deferred frame
     if (! m_toshow.isEmpty ()) {
-	showFixedFrame (m_toshow);
+	if (m_fixedFrames.contains (m_toshow))
+	    showFixedFrame (m_toshow);
+	else
+	    showAnimatedFrames (m_toshow);
 	m_toshow.clear ();
     }
 }
@@ -262,20 +339,34 @@ StimWindow::showFixedFrame (const QString& name)
     if (! m_fixedFrames.contains (name)
 	    && ! m_tobind.contains (name)) {
 	qDebug () << "??? unknown fixed frame" << name;
-	return;
     }
-
-    if (isExposed ()) {
-	qDebug () << "@@@ showing fixed frame" << name;
-
-	//m_context->makeCurrent (this);
-
+    else if (isExposed ()) {
 	m_currentFrame = m_fixedFrames[name];
-
 	renderNow ();
     }
     else {
-	qDebug () << "!!! deferring fixed frame" << name;
+	m_toshow = name;
+    }
+}
+
+void
+StimWindow::showAnimatedFrames (const QString& name)
+{
+    if (! m_animatedFrames.contains (name)
+	    && ! m_toabind.contains (name)) {
+	qDebug () << "??? unknown animated frame" << name;
+    }
+    else if (isExposed ()) {
+	m_context->makeCurrent (this);
+
+	auto& frames = m_animatedFrames[name];
+	for (auto frame : frames) {
+	    m_currentFrame = frame;
+	    render ();
+	    m_context->swapBuffers (this);
+	}
+    }
+    else {
 	m_toshow = name;
     }
 }
@@ -289,8 +380,6 @@ StimWindow::render ()
 	qDebug () << "render() with no effect (no frame)";
 	return;
     }
-
-    qDebug () << "effective rendering";
 
     glBindTexture (GL_TEXTURE_2D, m_currentFrame);
     glUniform1i (m_texloc, 0);

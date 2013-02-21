@@ -247,11 +247,11 @@ QExperiment::exec ()
 #ifdef HAVE_POWERMATE
   // Watch for PowerMate events in a background thread
   PowerMateWatcher watcher;
-  QThread thread;
+  QThread wthread;
   //QObject::connect (&thread, &QThread
-  connect (&thread, SIGNAL (started ()), &watcher, SLOT (watch ()));
-  watcher.moveToThread (&thread);
-  thread.start ();
+  connect (&wthread, SIGNAL (started ()), &watcher, SLOT (watch ()));
+  watcher.moveToThread (&wthread);
+  wthread.start ();
 #endif // HAVE_POWERMATE
 
 
@@ -290,14 +290,15 @@ QExperiment::paint_page (Page* page,
     painter->end ();
 
     //img.save (QString ("page-") + page->title + ".png");
-    glwidget->add_fixed_frame (page->title, img);
+    //glwidget->add_fixed_frame (page->title, img);
     stim->addFixedFrame (page->title, img);
     break;
 
   // Multiple frames
   case Page::Type::FRAMES:
     //timer.start ();
-    glwidget->delete_animated_frames (page->title);
+    //glwidget->delete_animated_frames (page->title);
+    stim->deleteAnimatedFrames (page->title);
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
     //timer.start ();
 
@@ -327,7 +328,8 @@ QExperiment::paint_page (Page* page,
       filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
       img.save (filename);
 #endif
-      glwidget->add_animated_frame (page->title, img);
+      //glwidget->add_animated_frame (page->title, img);
+      stim->addAnimatedFrame (page->title, img);
     }
     //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     break;
@@ -475,16 +477,17 @@ QExperiment::show_page (int index)
   switch (p->type) {
   case Page::Type::SINGLE:
     stim->showFixedFrame (p->title);
-    glwidget->show_fixed_frame (p->title);
+    //glwidget->show_fixed_frame (p->title);
     
     // Workaround a bug on initial frame after fullscreen
     // Maybe it’s a race condition?
     // TODO: in any cases, it should be tracked and solved
-    if (current_trial == 0 && index == 0)
-      glwidget->show_fixed_frame (p->title);
+    //if (current_trial == 0 && index == 0)
+      //glwidget->show_fixed_frame (p->title);
     break;
   case Page::Type::FRAMES:
-    glwidget->show_animated_frames (p->title);
+    //glwidget->show_animated_frames (p->title);
+    stim->showAnimatedFrames (p->title);
     break;
   }
 
@@ -592,7 +595,8 @@ QExperiment::next_page ()
 #endif // HAVE_EYELINK
 	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
       }
-      glwidget->normal_screen ();
+      //glwidget->normal_screen ();
+      stim->hide ();
       session_running = false;
     }
   }
@@ -611,15 +615,8 @@ QExperiment::powermate_event (PowerMateEvent* evt)
 #endif // HAVE_POWERMATE
 
 void
-QExperiment::glwidget_key_press_event (QKeyEvent* evt)
+QExperiment::keyPressed (QKeyEvent* evt)
 {
-  // Show controls
-  if ((evt->modifiers () & Qt::ShiftModifier)
-      && evt->key () == Qt::Key_H) {
-    show_hide_controls ();
-    return;
-  }
-
   // Keyboard events are only handled in sessions
   if (! session_running)
     return;
@@ -669,13 +666,6 @@ QExperiment::glwidget_key_press_event (QKeyEvent* evt)
       next_page ();
     }
   }
-}
-
-void
-QExperiment::can_run_trial ()
-{
-  session_running = true;
-  run_trial ();
 }
 
 
@@ -1129,7 +1119,8 @@ void
 QExperiment::abort_experiment ()
 {
   current_page = -1;
-  glwidget->normal_screen ();
+  //glwidget->normal_screen ();
+  stim->hide ();
   session_running = false;
 }
 
@@ -1177,8 +1168,8 @@ QExperiment::unload_experiment ()
     hf = NULL;
   }
 
-  glwidget->delete_fixed_frames ();
-  glwidget->delete_animated_frames ();
+  //glwidget->delete_fixed_frames ();
+  //glwidget->delete_animated_frames ();
   // TODO: also delete shaders. put everything in cleanup ()
 
 
@@ -1355,7 +1346,9 @@ QExperiment::load_experiment (const QString& path)
 	QString page_title;
 	auto page_type = Page::Type::SINGLE;
 	float page_duration = 0;
+#ifdef HAVE_EYELINK
 	float page_fixation = 0;
+#endif
 	std::set<int> accepted_keys;
 
 	// Process each page parameter
@@ -1686,49 +1679,11 @@ QExperiment::run_session ()
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
   splitter_state = splitter->saveState ();
-  //glwidget->full_screen (off_x_edit->value (), off_y_edit->value ());
-  
+
   // Launch a stimulus window
-  stim->resize (1024, 1024);
-  stim->show ();
-  can_run_trial ();
-}
-
-void
-QExperiment::show_hide_controls ()
-{
-  qDebug () << "show/hide controls";
-
-  if (win->menuBar ()->isVisible ()) {
-    // Hide splitters
-    splitter_state = splitter->saveState ();
-    splitter_width = splitter->handleWidth ();
-    hsplitter_state = hsplitter->saveState ();
-    hsplitter_width = hsplitter->handleWidth ();
-    QList<int> sizes = splitter->sizes ();
-    sizes.first () = 0;
-    splitter->setSizes (sizes);
-    splitter->setHandleWidth (1);
-    sizes = hsplitter->sizes ();
-    sizes.last () = 0;
-    hsplitter->setSizes (sizes);
-    hsplitter->setHandleWidth (1);
-
-    win->menuBar ()->setVisible (false);
-    win->statusBar ()->setVisible (false);
-
-    // GLWidget is the only visible widget now, so give it focus
-    glwidget->setFocus (Qt::OtherFocusReason);
-  }
-  else {
-    win->menuBar ()->setVisible (true);
-    win->statusBar ()->setVisible (true);
-
-    splitter->setHandleWidth (splitter_width);
-    splitter->restoreState (splitter_state);
-    hsplitter->setHandleWidth (hsplitter_width);
-    hsplitter->restoreState (hsplitter_state);
-  }
+  stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
+  session_running = true;
+  run_trial ();
 }
 
 void
@@ -1739,8 +1694,11 @@ QExperiment::run_session_inline ()
     return;
 
   init_session ();
-  glwidget->setFocus (Qt::OtherFocusReason);
-  can_run_trial ();
+  stim->resize (1024, 1024);
+  stim->show ();
+  //glwidget->setFocus (Qt::OtherFocusReason);
+  session_running = true;
+  run_trial ();
 }
 
 bool
@@ -1780,7 +1738,6 @@ QExperiment::make_setup_spin (int min, int max, const char* suffix)
 QExperiment::QExperiment (int & argc, char** argv)
   : app (argc, argv),
     save_setup (false),
-    glwidget_initialised (false),
     bin_dist (0, 1),
     real_dist (0, 1),
     unusable (false),
@@ -1830,7 +1787,6 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Get the experimental setup
 
-  glwidget = NULL;
   stim = NULL;
 
   splitter = new QSplitter;
@@ -1964,19 +1920,13 @@ QExperiment::QExperiment (int & argc, char** argv)
   setup_item->setLayout (flayout);
   tbox->addItem (setup_item, "Setup");
   
-  // Check for OpenGL
-  if (! QGLFormat::hasOpenGL ()) {
-    error ("OpenGL not found");
-    unusable = true;
-    return;
-  }
-
   /*
   auto gdsk = dsk.screenGeometry ();
   QString dsk_msg ("Found %1 screens in a %2 desktop of %3×%4");
   error (dsk_msg.arg (dsk.screenCount ()).arg (dsk.isVirtualDesktop () ? "virtual" : "normal").arg (gdsk.width ()).arg (gdsk.height ()));
   */
 
+  /*
   auto flags = QGLFormat::openGLVersionFlags ();
   if (! (flags & QGLFormat::OpenGL_Version_3_0)) {
     QString found ("unknown");
@@ -1998,28 +1948,27 @@ QExperiment::QExperiment (int & argc, char** argv)
     unusable = true;
     return;
   }
+  */
 
-  
-  // Create an OpenGL widget
-  QGLFormat fmt;
-  fmt.setDoubleBuffer (true);
-  fmt.setVersion (3, 0);
-  fmt.setDepth (false);
-  fmt.setSwapInterval (1);
-  set_glformat (fmt);
 
   stim = new StimWindow;
+  connect (stim, &StimWindow::keyPressed,
+	  this, &QExperiment::keyPressed);
+#ifdef HAVE_POWERMATE
+  //connect (stim, &StimSIGNAL (powermate_event (PowerMateEvent*)),
+	  //this, SLOT (powermate_event (PowerMateEvent*)));
+#endif // HAVE_POWERMATE
 
   // Show OpenGL version in GUI
   QString glfmt ("%1.%2");
-  flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
+  //flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
   // Check for double buffering
-  if (! glwidget->format ().doubleBuffer ()) {
+  /*if (! glwidget->format ().doubleBuffer ()) {
     error ("Missing double buffering support");
     unusable = true;
     return;
   }
-  splitter->addWidget (glwidget);
+  splitter->addWidget (glwidget);*/
 
 
   // Try to fetch back setup
@@ -2102,7 +2051,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 void
 QExperiment::error (const QString& msg, const QString& desc)
 {
-  msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
+    Q_UNUSED (desc);
+    msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
 }
 
 void
@@ -2303,10 +2253,7 @@ QExperiment::setup_updated ()
       if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01)
 	qDebug () << "error: cannot set monitor frequency to 1% of desired frequency";
       qDebug () << "Swap interval:" << coef;
-      set_swap_interval (coef);
-    }
-    else {
-      set_swap_interval (1);
+      //set_swap_interval (coef);
     }
     lua_pop (lstate, 1);
 
@@ -2349,7 +2296,7 @@ QExperiment::setup_updated ()
     }
 
     // Notify the GLWidget of a new texture size
-    glwidget->update_texture_size (tex_size, tex_size);
+    //glwidget->update_texture_size (tex_size, tex_size);
     stim->setTextureSize (tex_size, tex_size);
 
     // Image on which the frames are painted
@@ -2383,7 +2330,7 @@ QExperiment::setup_updated ()
       // Assume that setup is not updated during trials, so
       // that paint_frame () is called by run_trial () for
       // per-trial pages
-      if (glwidget_initialised && pf_is_func
+      if (/*glwidget_initialised &&*/ pf_is_func
 	  && p->paint_time != Page::PaintTime::TRIAL)
 	paint_page (p, img, painter);
     }
@@ -2393,85 +2340,6 @@ QExperiment::setup_updated ()
     lua_pushnil (lstate);
     lua_settable (lstate, LUA_REGISTRYINDEX);
   }
-}
-
-void
-QExperiment::glwidget_gl_initialised ()
-{
-  glwidget_initialised = true;
-  setup_updated ();
-}
-
-void
-QExperiment::normal_screen_restored ()
-{
-  qDebug () << "normal screen restored";
-  if (glwidget->parent () != splitter) {
-    splitter->addWidget (glwidget);
-    splitter->restoreState (splitter_state);
-  }
-}
-
-void
-QExperiment::set_glformat (QGLFormat glformat)
-{
-  qDebug () << "set_glformat ()" << endl;
-  splitter_state = splitter->saveState ();
-
-  auto old_widget = glwidget;
-  if (old_widget != NULL) {
-    //delete old_widget;
-    //old_widget->waiting_deletion = true;
-    //delete old_widget;
-    //old_widget->setParent (NULL);
-    //old_widget->hide ();
-    delete old_widget;
-    //old_widget->deleteLater ();
-    /*connect (old_widget, SIGNAL (destroyed ()),
-	     this, SLOT (old_glwidget_destroyed ()));*/
-  }
-  else {
-    cout << "old widget is NULL" << endl;
-  }
-
-  glwidget = new MyGLWidget (glformat, win);
-
-  splitter->addWidget (glwidget);
-
-  // Re-add the glwidget to the splitter when fullscreen ends
-  connect (glwidget, SIGNAL (normal_screen_restored ()),
-	   this, SLOT (normal_screen_restored ()));
-  connect (glwidget, SIGNAL (gl_initialised ()),
-	   this, SLOT (glwidget_gl_initialised ()));
-  connect (glwidget, SIGNAL (can_run_trial ()),
-	   this, SLOT (can_run_trial ()));
-  connect (glwidget, SIGNAL (key_press_event (QKeyEvent*)),
-	   this, SLOT (glwidget_key_press_event (QKeyEvent*)));
-#ifdef HAVE_POWERMATE
-  connect (glwidget, SIGNAL (powermate_event (PowerMateEvent*)),
-	   this, SLOT (powermate_event (PowerMateEvent*)));
-#endif // HAVE_POWERMATE
-
-  splitter->addWidget (glwidget);
-  splitter->restoreState (splitter_state);
-
-  cout << "new glwidget in place" << endl;
-}
-
-void
-QExperiment::set_swap_interval (int swap_interval)
-{
-  cout << "calling set_swap_interval!" << endl;
-
-  auto glformat = glwidget->format ();
-  auto current_si = glformat.swapInterval ();
-  if (current_si != swap_interval) {
-    cout << "updating swap interval" << endl;
-    glformat.setSwapInterval (swap_interval);
-    set_glformat (glformat);
-  }
-
-  this->swap_interval = swap_interval;
 }
 
 void
@@ -2575,13 +2443,13 @@ QExperiment::update_converters ()
 
 QExperiment::~QExperiment ()
 {
-  delete settings;
-  delete glwidget;
-  delete win;
+    delete settings;
+    delete stim;
+    delete win;
 
-  // TODO: debug the double free corruption here
-  if (lstate != NULL)
-    lua_close (lstate);
+    // TODO: debug the double free corruption here
+    if (lstate != NULL)
+	lua_close (lstate);
 }
 
 void
