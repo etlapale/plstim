@@ -248,9 +248,10 @@ namespace plstim
     void about_to_quit ();
     void open ();
     void quit ();
-    void keyPressed (QKeyEvent* evt);
+    void stimKeyPressed (QKeyEvent* evt);
+    //void stimScreenChanged (QScreen* screen);
 #ifdef HAVE_POWERMATE
-    void powermate_event (PowerMateEvent* evt);
+    void powerMateEvent (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
     void open_recent ();
     void xp_param_changed (double);

@@ -3,6 +3,10 @@
 
 #include <QtGui>
 
+#ifdef HAVE_POWERMATE
+#include "powermate.h"
+#endif // HAVE_POWERMATE
+
 namespace plstim
 {
 class StimWindow : public QWindow, protected QOpenGLFunctions
@@ -25,6 +29,9 @@ public slots:
     void updateShaders ();
 signals:
     void keyPressed (QKeyEvent* evt);
+#ifdef HAVE_POWERMATE
+    void powerMateEvent (PowerMateEvent* evt);
+#endif // HAVE_POWERMATE
 protected:
     virtual bool event (QEvent* evt);
     virtual void exposeEvent (QExposeEvent* evt);

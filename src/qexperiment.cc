@@ -302,6 +302,7 @@ QExperiment::paint_page (Page* page,
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
     //timer.start ();
 
+    qDebug () << "number of frames to be painted:" << page->frameCount ();
     for (int i = 0; i < page->frameCount (); i++) {
 
       painter->begin (&img);
@@ -377,6 +378,7 @@ QExperiment::run_trial ()
   bool pf_is_func = lua_isfunction (lstate, -1);
   lua_pop (lstate, 1);
 
+  qDebug () << "running trial. pf found:" << pf_is_func;
   if (pf_is_func) {
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
     auto painter = new (lstate, "plstim.qpainter") QPainter;
@@ -391,8 +393,10 @@ QExperiment::run_trial ()
 
     // Paint the per-trial pages
     for (auto p : pages)
-      if (p->paint_time == Page::PaintTime::TRIAL)
+      if (p->paint_time == Page::PaintTime::TRIAL) {
+	  qDebug () << "painting per-trial frames for" << p->title;
 	paint_page (p, img, painter);
+      }
 	  
     // Mark the QPainter for destruction
     lua_pushlightuserdata (lstate, (void*) painter);
@@ -608,14 +612,14 @@ QExperiment::next_page ()
 
 #ifdef HAVE_POWERMATE
 void
-QExperiment::powermate_event (PowerMateEvent* evt)
+QExperiment::powerMateEvent (PowerMateEvent* evt)
 {
   qDebug () << "PowerMate event with step of" << evt->step;
 }
 #endif // HAVE_POWERMATE
 
 void
-QExperiment::keyPressed (QKeyEvent* evt)
+QExperiment::stimKeyPressed (QKeyEvent* evt)
 {
   // Keyboard events are only handled in sessions
   if (! session_running)
@@ -1953,10 +1957,10 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   stim = new StimWindow;
   connect (stim, &StimWindow::keyPressed,
-	  this, &QExperiment::keyPressed);
+	  this, &QExperiment::stimKeyPressed);
 #ifdef HAVE_POWERMATE
-  //connect (stim, &StimSIGNAL (powermate_event (PowerMateEvent*)),
-	  //this, SLOT (powermate_event (PowerMateEvent*)));
+  connect (stim, &StimWindow::powerMateEvent,
+	   this, &QExperiment::powerMateEvent);
 #endif // HAVE_POWERMATE
 
   // Show OpenGL version in GUI
@@ -2246,14 +2250,16 @@ QExperiment::setup_updated ()
   if (lstate != NULL) {
     // Compute the best swap interval
     lua_getglobal (lstate, "refresh");
+    swap_interval = 1;
     if (lua_isnumber (lstate, -1)) {
-      double wanted_frequency = lua_tonumber (lstate, -1);
+      double wanted_freq = lua_tonumber (lstate, -1);
       double mon_rate = monitor_rate ();
-      double coef = round (mon_rate / wanted_frequency);
-      if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01)
+      double coef = round (mon_rate / wanted_freq);
+      if ((mon_rate/coef - wanted_freq)/wanted_freq> 0.01)
 	qDebug () << "error: cannot set monitor frequency to 1% of desired frequency";
       qDebug () << "Swap interval:" << coef;
       //set_swap_interval (coef);
+      swap_interval = coef;
     }
     lua_pop (lstate, 1);
 

@@ -83,6 +83,7 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 void
 StimWindow::addAnimatedFrame (const QString& name, const QImage& img)
 {
+    qDebug () << "adding animated frame" << name;
     if (isExposed ()) {
 	m_context->makeCurrent (this);
 
@@ -123,6 +124,12 @@ StimWindow::event (QEvent* evt)
 	renderNow ();
 	return true;
     default:
+#ifdef HAVE_POWERMATE
+	if (evt->type () == PowerMateEvent::EventType) {
+	    emit powerMateEvent (static_cast<PowerMateEvent*> (evt));
+	    return true;
+	}
+#endif
 	return QWindow::event (evt);
     }
 }
