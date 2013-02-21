@@ -277,7 +277,6 @@ namespace plstim
     QComboBox* subject_cbox;
     QPushButton* subject_databutton;
 
-    QSplitter* splitter;
     QComboBox* setup_cbox;
     QSpinBox* screen_sbox;
   public:
@@ -301,11 +300,6 @@ namespace plstim
     float px_mm;
 
     bool session_running;
-
-    QByteArray splitter_state;
-    QByteArray hsplitter_state;
-    int splitter_width;
-    int hsplitter_width;
 
     QString xp_name;
     int session_number;

@@ -1682,7 +1682,6 @@ QExperiment::run_session ()
   // Start recording eye movements
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
-  splitter_state = splitter->saveState ();
 
   // Launch a stimulus window
   stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
@@ -1725,7 +1724,6 @@ QExperiment::about_to_quit ()
   QSize sz = win->size ();
   settings->setValue ("gui_width", sz.width ());
   settings->setValue ("gui_height", sz.height ());
-  settings->setValue ("splitter", splitter->saveState ());
 }
 
 QSpinBox*
@@ -1792,8 +1790,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Get the experimental setup
 
   stim = NULL;
-
-  splitter = new QSplitter;
 
   // Create a basic menu
   xp_menu = win->menuBar ()->addMenu (tr ("&Experiment"));
@@ -1872,11 +1868,10 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Left toolbox
   tbox = new QToolBox;
-  splitter->addWidget (tbox);
 
   // Horizontal splitter (top: GLwidget, bottom: message box)
   hsplitter = new QSplitter (Qt::Vertical);
-  hsplitter->addWidget (splitter);
+  hsplitter->addWidget (tbox);
   logtab = new QTabWidget;
   msgbox = new MyMessageBox;
   logtab->addTab (msgbox, "Messages");
@@ -1964,16 +1959,6 @@ QExperiment::QExperiment (int & argc, char** argv)
 #endif // HAVE_POWERMATE
 
   // Show OpenGL version in GUI
-  QString glfmt ("%1.%2");
-  //flayout->addRow ("OpenGL", new QLabel (glfmt.arg (glwidget->format ().majorVersion ()).arg (glwidget->format ().minorVersion ())));
-  // Check for double buffering
-  /*if (! glwidget->format ().doubleBuffer ()) {
-    error ("Missing double buffering support");
-    unusable = true;
-    return;
-  }
-  splitter->addWidget (glwidget);*/
-
 
   // Try to fetch back setup
   settings = new QSettings;
@@ -2029,10 +2014,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   if (settings->contains ("gui_width"))
     win->resize (settings->value ("gui_width").toInt (),
 		settings->value ("gui_height").toInt ());
-  if (settings->contains ("splitter")) {
-    qDebug () << "restoring splitter state from config";
-    splitter->restoreState (settings->value ("splitter").toByteArray ());
-  }
 
   // Set recent experiments
   update_recents ();
