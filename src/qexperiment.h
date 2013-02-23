@@ -9,6 +9,8 @@
 #include <QApplication>
 #include <QMainWindow>
 
+#include <QtQml>
+
 // Lua interpreter
 #include <lua.hpp>
 
@@ -24,6 +26,7 @@
 #include "powermate.h"
 #endif // HAVE_POWERMATE
 
+#include "qtypes.h"
 #include "stimwindow.h"
 #include "messagebox.h"
 #include "utils.h"
@@ -62,6 +65,11 @@ namespace plstim
     float fixation;
 #endif // HAVE_EYELINK
 
+#ifdef HAVE_POWERMATE
+    /// Wait for a rotation answer
+    bool waitRotation;
+#endif // HAVE_POWERMATE
+
     /// Actual number of frames in the page
     int nframes;
 
@@ -81,8 +89,6 @@ namespace plstim
      * Called when the page is the one currently displayed.
      */
     void page_active ();
-
-    void key_pressed (QKeyEvent* evt);
   };
 
   class QExperiment : public QObject
@@ -170,9 +176,9 @@ namespace plstim
     bool load_experiment (const QString& path);
 
   public slots:
-    void unload_experiment ();
+    void unloadExperiment ();
 
-    void abort_experiment ();
+    void abortExperiment ();
 
     void next_page ();
 
@@ -196,13 +202,10 @@ namespace plstim
     void setTextureSize (int size) { tex_size = size; }
 
     /// Convert a degrees distance to pixels
-    float deg2pix (float dst) const {
-      return 2*distance*tan(radians(dst)/2)*px_mm;
-    }
 
-    float ds2pf (float speed) const {
+    /*float ds2pf (float speed) const {
       return deg2pix (speed/refresh_edit->value ()*swap_interval);
-    }
+    }*/
 
     //void set_glformat (QGLFormat glformat);
 
@@ -221,7 +224,7 @@ namespace plstim
      * before the session being finished.
      */
     void run_session ();
-    void run_session_inline ();
+    void runSessionInline ();
 
     void set_trial_count (int ntrials);
 
@@ -236,6 +239,10 @@ namespace plstim
 
     bool check_lua (int retcode);
 
+    void savePageParameter (const QString& pageTitle,
+	                    const QString& paramName,
+			    int paramValue);
+
   protected:
     bool creating_subject;
 
@@ -244,14 +251,15 @@ namespace plstim
     void setup_param_changed ();
     void update_setup ();
     void update_converters ();
-    void update_recents ();
+    void updateRecents ();
     void about_to_quit ();
     void open ();
     void quit ();
     void stimKeyPressed (QKeyEvent* evt);
     //void stimScreenChanged (QScreen* screen);
 #ifdef HAVE_POWERMATE
-    void powerMateEvent (PowerMateEvent* evt);
+    void powerMateRotation (PowerMateEvent* evt);
+    void powerMateButtonPressed (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
     void open_recent ();
     void xp_param_changed (double);
@@ -296,9 +304,6 @@ namespace plstim
     QSplitter* hsplitter;
     QTabWidget* logtab;
 
-    float distance;
-    float px_mm;
-
     bool session_running;
 
     QString xp_name;
@@ -309,6 +314,13 @@ namespace plstim
     QAction** recent_actions;
 
     QAction* close_action;
+
+    /// QML scripting engine to load the experiments
+    QQmlEngine m_engine;
+    /// QML component for the current experiment
+    QQmlComponent* m_component;
+    /// Currently loaded experiment
+    plstim::Experiment* m_experiment;
 
     lua_State* lstate;
 
@@ -329,8 +341,6 @@ namespace plstim
     std::uniform_real_distribution<double> real_dist;
 
     std::map<QString,int> key_mapping;
-  protected:
-    bool unusable;
 
   public:
 

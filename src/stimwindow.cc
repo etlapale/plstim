@@ -125,8 +125,16 @@ StimWindow::event (QEvent* evt)
 	return true;
     default:
 #ifdef HAVE_POWERMATE
-	if (evt->type () == PowerMateEvent::EventType) {
-	    emit powerMateEvent (static_cast<PowerMateEvent*> (evt));
+	if (evt->type () == PowerMateEvent::Rotation) {
+	    emit powerMateRotation (static_cast<PowerMateEvent*> (evt));
+	    return true;
+	}
+	else if (evt->type () == PowerMateEvent::ButtonPress) {
+	    emit powerMateButtonPressed (static_cast<PowerMateEvent*> (evt));
+	    return true;
+	}
+	else if (evt->type () == PowerMateEvent::ButtonRelease) {
+	    emit powerMateButtonReleased (static_cast<PowerMateEvent*> (evt));
 	    return true;
 	}
 #endif

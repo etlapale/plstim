@@ -10,7 +10,10 @@
 
 
 static bool powermate_event_type_registered = false;
-QEvent::Type PowerMateEvent::EventType = (QEvent::Type) 0x3473;
+QEvent::Type PowerMateEvent::Rotation = (QEvent::Type) 0x3473;
+QEvent::Type PowerMateEvent::ButtonPress = (QEvent::Type) 0x3474;
+QEvent::Type PowerMateEvent::ButtonRelease = (QEvent::Type) 0x3475;
+QEvent::Type PowerMateEvent::LED = (QEvent::Type) 0x3476;
 
 static const char* powermate_name = "Griffin PowerMate";
 
@@ -19,13 +22,16 @@ static void
 register_powermate_event_type ()
 {
   if ( ! powermate_event_type_registered) {
-    PowerMateEvent::EventType = (QEvent::Type) QEvent::registerEventType (0x3473);
+    PowerMateEvent::Rotation = (QEvent::Type) QEvent::registerEventType (PowerMateEvent::Rotation);
+    PowerMateEvent::ButtonPress = (QEvent::Type) QEvent::registerEventType (PowerMateEvent::ButtonPress);
+    PowerMateEvent::ButtonRelease = (QEvent::Type) QEvent::registerEventType (PowerMateEvent::ButtonRelease);
+    PowerMateEvent::LED = (QEvent::Type) QEvent::registerEventType (PowerMateEvent::LED);
     powermate_event_type_registered = true;
   }
 }
 
-PowerMateEvent::PowerMateEvent (int s)
-  : QEvent (PowerMateEvent::EventType), step (s)
+PowerMateEvent::PowerMateEvent (QEvent::Type eventType)
+  : QEvent (eventType)
 {
 }
 
@@ -71,36 +77,48 @@ PowerMateWatcher::watch ()
       qDebug () << "reading PowerMate events failed:" << strerror (errno);
       continue;
     }
+    
+    // Get the focused object
+    auto obj = QGuiApplication::focusObject ();
+    if (! obj)
+	continue;
 
     // Process each event
     int num_events = nb / sizeof (struct input_event);
     for (int i = 0; i < num_events; i++) {
-      switch (ibuf[i].type) {
-      case EV_SYN:
-      case EV_MSC:
-	break;
-      case EV_REL:
-	if (ibuf[i].code != REL_DIAL) {
-	  qDebug () << "invalid rotation code";
-	  break;
+
+	switch (ibuf[i].type) {
+	case EV_SYN:
+	    break;
+	case EV_MSC:
+	    if (ibuf[i].code == MSC_PULSELED) {
+		PowerMateEvent evt (PowerMateEvent::LED);
+		evt.luminance = ibuf[i].value & 0xff;
+		QCoreApplication::sendEvent (obj, &evt);
+	    }
+	    break;
+	case EV_REL:
+	    if (ibuf[i].code == REL_DIAL) {
+		// Create and send a PowerMate event
+		PowerMateEvent evt (PowerMateEvent::Rotation);
+		evt.step = (int) ibuf[i].value;
+		// Emit the event
+		QCoreApplication::sendEvent (obj, &evt);
+	    }
+	    break;
+	case EV_KEY:
+	    if (ibuf[i].code == BTN_0) {
+		if (ibuf[i].value) {
+		    PowerMateEvent evt (PowerMateEvent::ButtonPress);
+		    QCoreApplication::sendEvent (obj, &evt);
+		}
+		else {
+		    PowerMateEvent evt (PowerMateEvent::ButtonRelease);
+		    QCoreApplication::sendEvent (obj, &evt);
+		}
+	    }
+	    break;
 	}
-	{
-	  // Create and send a PowerMate event
-	  PowerMateEvent event ((int) ibuf[i].value);
-	  // Get the focused object
-#if 1
-	  auto obj = QGuiApplication::focusObject ();
-#else
-	  auto obj = QApplication::focusWidget ();
-#endif
-	  // Emit the event
-	  if (obj)
-	    QCoreApplication::sendEvent (obj, &event);
-	}
-	break;
-      default:
-	qDebug () << "unknown event type:" << hex << ibuf[i].type << dec;
-      }
     }
   }
 }

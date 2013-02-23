@@ -1,9 +1,9 @@
 CONFIG += qt debug -release -eyelink powermate
-QT += core gui network widgets
+QT += core gui network qml quick widgets
 SOURCES += src/qexperiment.cc src/stimwindow.cc src/messagebox.cc src/utils.cc src/main.cc
-HEADERS += src/stimwindow.h src/messagebox.h src/plstim.h src/qexperiment.h src/utils.h src/elcalibration.h
+HEADERS += src/stimwindow.h src/messagebox.h src/plstim.h src/qexperiment.h src/utils.h src/elcalibration.h src/qtypes.h
 TARGET = plstim
-QMAKE_CXXFLAGS += -std=c++0x -Wshadow -Woverloaded-virtual
+QMAKE_CXXFLAGS += -std=c++0x -Woverloaded-virtual
 LIBS += -lhdf5_cpp -lhdf5
 
 eyelink {

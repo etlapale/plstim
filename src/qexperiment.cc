@@ -13,7 +13,9 @@ using namespace plstim;
 
 #include <QMenuBar>
 #include <QHostInfo>
-#include <QtDebug>
+
+#include <QtCore>
+#include <QtQuick>
 
 using namespace H5;
 
@@ -26,154 +28,6 @@ operator new (std::size_t size, lua_State* lstate, const char* metaname)
   lua_setmetatable (lstate, -2);
   return obj;
 }
-
-#if 0
-#ifdef HAVE_XRANDR
-  int evt_base, err_base;
-  int maj, min;
-  if (! XRRQueryExtension (dpy, &evt_base, &err_base)
-      || ! XRRQueryVersion (dpy, &maj, &min)) {
-    cerr << "error: RandR extension missing" << endl;
-    return false;
-  }
-  if (maj < 1 || (maj == 1 && min < 3)) {
-    cerr << "error: at least version 1.3 of RandR is required, but "
-         << maj << '.' << min << " was found" << endl;
-    return false;
-  }
-  cout << "RandR version " << maj << '.' << min << endl;
-
-  int min_width, min_height, max_width, max_height;
-  XRRGetScreenSizeRange (dpy, root, &min_width, &min_height,
-			 &max_width, &max_height);
-  cout << "Screen sizes between " << min_width << "×" << min_height
-       << " and " << max_height << "×" << max_height << endl;
-
-  XRRScreenResources* res;
-  if (! (res = XRRGetScreenResources (dpy, root))) {
-    cerr << "error: could not get screen resources" << endl;
-    return false;
-  }
-
-  // Use the default output if none specified
-  RROutput rro;
-  XRROutputInfo* out_info;
-  if (routput.empty ()) {
-    // Use the primary output by default
-    rro = XRRGetOutputPrimary (dpy, root);
-    if (rro) {
-      cout << "Using primary output: " << (long) rro << endl;
-    }
-    // If no primary output is defined check for the first
-    // enabled output
-    else {
-      rro = res->outputs[0];
-      cout << "Using first output: " << (long) rro << endl;
-    }
-    // Fetch the selected output information
-    out_info = XRRGetOutputInfo (dpy, res, rro);
-  }
-  else {
-    bool found = false;
-    // Search for a matching output name
-    for (int i = 0; i < res->noutput; i++) {
-      rro = res->outputs[i];
-      out_info = XRRGetOutputInfo (dpy, res, rro);
-      if (strncmp (routput.c_str (),
-		   out_info->name, out_info->nameLen) == 0) {
-	found = true;
-	break;
-      }
-      XRRFreeOutputInfo (out_info);
-    }
-    // No output with given name
-    if (! found) {
-      cerr << "error: could not find specified output: "
-           << routput << endl;
-      return false;
-    }
-  }
-
-  // Make sure there is a monitor attached
-  if (! out_info->crtc) {
-    cerr << "error: no monitor attached to output " << routput << endl;
-    return false;
-  }
-
-  // Get the attached monitor information
-  auto crtc_info = XRRGetCrtcInfo (dpy, res, out_info->crtc);
-
-  // Search the current monitor mode
-  bool found = false;
-  float mon_rate;
-  for (int i = 0; i < res->nmode; i++) {
-    auto mode_info = res->modes[i];
-    if (mode_info.id == crtc_info->mode) {
-      if (mode_info.hTotal && mode_info.vTotal) {
-	mon_rate = ((float) mode_info.dotClock)
-	  / ((float) mode_info.hTotal * (float) mode_info.vTotal);
-	found = true;
-      }
-      break;
-    }
-  }
-  // Monitor refresh rate not found
-  if (! found) {
-    cerr << "error: refresh rate for output " << routput << " not found" << endl;
-    return false;
-  }
-
-  cout << "Selected CRTC:" << endl
-       << "  Refresh rate: " << mon_rate << " Hz" << endl
-       << "  Offset: " << crtc_info->x << " " << crtc_info->y << endl
-       << "  Size: " << crtc_info->width << "×" << crtc_info->height << endl;
-
-  // Store the refresh rate in the setup
-  if (setup->refresh != 0 && setup->refresh != mon_rate) {
-    cerr << "error: refresh rate in setup file ("
-         << setup->refresh << " Hz) doest not match actual refresh rate (" << mon_rate << " Hz)" << endl;
-    return false;
-  }
-  setup->refresh = mon_rate;
-
-  // Place the window on the monitor
-  int win_x = crtc_info->x;
-  int win_y = crtc_info->y;
-  
-  // Compute the required number of frames in a trial
-  int coef = (int) nearbyintf (mon_rate / wanted_frequency);
-  if ((mon_rate/coef - wanted_frequency)/wanted_frequency > 0.01) {
-    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
-    return false;
-  }
-
-  nframes = (int) nearbyintf ((mon_rate/coef)*(dur_ms/1000.));
-  swap_interval = coef;
-
-  // Wait for changes to be applied
-  XSync (dpy, False);
-
-  // Cleanup
-  XRRFreeCrtcInfo (crtc_info);
-  XRRFreeOutputInfo (out_info);
-  XRRFreeScreenResources (res);
-  
-#else	// ! HAVE_XRANDR
-  int win_x = 0, win_y = 0;
-  // Compute the required number of frames in a trial
-  int coef = (int) nearbyintf (setup->refresh / wanted_frequency);
-  if ((setup->refresh/coef - wanted_frequency)/wanted_frequency > 0.01) {
-    cerr << "error: cannot set monitor frequency at 1% of the desired frequency" << endl;
-    return false;
-  }
-
-  nframes = (int) nearbyintf ((setup->refresh/coef)*(dur_ms/1000.));
-  swap_interval = coef;
-#endif	// HAVE_XRANDR
-  cout << "Setting the number of frames to " << nframes
-       << " (frame changes every " << coef << " refresh)" << endl;
-}
-#endif
 
 Page::Page (Page::Type t, const QString& page_title)
   : type (t), title (page_title),
@@ -205,12 +59,6 @@ void
 Page::make_active ()
 {
   emit page_active ();
-}
-
-void
-Page::emit_key_pressed (QKeyEvent* evt)
-{
-  emit key_pressed (evt);
 }
 
 void
@@ -283,7 +131,7 @@ QExperiment::paint_page (Page* page,
 
     if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
       painter->end ();
-      abort_experiment ();
+      abortExperiment ();
       return;
     }
 
@@ -319,7 +167,7 @@ QExperiment::paint_page (Page* page,
 
       if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
 	painter->end ();
-	abort_experiment ();
+	abortExperiment ();
 	return;
       }
 
@@ -365,21 +213,20 @@ QExperiment::run_trial ()
 {
   timer.start ();
 
-  // Call the new_trial () callback
-  lua_getglobal (lstate, "new_trial");
-  if (lua_isfunction (lstate, -1))
-    if (! check_lua (lua_pcall (lstate, 0, 0, 0))) {
-      abort_experiment ();
-      return;
-    }
+  // Emit the newTrial () signal
+  emit m_experiment->newTrial ();
 
   // Check if there is a paint_frame () function
+#if 0
   lua_getglobal (lstate, "paint_frame");
   bool pf_is_func = lua_isfunction (lstate, -1);
   lua_pop (lstate, 1);
+#endif
+  bool pf_is_func = false;
 
   qDebug () << "running trial. pf found:" << pf_is_func;
   if (pf_is_func) {
+#if 0
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
     auto painter = new (lstate, "plstim.qpainter") QPainter;
 
@@ -402,6 +249,7 @@ QExperiment::run_trial ()
     lua_pushlightuserdata (lstate, (void*) painter);
     lua_pushnil (lstate);
     lua_settable (lstate, LUA_REGISTRYINDEX);
+#endif
   }
 
   // Record trial parameters
@@ -445,9 +293,10 @@ QExperiment::run_trial ()
 void
 QExperiment::show_page (int index)
 {
-  Page* p = pages[index];
+    auto page = m_experiment->page (index);
 
   // Save page parameters
+#if 0
   auto it = record_offsets.find (p->title);
   if (it != record_offsets.end ()) {
     const std::map<QString,size_t>& params = it->second;
@@ -462,6 +311,10 @@ QExperiment::show_page (int index)
       else if (param_name == "key") {
 	// Key will be known at the end of the page
       }
+#ifdef HAVE_POWERMATE
+      else if (param_name == "rotation") {
+      }
+#endif
       else {
 	/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
 	double value = timer.nsecsElapsed ();
@@ -470,34 +323,32 @@ QExperiment::show_page (int index)
       }
     }
   }
+#endif
 
-  qDebug () << ">>> showing page" << p->title;
+    qDebug () << ">>> showing page" << page->name ();
+#if 0
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
     eyemsg_printf ("showing page %s", p->title.toUtf8 ().data ());
 #endif // HAVE_EYELINK
+#endif
 
-  switch (p->type) {
+#if 0
+  switch (page->type) {
   case Page::Type::SINGLE:
-    stim->showFixedFrame (p->title);
-    //glwidget->show_fixed_frame (p->title);
-    
-    // Workaround a bug on initial frame after fullscreen
-    // Maybe it’s a race condition?
-    // TODO: in any cases, it should be tracked and solved
-    //if (current_trial == 0 && index == 0)
-      //glwidget->show_fixed_frame (p->title);
+    //stim->showFixedFrame (p->title);
     break;
   case Page::Type::FRAMES:
-    //glwidget->show_animated_frames (p->title);
-    stim->showAnimatedFrames (p->title);
+    //stim->showAnimatedFrames (p->title);
     break;
   }
+#endif
 
   current_page = index;
-  p->make_active ();
+  //p->make_active ();
 
+#if 0
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
   if (p->fixation) {
@@ -542,21 +393,40 @@ QExperiment::show_page (int index)
     next_page ();
   }
 #endif // HAVE_EYELINK
+#endif
 
   // Fixed frame of defined duration
+#if 0
   if (p->duration && p->type == Page::Type::SINGLE) {
     qDebug () << "fixed frame for" << p->duration << "ms";
     QTimer::singleShot (p->duration, this, SLOT (next_page ()));
   }
+#endif
 
   // If no keyboard event expected, go to the next page
-  if (! p->wait_for_key)
+#if 0
+  if (! p->wait_for_key
+#ifdef HAVE_POWERMATE
+	  && ! p->waitRotation
+#endif // HAVE_POWERMATE
+	  )
     next_page ();
+#endif
 }
 
 void
 QExperiment::next_page ()
 {
+#ifdef HAVE_EYELINK
+    // Exit the inner fixation loop
+    if (waiting_fixation) {
+	// TODO: record event
+	qDebug () << "aborting fixation";
+	waiting_fixation = false;
+	return;	// Will jump back here eventually
+    }
+#endif // HAVE_EYELINK
+
   // Save the page record on HDF5
   if (hf != NULL) {
     hsize_t one = 1;
@@ -568,7 +438,9 @@ QExperiment::next_page ()
   }
   
   // End of trial
-  if ((int) (current_page + 1) == (int) (pages.size ())) {
+  if (current_page + 1 == m_experiment->pageCount ()) {
+      qDebug () << "End of trial";
+#if 0
     // Next trial
     if (++current_trial < ntrials) {
       run_trial ();
@@ -603,6 +475,7 @@ QExperiment::next_page ()
       stim->hide ();
       session_running = false;
     }
+#endif
   }
   // There is a next page
   else {
@@ -610,11 +483,56 @@ QExperiment::next_page ()
   }
 }
 
+void
+QExperiment::savePageParameter (const QString& pageTitle,
+				const QString& paramName,
+				int paramValue)
+{
+    auto it = record_offsets.find (pageTitle);
+    if (it != record_offsets.end ()) {
+	const std::map<QString,size_t>& params = it->second;
+	auto jt = params.find (paramName);
+	if (jt != params.end ()) {
+	    size_t key_offset = jt->second;
+	    int* pos = (int*) (((char*) trial_record)+key_offset);
+	    *pos = paramValue;
+	}
+    }
+}
+
 #ifdef HAVE_POWERMATE
 void
-QExperiment::powerMateEvent (PowerMateEvent* evt)
+QExperiment::powerMateRotation (PowerMateEvent* evt)
 {
-  qDebug () << "PowerMate event with step of" << evt->step;
+    if (! session_running)
+	return;
+
+#if 0
+    Page* page = pages[current_page];
+
+    if (page->waitRotation) {
+	qDebug () << "RECORDING PowerMate event with step of" << evt->step;
+	savePageParameter (page->title, "rotation", evt->step);
+	next_page ();
+    }
+#endif
+}
+
+void
+QExperiment::powerMateButtonPressed (PowerMateEvent* evt)
+{
+    Q_UNUSED (evt);
+    qDebug () << "PowerMate button pressed!";
+
+    if (! session_running)
+	return;
+
+#if 0
+    Page* page = pages[current_page];
+    if (page->wait_for_key && page->accepted_keys.empty ()) {
+	next_page ();
+    }
+#endif
 }
 #endif // HAVE_POWERMATE
 
@@ -625,6 +543,7 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   if (! session_running)
     return;
 
+#if 0
   Page* page = pages[current_page];
 
   // Go to the next page
@@ -639,106 +558,24 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
 #endif // HAVE_EYELINK
     // Check if the key is accepted
     if ((page->accepted_keys.empty () &&
-	 next_page_keys.find (evt->key ()) != next_page_keys.end ()
+	 (next_page_keys.find (evt->key ()) != next_page_keys.end ())
 	)
 	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
-      page->emit_key_pressed (evt);
 
       // Save pressed key
-      if (! page->accepted_keys.empty ()) {
-	auto it = record_offsets.find (page->title);
-	if (it != record_offsets.end ()) {
-	  const std::map<QString,size_t>& params = it->second;
-	  auto jt = params.find ("key");
-	  if (jt != params.end ()) {
-	    size_t key_offset = jt->second;
-	    int* pos = (int*) (((char*) trial_record)+key_offset);
-	    *pos = evt->key ();
-	  }
-	}
-      }
+      if (! page->accepted_keys.empty ())
+	  savePageParameter (page->title, "key", evt->key ());
 
-#ifdef HAVE_EYELINK
-      // Exit the inner loop processing events
-      if (waiting_fixation) {
-	// TODO: record event
-	qDebug () << "aborting fixation";
-	waiting_fixation = false;
-	return;
-      }
-#endif // HAVE_EYELINK
+      // Move to the next page
       next_page ();
     }
   }
+#endif
 }
 
 
 static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
 
-
-static int
-l_randbool (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // If we want an array of random numbers
-  if (lua_gettop (lstate) >= 1) {
-    qDebug () << "bin_random () with argument";
-    // Number of elements
-    auto size = luaL_checkinteger (lstate, -1);
-    lua_pop (lstate, 1);
-
-    // Create the array
-    lua_createtable (lstate, size, 0);
-    
-    // Populate with random numbers
-    for (int i = 0; i < size; i++) {
-      //lua_pushinteger (lstate, i+1);
-      lua_pushboolean (lstate, xp->bin_dist (xp->twister));
-      lua_rawseti (lstate, -2, i+1);
-      //lua_settable (lstate, -3);
-    }
-  }
-  // If we want a single random number
-  else {
-    // Generate the random number
-    int num = xp->bin_dist (xp->twister);
-    lua_pushboolean (lstate, num);
-  }
-  
-  return 1;
-}
-
-static int
-l_randint (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Make sure we have a bounding argument
-  if (lua_gettop (lstate) >= 1) {
-    // Get the bounds
-    auto maxval = luaL_checkinteger (lstate, -1);
-    lua_pop (lstate, 1);
-
-    // Create an integer distribution
-    // TODO: might be slow, we could cache them
-    std::uniform_int_distribution<int> distrib (0, maxval);
-
-    // Generate a random number
-    int num = distrib (xp->twister);
-    lua_pushinteger (lstate, num);
-  }
-  
-  return 1;
-}
 
 static int
 l_random (lua_State* lstate)
@@ -772,46 +609,6 @@ l_random (lua_State* lstate)
     double num = xp->real_dist (xp->twister);
     lua_pushnumber (lstate, num);
   }
-  
-  return 1;
-}
-
-static int
-l_deg2pix (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Distance argument [deg]
-  auto degs = luaL_checknumber (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Generate the random number
-  auto pixs = xp->deg2pix (degs);
-  lua_pushnumber (lstate, pixs);
-  
-  return 1;
-}
-
-static int
-l_ds2pf (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Distance argument [deg]
-  auto degs = luaL_checknumber (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // Generate the random number
-  auto pixs = xp->ds2pf (degs);
-  lua_pushnumber (lstate, pixs);
   
   return 1;
 }
@@ -1120,22 +917,24 @@ QExperiment::open_recent ()
 }
 
 void
-QExperiment::abort_experiment ()
+QExperiment::abortExperiment ()
 {
   current_page = -1;
-  //glwidget->normal_screen ();
   stim->hide ();
   session_running = false;
 }
 
 void
-QExperiment::unload_experiment ()
+QExperiment::unloadExperiment ()
 {
-  // No experiment loaded
-  if (lstate == NULL)
-    return;
+  abortExperiment ();
 
-  abort_experiment ();
+  // Erase all components from QML engine memroy
+  m_engine.clearComponentCache ();
+  if (m_component) {
+      delete m_component;
+      m_component = NULL;
+  }
 
 #ifdef HAVE_EYELINK
   if (eyelink_connected)
@@ -1175,18 +974,15 @@ QExperiment::unload_experiment ()
   //glwidget->delete_fixed_frames ();
   //glwidget->delete_animated_frames ();
   // TODO: also delete shaders. put everything in cleanup ()
+  qDebug () << "!!! StimWindow cleanup NYI !!!";
 
 
   xp_label->setText ("No experiment loaded");
-
-  lua_close (lstate);
-  lstate = NULL;
 }
 
 bool
 QExperiment::load_experiment (const QString& path)
 {
-  if (unusable) return false;
 
   // Canonicalise the script path
   QFileInfo fileinfo (path);
@@ -1199,10 +995,10 @@ QExperiment::load_experiment (const QString& path)
   while (rlist.size () > max_recents)
     rlist.removeLast ();
   settings->setValue ("recents", rlist);
-  update_recents ();
+  updateRecents ();
 
   // TODO: cleanup any existing experiment
-  unload_experiment ();
+  unloadExperiment ();
   
   // Add the experiment to the settings
   xp_name = fileinfo.fileName ();
@@ -1221,49 +1017,29 @@ QExperiment::load_experiment (const QString& path)
   }
   settings->endGroup ();
 
-
-  // Create a new Lua state
-  lstate = lua_open ();
-  luaL_openlibs (lstate);
-
-  // Register the current experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_pushlightuserdata (lstate, this);
-  lua_settable (lstate, LUA_REGISTRYINDEX);
-
-  // Create a (TODO: read-only) experiment information table
-  lua_newtable (lstate);
-  lua_pushstring (lstate, "path");
-  lua_pushstring (lstate, script_path.toLocal8Bit ().data ());
-  lua_settable (lstate, -3);
-  lua_setglobal (lstate, "xp");
-
-  // Register wrappers
-  luaopen_plstim (lstate);
-
-  // Register random functions
-  lua_pushcfunction (lstate, l_random);
-  lua_setglobal (lstate, "random");
-  lua_pushcfunction (lstate, l_randint);
-  lua_setglobal (lstate, "randint");
-  lua_pushcfunction (lstate, l_randbool);
-  lua_setglobal (lstate, "randbool");
-
-  // Register deg2pix ()
-  lua_pushcfunction (lstate, l_deg2pix);
-  lua_setglobal (lstate, "deg2pix");
-  // Register ds2pf ()
-  lua_pushcfunction (lstate, l_ds2pf);
-  lua_setglobal (lstate, "ds2pf");
-
-  if (! check_lua (luaL_loadfile (lstate, script_path.toLocal8Bit
-				  ().data ()))
-      || ! check_lua (lua_pcall (lstate, 0, 0, 0))) {
-    unload_experiment ();
-    return false;
+  m_component = new QQmlComponent (&m_engine, script_path);
+  if (m_component->isError ()) {
+      qDebug () << "error: could not load the QML experiment";
+      for (auto& err : m_component->errors ())
+	  qDebug () << err;
+      return false;
+  }
+  QObject* xp = m_component->create ();
+  if (m_component->isError ()) {
+      qDebug () << "error: could not instantiate the QML experiment";
+      for (auto& err : m_component->errors ())
+	  qDebug () << err;
+      return false;
+  }
+  m_experiment = qobject_cast<Experiment*> (xp);
+  qDebug () << "[QML] Number of trials:" << m_experiment->trialCount ();
+  for (int i = 0; i < m_experiment->pageCount (); i++) {
+      auto page = m_experiment->page (i);
+      qDebug () << "  Page" << i << page->name ();
   }
 
   // Add trial parameters to the record
+#if 0
   lua_getglobal (lstate, "trial_parameters");
   if (lua_istable (lstate, -1)) {
     lua_pushnil (lstate);
@@ -1318,9 +1094,10 @@ QExperiment::load_experiment (const QString& path)
       lua_pop (lstate, 1);
     }
   }
-  lua_pop (lstate, 1);
+#endif
   
   // Check for modules to be loaded
+#if 0
   lua_getglobal (lstate, "modules");
   if (lua_istable (lstate, -1)) {
     size_t mlen = lua_objlen (lstate, -1);
@@ -1328,18 +1105,28 @@ QExperiment::load_experiment (const QString& path)
       lua_rawgeti (lstate, -1, i);
       if (lua_isstring (lstate, -1)) {
 	QString mod_name (lua_tostring (lstate, -1));
+	if (mod_name.isEmpty ()) {
+	}
 #ifdef HAVE_EYELINK
-	if (mod_name == "eyelink") {
+	else if (mod_name == "eyelink") {
 	  load_eyelink ();
 	}
 #endif
+#ifdef HAVE_POWERMATE
+	else if (mod_name == "powermate") {
+	}
+#endif
+	else {
+	    qDebug () << "error: unknown plstim module:" << mod_name;
+	}
       }
       lua_pop (lstate, 1);
     }
   }
-  lua_pop (lstate, 1);
+#endif
 
   // Create the pages defined in the experiment
+#if 0
   lua_getglobal (lstate, "pages");
   if (lua_istable (lstate, -1)) {
     size_t plen = lua_objlen (lstate, -1);
@@ -1352,6 +1139,9 @@ QExperiment::load_experiment (const QString& path)
 	float page_duration = 0;
 #ifdef HAVE_EYELINK
 	float page_fixation = 0;
+#endif
+#ifdef HAVE_POWERMATE
+	bool page_rotation = false;
 #endif
 	std::set<int> accepted_keys;
 
@@ -1393,6 +1183,15 @@ QExperiment::load_experiment (const QString& path)
 	      page_fixation = lua_tonumber (lstate, -1);
 	    }
 #endif // HAVE_EYELINK
+	    else if (param == "answer"
+		    && lua_isstring (lstate, -1)) {
+		QString str (lua_tostring (lstate, -1));
+#ifdef HAVE_POWERMATE
+		if (str == "rotation") {
+		    page_rotation = true;
+		}
+#endif // HAVE_POWERMATE
+	    }
 	  }
 	  lua_pop (lstate, 1);
 	}
@@ -1403,6 +1202,9 @@ QExperiment::load_experiment (const QString& path)
 #ifdef HAVE_EYELINK
 	page->fixation = page_fixation;
 #endif // HAVE_EYELINK
+#ifdef HAVE_POWERMATE
+	page->waitRotation = page_rotation;
+#endif // HAVE_POWERMATE
 	page->accepted_keys = accepted_keys;
 	add_page (page);
 
@@ -1410,15 +1212,23 @@ QExperiment::load_experiment (const QString& path)
 	record_offsets[page_title]["begin"] = record_size;
 	record_size += sizeof (qint64);	// Start page presentation
 	if (! accepted_keys.empty ()) {
-	  record_offsets[page_title]["key"] = record_size;
-	  record_size += sizeof (int);	// Pressed key
+	    record_offsets[page_title]["key"] = record_size;
+	    record_size += sizeof (int);	// Pressed key
 	}
+#ifdef HAVE_POWERMATE
+	if (page_rotation) {
+	    record_offsets[page_title]["rotation"] = record_size;
+	    record_size += sizeof (int);	// PowerMate rotation
+	}
+#endif // HAVE_POWERMATE
       }
       lua_pop (lstate, 1);
     }
   }
+#endif
 
   // Define the trial record
+#if 0
   if (record_size) {
     qDebug () << "record size set to" << record_size;
     trial_record = malloc (record_size);
@@ -1438,20 +1248,26 @@ QExperiment::load_experiment (const QString& path)
 	auto offset = param.second;
 	H5::DataType param_type;
 	if (param_name == "begin")
-	  param_type = PredType::NATIVE_LONG;
+	    param_type = PredType::NATIVE_LONG;
 	else if (param_name == "key")
-	  param_type = PredType::NATIVE_INT;
+	    param_type = PredType::NATIVE_INT;
+#ifdef HAVE_POWERMATE
+	else if (param_name == "rotation")
+	    param_type = PredType::NATIVE_INT;
+#endif // HAVE_POWERMATE
 	else
-	  param_type = PredType::NATIVE_DOUBLE;
+	    param_type = PredType::NATIVE_DOUBLE;
 	qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
 	record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
       }
     }
     qDebug () << "Trial record size:" << record_size;
   }
+#endif
 
 
   // Setup an experiment item in the left toolbox
+#if 0
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
   // Experiment name flayout->addRow ("Experiment", new QLabel (xp_name)); // Number of trials
@@ -1507,11 +1323,13 @@ QExperiment::load_experiment (const QString& path)
       it.second->setValue (lua_tonumber (lstate, -1));
     lua_pop (lstate, 1);
   }
+#endif
 
   xp_label->setText (script_path);
 
 
   // Setup a subject item in the left toolbox
+#if 0
   subject_item = new QWidget;
   flayout = new QFormLayout;
   subject_cbox = new QComboBox;
@@ -1536,6 +1354,8 @@ QExperiment::load_experiment (const QString& path)
 
   // Prepare for running the experiment
   tbox->setCurrentWidget (subject_item);
+
+#endif
 
   // Initialise the experiment
   setup_updated ();
@@ -1690,11 +1510,10 @@ QExperiment::run_session ()
 }
 
 void
-QExperiment::run_session_inline ()
+QExperiment::runSessionInline ()
 {
   // No experiment loaded
-  if (lstate == NULL)
-    return;
+  if (! m_experiment) return;
 
   init_session ();
   stim->resize (1024, 1024);
@@ -1742,7 +1561,6 @@ QExperiment::QExperiment (int & argc, char** argv)
     save_setup (false),
     bin_dist (0, 1),
     real_dist (0, 1),
-    unusable (false),
     trial_record (NULL),
     record_size (0),
     hf (NULL)
@@ -1751,6 +1569,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   win = new QMainWindow;
   lstate = NULL;
+  m_component = NULL;
+  m_experiment = NULL;
   xp_item = NULL;
   subject_item = NULL;
   record_type = NULL;
@@ -1767,13 +1587,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   eyelink_dummy = false;
 #endif
 #endif
-  
-  // Initialise the random number generator
-  // TODO: make that configurable
-  twister.seed (time (NULL));
-  for (int i = 0; i < 10000; i++)
-    (void) bin_dist (twister);
-
 
   // Mapping of key names to keys for Lua
   key_mapping["down"] = Qt::Key_Down;
@@ -1809,7 +1622,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   action = xp_menu->addAction ("Run &inline");
   action->setShortcut (tr ("Ctrl+Shift+R"));
   action->setStatusTip (tr ("&Run the experiment inside the window"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (run_session_inline ()));
+  connect (action, SIGNAL (triggered ()), this, SLOT (runSessionInline ()));
 
   // Open an existing experiment
   action = xp_menu->addAction ("&Open");
@@ -1821,7 +1634,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   close_action = xp_menu->addAction ("&Close");
   close_action->setShortcut (tr ("Ctrl+W"));
   close_action->setStatusTip (tr ("&Close the experiment"));
-  connect (close_action, SIGNAL (triggered ()), this, SLOT (unload_experiment ()));
+  connect (close_action, SIGNAL (triggered ()), this, SLOT (unloadExperiment ()));
   xp_menu->addSeparator ();
 
   // Maximum number of recent experiments displayed
@@ -1918,37 +1731,14 @@ QExperiment::QExperiment (int & argc, char** argv)
   error (dsk_msg.arg (dsk.screenCount ()).arg (dsk.isVirtualDesktop () ? "virtual" : "normal").arg (gdsk.width ()).arg (gdsk.height ()));
   */
 
-  /*
-  auto flags = QGLFormat::openGLVersionFlags ();
-  if (! (flags & QGLFormat::OpenGL_Version_3_0)) {
-    QString found ("unknown");
-    if (flags & QGLFormat::OpenGL_Version_2_1)
-      found = "2.1";
-    else if (flags & QGLFormat::OpenGL_Version_2_0)
-      found = "2.0";
-    else if (flags & QGLFormat::OpenGL_Version_1_5)
-      found = "1.5";
-    else if (flags & QGLFormat::OpenGL_Version_1_4)
-      found = "1.4";
-    else if (flags & QGLFormat::OpenGL_Version_1_3)
-      found = "1.3";
-    else if (flags & QGLFormat::OpenGL_Version_1_2)
-      found = "1.2";
-    else if (flags & QGLFormat::OpenGL_Version_1_1)
-      found = "1.1";
-    error (QString ("OpenGL 3.0 not supported (limited to %1)").arg (found));
-    unusable = true;
-    return;
-  }
-  */
-
-
   stim = new StimWindow;
   connect (stim, &StimWindow::keyPressed,
 	  this, &QExperiment::stimKeyPressed);
 #ifdef HAVE_POWERMATE
-  connect (stim, &StimWindow::powerMateEvent,
-	   this, &QExperiment::powerMateEvent);
+  connect (stim, &StimWindow::powerMateRotation,
+	   this, &QExperiment::powerMateRotation);
+  connect (stim, &StimWindow::powerMateButtonPressed,
+	   this, &QExperiment::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
   // Show OpenGL version in GUI
@@ -2009,7 +1799,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 		settings->value ("gui_height").toInt ());
 
   // Set recent experiments
-  update_recents ();
+  updateRecents ();
 
   // Constrain the screen selector
   screen_sbox->setMinimum (0);
@@ -2024,6 +1814,10 @@ QExperiment::QExperiment (int & argc, char** argv)
   // Make sure the timer is monotonic
   if (! timer.isMonotonic ())
     error (tr ("No monotonic timer available on this platform"));
+
+  // Register QML types for PlStim
+  qmlRegisterType<plstim::Experiment> ("PlStim", 1, 0, "Experiment");
+  qmlRegisterType<plstim::QPage> ("PlStim", 1, 0, "Page");
 }
 
 void
@@ -2221,8 +2015,9 @@ QExperiment::setup_updated ()
   // Make sure converters are up to date
   update_converters ();
 
-  if (lstate != NULL) {
+  if (m_experiment) {
     // Compute the best swap interval
+#if 0
     lua_getglobal (lstate, "refresh");
     swap_interval = 1;
     if (lua_isnumber (lstate, -1)) {
@@ -2263,7 +2058,7 @@ QExperiment::setup_updated ()
     lua_getglobal (lstate, "update_configuration");
     if (lua_isfunction (lstate, -1))
       if (! check_lua (lua_pcall (lstate, 0, 0, 0))) {
-	abort_experiment ();
+	abortExperiment ();
 	return;
       }
       
@@ -2319,11 +2114,12 @@ QExperiment::setup_updated ()
     lua_pushlightuserdata (lstate, (void*) painter);
     lua_pushnil (lstate);
     lua_settable (lstate, LUA_REGISTRYINDEX);
+#endif
   }
 }
 
 void
-QExperiment::update_recents ()
+QExperiment::updateRecents ()
 {
   auto rlist = settings->value ("recents").toStringList ();
   int i = 0;
@@ -2331,7 +2127,7 @@ QExperiment::update_recents ()
   for (auto path : rlist) {
     QFileInfo fi (path);
     QString name = fi.fileName ();
-    if (name.endsWith (".lua"))
+    if (name.endsWith (".qml"))
       name = name.left (name.size () - 4);
     recent_actions[i]->setText (label.arg (i+1).arg (name));
     recent_actions[i]->setData (path);
@@ -2345,12 +2141,18 @@ QExperiment::update_recents ()
 void
 QExperiment::update_converters ()
 {
-  distance = dst_edit->value ();
+  float distance = dst_edit->value ();
 
   float hres = (float) res_x_edit->value ()
     / phy_width_edit->value ();
   float vres = (float) res_y_edit->value ()
     / phy_height_edit->value ();
+
+  if (m_experiment) {
+      m_experiment->setDistance (distance);
+      m_experiment->setHorizontalResolution (hres);
+      m_experiment->setVerticalResolution (vres);
+  }
   //float err = fabsf ((hres-vres) / (hres+vres));
 
   // TODO: restablish messages for resolutions
@@ -2392,8 +2194,6 @@ QExperiment::update_converters ()
     }
   }
 #endif
-
-  px_mm = (hres+vres)/2.0;
 
   // TODO: restablish resolution messages
 #if 0

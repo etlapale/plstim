@@ -7,10 +7,14 @@
 class PowerMateEvent : public QEvent
 {
 public:
-  static QEvent::Type EventType;
+  static QEvent::Type Rotation;
+  static QEvent::Type ButtonPress;
+  static QEvent::Type ButtonRelease;
+  static QEvent::Type LED;
 public:
   int step;
-  PowerMateEvent (int step);
+  int luminance;
+  PowerMateEvent (QEvent::Type eventType);
 };
 
 class PowerMateWatcher : public QObject

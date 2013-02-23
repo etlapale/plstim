@@ -30,7 +30,9 @@ public slots:
 signals:
     void keyPressed (QKeyEvent* evt);
 #ifdef HAVE_POWERMATE
-    void powerMateEvent (PowerMateEvent* evt);
+    void powerMateRotation (PowerMateEvent* evt);
+    void powerMateButtonPressed (PowerMateEvent* evt);
+    void powerMateButtonReleased (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
 protected:
     virtual bool event (QEvent* evt);
