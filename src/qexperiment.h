@@ -34,63 +34,6 @@
 
 namespace plstim
 {
-  class Page : public QObject
-  {
-    Q_OBJECT
-    Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
-    Q_PROPERTY (PaintTime paintTime READ paintTime WRITE setPaintTime)
-  public:
-    enum Type {
-      SINGLE,
-      FRAMES
-    };
-    Q_ENUMS (Type)
-    enum PaintTime {
-      EXPERIMENT,
-      TRIAL
-    };
-    Q_ENUMS (PaintTime)
-  public:
-    Page::Type type;
-    QString title;
-    PaintTime paint_time;
-    bool wait_for_key;
-    std::set<int> accepted_keys;
-
-    /// Duration of the animation in milliseconds
-    float duration;
-
-#ifdef HAVE_EYELINK
-    /// Duration of the required fixation
-    float fixation;
-#endif // HAVE_EYELINK
-
-#ifdef HAVE_POWERMATE
-    /// Wait for a rotation answer
-    bool waitRotation;
-#endif // HAVE_POWERMATE
-
-    /// Actual number of frames in the page
-    int nframes;
-
-  public:
-    Page (Page::Type t, const QString& title);
-    virtual ~Page ();
-    void accept_key (int key);
-  public:
-    void make_active ();
-    void emit_key_pressed (QKeyEvent* evt);
-    int frameCount () const { return nframes; }
-    void setFrameCount (int count) { nframes = count; }
-    PaintTime paintTime () const { return paint_time; }
-    void setPaintTime (PaintTime time) { paint_time = time; }
-  signals:
-    /**
-     * Called when the page is the one currently displayed.
-     */
-    void page_active ();
-  };
-
   class QExperiment : public QObject
   {
     Q_OBJECT
@@ -113,9 +56,6 @@ namespace plstim
     MyMessageBox* msgbox;
     //Message* res_msg;
     //Message* match_res_msg;
-
-    /// Pages composing a trial
-    std::vector<Page*> pages;
 
     /// Current page in a trial
     int current_page;
@@ -185,9 +125,6 @@ namespace plstim
   public:
     bool exec ();
 
-    /// Add a page to the composition of a trial
-    void add_page (Page* page);
-
     void run_trial ();
 
     void show_page (int index);
@@ -229,7 +166,7 @@ namespace plstim
 
     void setup_updated ();
 
-    void paintPage (QPage* page, QImage& img, QPainter& painter);
+    void paintPage (Page* page, QImage& img, QPainter& painter);
 
     bool check_lua (int retcode);
 

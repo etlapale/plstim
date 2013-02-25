@@ -137,7 +137,7 @@ protected:
 
 
 
-class QPage : public QObject
+class Page : public QObject
 {
     Q_OBJECT
     Q_ENUMS (PaintTime)
@@ -158,7 +158,7 @@ public:
 	MANUAL
     };
 
-    QPage (QObject* parent=NULL)
+    Page (QObject* parent=NULL)
 	: QObject (parent)
 	, m_duration (0), m_animated (false), m_paintTime (EXPERIMENT)
 	, m_waitKey (true)
@@ -249,7 +249,7 @@ class Experiment : public QObject
     Q_PROPERTY (float swapInterval READ swapInterval WRITE setSwapInterval)
     Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
     Q_PROPERTY (QColor background READ background WRITE setBackground)
-    Q_PROPERTY (QQmlListProperty<plstim::QPage> pages READ pages)
+    Q_PROPERTY (QQmlListProperty<plstim::Page> pages READ pages)
     Q_CLASSINFO ("DefaultProperty", "pages")
     
 public:
@@ -280,13 +280,13 @@ public:
     void setBackground (const QColor& color)
     { m_background = color; }
 
-    QQmlListProperty<plstim::QPage> pages ()
-    { return QQmlListProperty<QPage> (this, m_pages); }
+    QQmlListProperty<plstim::Page> pages ()
+    { return QQmlListProperty<Page> (this, m_pages); }
 
     int pageCount () const
     { return m_pages.count (); }
 
-    plstim::QPage* page (int index)
+    plstim::Page* page (int index)
     { return m_pages.at (index); }
 
     float distance () const
@@ -368,7 +368,7 @@ protected:
     float m_refreshRate;
     float m_swapInterval;
     QColor m_background;
-    QList<plstim::QPage*> m_pages;
+    QList<plstim::Page*> m_pages;
 
 signals:
     void newTrial ();

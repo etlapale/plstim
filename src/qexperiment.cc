@@ -20,70 +20,9 @@ using namespace plstim;
 using namespace H5;
 
 
-void*
-operator new (std::size_t size, lua_State* lstate, const char* metaname)
-{
-  void* obj = lua_newuserdata (lstate, size);
-  luaL_getmetatable (lstate, metaname);
-  lua_setmetatable (lstate, -2);
-  return obj;
-}
-
-Page::Page (Page::Type t, const QString& page_title)
-  : type (t), title (page_title),
-    duration (0)
-{
-#ifdef HAVE_EYELINK
-  fixation = 0;
-#endif // HAVE_EYELINK
-  switch (type) {
-  case Page::Type::SINGLE:
-    wait_for_key = true;
-    nframes = 1;
-    paint_time = PaintTime::EXPERIMENT;
-    break;
-  case Page::Type::FRAMES:
-    wait_for_key = false;
-    nframes = 0;
-    paint_time = PaintTime::TRIAL;
-    break;
-  }
-}
-
-Page::~Page ()
-{
-  qDebug () << "Page" << title << "deleted";
-}
-
-void
-Page::make_active ()
-{
-  emit page_active ();
-}
-
-void
-Page::accept_key (int key)
-{
-  accepted_keys.insert (key);
-}
-
-void
-QExperiment::add_page (Page* page)
-{
-  // Check for an existing page with the same name
-  for (auto p : pages) {
-    if (! p->title.isEmpty () && p->title == page->title) {
-      error (tr ("Duplicate page name detected"));
-      return;
-    }
-  }
-  pages.push_back (page);
-}
-
 bool
 QExperiment::exec ()
 {
-  cout << "showing windows" << endl;
   win->show ();
 
   // Load an experiment if given as command line argument
@@ -103,12 +42,11 @@ QExperiment::exec ()
 #endif // HAVE_POWERMATE
 
 
-  cout << "exec()" << endl;
   return app.exec () == 0;
 }
 
 void
-QExperiment::paintPage (QPage* page, QImage& img, QPainter& painter)
+QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
 {
     QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
@@ -215,7 +153,7 @@ QExperiment::run_trial ()
   QPainter painter;
   for (int i = 0; i < m_experiment->pageCount (); i++) {
       auto page = m_experiment->page (i);
-      if (page->paintTime () == QPage::TRIAL)
+      if (page->paintTime () == Page::TRIAL)
 	  paintPage (page, img, painter);
   }
 
@@ -533,132 +471,6 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
 }
 
 
-static QColor
-get_colour (lua_State* lstate, int index)
-{
-  QColor col;
-
-  if (! lua_istable (lstate, index)) {
-    qDebug () << "error: expecting RGB color as last argument";
-    return col;
-  }
-
-  lua_rawgeti (lstate, index, 1);
-  col.setRedF (luaL_checknumber (lstate, -1));
-  lua_pop (lstate, 1);
-  lua_rawgeti (lstate, index, 2);
-  col.setGreenF (luaL_checknumber (lstate, -1));
-  lua_pop (lstate, 1);
-  lua_rawgeti (lstate, index, 3);
-  col.setBlueF (luaL_checknumber (lstate, -1));
-  lua_pop (lstate, 1);
-
-  return col;
-}
-
-static int
-l_qpainter_draw_line (lua_State* lstate)
-{
-  auto painter = (QPainter*) lua_touserdata (lstate, 1);
-  int x1 = luaL_checkint (lstate, 2);
-  int y1 = luaL_checkint (lstate, 3);
-  int x2 = luaL_checkint (lstate, 4);
-  int y2 = luaL_checkint (lstate, 5);
-
-  painter->drawLine (x1, y1, x2, y2);
-
-  return 0;
-}
-
-static int
-l_qpainter_fill_rect (lua_State* lstate)
-{
-  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
-  int x = luaL_checkint (lstate, 2);
-  int y = luaL_checkint (lstate, 3);
-  int width = luaL_checkint (lstate, 4);
-  int height = luaL_checkint (lstate, 5);
-
-  // Fetch the colour given as argument
-  QColor col = get_colour (lstate, 6);
-
-  // TODO: pop the arguments?
-
-  painter->fillRect (x, y, width, height, col);
-
-  return 0;
-}
-
-static int
-l_qpainter_set_pen (lua_State* lstate)
-{
-  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
-
-  if (lua_gettop (lstate) == 1)
-    painter->setPen (Qt::NoPen);
-  else {
-    // Colour argument
-    if (lua_istable (lstate, 2)) {
-      QColor col = get_colour (lstate, 2);
-      painter->setPen (col);
-    }
-    // QPen argument
-    else {
-      auto pen = (QPen*) luaL_checkudata (lstate, 2, "plstim.qpen");
-      painter->setPen (*pen);
-    }
-  }
-
-  return 0;
-}
-
-
-static const struct luaL_reg qpainter_lib_f [] = {
-  {NULL, NULL}
-};
-
-static const struct luaL_reg qpainter_lib_m [] = {
-  {"draw_line", l_qpainter_draw_line},
-  {"fill_rect", l_qpainter_fill_rect},
-  {"set_pen", l_qpainter_set_pen},
-  {NULL, NULL}
-};
-
-static int
-l_qpen_new (lua_State* lstate)
-{
-  if (lua_gettop (lstate) >= 1) {
-    auto col = get_colour (lstate, 1);
-    new (lstate, "plstim.qpen") QPen (col);
-  }
-  else {
-    new (lstate, "plstim.qpen") QPen;
-  }
-
-  return 1;
-}
-
-static int
-l_qpen_set_width (lua_State* lstate)
-{
-  auto pen = (QPen*) lua_touserdata (lstate, 1);
-  auto width = luaL_checknumber (lstate, 2);
-
-  pen->setWidthF (width);
-
-  return 0;
-}
-
-static const struct luaL_reg qpen_lib_f [] = {
-  {"new", l_qpen_new},
-  {NULL, NULL}
-};
-
-static const struct luaL_reg qpen_lib_m [] = {
-  {"set_width", l_qpen_set_width},
-  {NULL, NULL}
-};
-
 static void
 register_class (lua_State* lstate,
 		const char* fullname, const luaL_reg* methods)
@@ -707,9 +519,6 @@ QExperiment::unloadExperiment ()
 
   xp_name.clear ();
   ntrials = 0;
-  for (auto p : pages)
-    delete p;
-  pages.clear ();
 
   param_spins.clear ();
 
@@ -1578,7 +1387,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   qmlRegisterType<plstim::Vector> ("PlStim", 1, 0, "Vector");
   qmlRegisterType<plstim::PainterPath> ("PlStim", 1, 0, "PainterPath");
   qmlRegisterUncreatableType<plstim::Painter> ("PlStim", 1, 0, "Painter", "Painter objects cannot be created from QML");
-  qmlRegisterType<plstim::QPage> ("PlStim", 1, 0, "Page");
+  qmlRegisterType<plstim::Page> ("PlStim", 1, 0, "Page");
   qmlRegisterType<plstim::Experiment> ("PlStim", 1, 0, "Experiment");
 }
 
@@ -1862,7 +1671,7 @@ QExperiment::setup_updated ()
       }
 #endif
 
-      if (page->paintTime () == QPage::EXPERIMENT)
+      if (page->paintTime () == Page::EXPERIMENT)
 	  paintPage (page, img, painter);
     }
 
