@@ -146,7 +146,7 @@ namespace plstim
     int current_trial;
 
     /// Accepted keys to switch to next page
-    std::set<int> next_page_keys;
+    QSet<int> nextPageKeys;
 
   public:
     /// Number of trials in a session
@@ -180,7 +180,7 @@ namespace plstim
 
     void abortExperiment ();
 
-    void next_page ();
+    void nextPage ();
 
   public:
     bool exec ();
@@ -200,12 +200,6 @@ namespace plstim
 
     int textureSize () const { return tex_size; }
     void setTextureSize (int size) { tex_size = size; }
-
-    /// Convert a degrees distance to pixels
-
-    /*float ds2pf (float speed) const {
-      return deg2pix (speed/refresh_edit->value ()*swap_interval);
-    }*/
 
     //void set_glformat (QGLFormat glformat);
 
@@ -235,7 +229,7 @@ namespace plstim
 
     void setup_updated ();
 
-    void paint_page (Page* page, QImage& img, QPainter* painter);
+    void paintPage (QPage* page, QImage& img, QPainter& painter);
 
     bool check_lua (int retcode);
 
@@ -250,7 +244,6 @@ namespace plstim
     //void screen_param_changed ();
     void setup_param_changed ();
     void update_setup ();
-    void update_converters ();
     void updateRecents ();
     void about_to_quit ();
     void open ();

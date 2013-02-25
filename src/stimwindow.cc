@@ -356,6 +356,7 @@ StimWindow::showFixedFrame (const QString& name)
 	qDebug () << "??? unknown fixed frame" << name;
     }
     else if (isExposed ()) {
+	qDebug () << "showing fixed frame" << name;
 	m_currentFrame = m_fixedFrames[name];
 	renderNow ();
     }

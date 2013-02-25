@@ -108,42 +108,33 @@ QExperiment::exec ()
 }
 
 void
-QExperiment::paint_page (Page* page,
-			 QImage& img,
-			 QPainter* painter)
+QExperiment::paintPage (QPage* page, QImage& img, QPainter& painter)
 {
-  QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
+    QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
-  switch (page->type) {
-  // Single frames
-  case Page::Type::SINGLE:
-    painter->begin (&img);
-    painter->setRenderHints (render_hints);
+    // Wraps the QPainter for QML
+    Painter wrappedPainter (painter);
 
-    lua_getglobal (lstate, "paint_frame");
-    lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
+    // Single frames
+    if (! page->animated ()) {
+	painter.begin (&img);
+	// Reset QImage/QPainter states
+	img.fill (0); painter.setPen (Qt::NoPen);
 
-    // Fetch the QPainter from the registry
-    lua_pushlightuserdata (lstate, (void*) painter);
-    lua_gettable (lstate, LUA_REGISTRYINDEX);
+	painter.setRenderHints (render_hints);
 
-    lua_pushnumber (lstate, 0);
+	emit page->paint (&wrappedPainter, 0);
 
-    if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
-      painter->end ();
-      abortExperiment ();
-      return;
+	painter.end ();
+
+	//img.save (QString ("page-") + page->name () + ".png");
+	stim->addFixedFrame (page->name (), img);
     }
 
-    painter->end ();
-
-    //img.save (QString ("page-") + page->title + ".png");
-    //glwidget->add_fixed_frame (page->title, img);
-    stim->addFixedFrame (page->title, img);
-    break;
-
-  // Multiple frames
-  case Page::Type::FRAMES:
+    // Multiple frames
+    else {
+	qDebug () << "painting animated pages NYI";
+#if 0
     //timer.start ();
     //glwidget->delete_animated_frames (page->title);
     stim->deleteAnimatedFrames (page->title);
@@ -154,6 +145,9 @@ QExperiment::paint_page (Page* page,
     for (int i = 0; i < page->frameCount (); i++) {
 
       painter->begin (&img);
+    // Reset QImage/QPainter states
+    img.fill (0); painter.setPen (Qt::NoPen);
+
       painter->setRenderHints (render_hints);
 
       lua_getglobal (lstate, "paint_frame");
@@ -181,8 +175,8 @@ QExperiment::paint_page (Page* page,
       stim->addAnimatedFrame (page->title, img);
     }
     //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
-    break;
-  }
+#endif
+    }
 }
 
 bool
@@ -216,40 +210,13 @@ QExperiment::run_trial ()
   // Emit the newTrial () signal
   emit m_experiment->newTrial ();
 
-  // Check if there is a paint_frame () function
-#if 0
-  lua_getglobal (lstate, "paint_frame");
-  bool pf_is_func = lua_isfunction (lstate, -1);
-  lua_pop (lstate, 1);
-#endif
-  bool pf_is_func = false;
-
-  qDebug () << "running trial. pf found:" << pf_is_func;
-  if (pf_is_func) {
-#if 0
-    QImage img (tex_size, tex_size, QImage::Format_RGB32);
-    auto painter = new (lstate, "plstim.qpainter") QPainter;
-
-    // Register the QPainter to avoid collection
-    lua_pushlightuserdata (lstate, (void*) painter);
-    lua_pushvalue (lstate, -2);
-    lua_settable (lstate, LUA_REGISTRYINDEX);
-
-    // Remove the QPainter from the stack
-    lua_pop (lstate, 1);
-
-    // Paint the per-trial pages
-    for (auto p : pages)
-      if (p->paint_time == Page::PaintTime::TRIAL) {
-	  qDebug () << "painting per-trial frames for" << p->title;
-	paint_page (p, img, painter);
-      }
-	  
-    // Mark the QPainter for destruction
-    lua_pushlightuserdata (lstate, (void*) painter);
-    lua_pushnil (lstate);
-    lua_settable (lstate, LUA_REGISTRYINDEX);
-#endif
+  // Paint each per-trial frame
+  QImage img (tex_size, tex_size, QImage::Format_RGB32);
+  QPainter painter;
+  for (int i = 0; i < m_experiment->pageCount (); i++) {
+      auto page = m_experiment->page (i);
+      if (page->paintTime () == QPage::TRIAL)
+	  paintPage (page, img, painter);
   }
 
   // Record trial parameters
@@ -260,6 +227,7 @@ QExperiment::run_trial ()
 
     // TODO: we should check that we have the correct type here
 
+#if 0
     lua_getglobal (lstate, name.data ());
     if (lua_isnumber (lstate, -1)) {
       double* pos = (double*) (((char*) trial_record)+offset);
@@ -277,6 +245,7 @@ QExperiment::run_trial ()
       qDebug () << "storing" << "array" << "for" << param_name;
     }
     lua_pop (lstate, 1);
+#endif
   }
 
 #ifdef HAVE_EYELINK
@@ -286,8 +255,7 @@ QExperiment::run_trial ()
 #endif // HAVE_EYELINK
 
   current_page = -1;
-  //show_page (current_page);
-  next_page ();
+  nextPage ();
 }
 
 void
@@ -334,16 +302,12 @@ QExperiment::show_page (int index)
 #endif // HAVE_EYELINK
 #endif
 
-#if 0
-  switch (page->type) {
-  case Page::Type::SINGLE:
-    //stim->showFixedFrame (p->title);
-    break;
-  case Page::Type::FRAMES:
-    //stim->showAnimatedFrames (p->title);
-    break;
+  if (page->animated ()) {
+      //stim->showAnimatedFrames (p->title);
   }
-#endif
+  else {
+      stim->showFixedFrame (page->name ());
+  }
 
   current_page = index;
   //p->make_active ();
@@ -395,27 +359,25 @@ QExperiment::show_page (int index)
 #endif // HAVE_EYELINK
 #endif
 
-  // Fixed frame of defined duration
-#if 0
-  if (p->duration && p->type == Page::Type::SINGLE) {
-    qDebug () << "fixed frame for" << p->duration << "ms";
-    QTimer::singleShot (p->duration, this, SLOT (next_page ()));
-  }
-#endif
+    // Fixed frame of defined duration
+    if (page->duration () && ! page->animated ()) {
+	qDebug () << "fixed frame for" << page->duration () << "ms";
+	QTimer::singleShot (page->duration (), this, SLOT (nextPage ()));
+    }
 
-  // If no keyboard event expected, go to the next page
-#if 0
-  if (! p->wait_for_key
+    // If no keyboard event expected, go to the next page
+    else if (! page->waitKey ()
 #ifdef HAVE_POWERMATE
-	  && ! p->waitRotation
+	    && ! page->waitRotation ()
 #endif // HAVE_POWERMATE
-	  )
-    next_page ();
-#endif
+       ) {
+	qDebug () << "nothing to wait, going to next page";
+	nextPage ();
+    }
 }
 
 void
-QExperiment::next_page ()
+QExperiment::nextPage ()
 {
 #ifdef HAVE_EYELINK
     // Exit the inner fixation loop
@@ -543,11 +505,10 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   if (! session_running)
     return;
 
-#if 0
-  Page* page = pages[current_page];
-
+  auto page = m_experiment->page (current_page);
+  
   // Go to the next page
-  if (page->wait_for_key) {
+  if (page->waitKey ()) {
 #ifdef HAVE_EYELINK
     // Allows EyeLink calibration and validation
     if (page->fixation > 0
@@ -557,61 +518,20 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
     }
 #endif // HAVE_EYELINK
     // Check if the key is accepted
-    if ((page->accepted_keys.empty () &&
-	 (next_page_keys.find (evt->key ()) != next_page_keys.end ())
-	)
-	|| page->accepted_keys.find (evt->key ()) != page->accepted_keys.end ()) {
-
+    if ((page->acceptAnyKey () && nextPageKeys.contains (evt->key ()))
+	    || page->acceptKey (evt->key ())) {
+#if 0
       // Save pressed key
       if (! page->accepted_keys.empty ())
 	  savePageParameter (page->title, "key", evt->key ());
+#endif
 
       // Move to the next page
-      next_page ();
+      nextPage ();
     }
   }
-#endif
 }
 
-
-static const char* PLSTIM_EXPERIMENT = "plstim::experiment";
-
-
-static int
-l_random (lua_State* lstate)
-{
-  // Search for the experiment
-  lua_pushstring (lstate, PLSTIM_EXPERIMENT);
-  lua_gettable (lstate, LUA_REGISTRYINDEX);
-  auto xp = (QExperiment*) lua_touserdata (lstate, -1);
-  lua_pop (lstate, 1);
-
-  // If we want an array of random numbers
-  if (lua_gettop (lstate) >= 1) {
-    // Number of elements
-    auto size = luaL_checkinteger (lstate, -1);
-    lua_pop (lstate, 1);
-
-    // Create the array
-    lua_createtable (lstate, size, 0);
-    
-    // Populate with random numbers
-    for (int i = 0; i < size; i++) {
-      //lua_pushinteger (lstate, i+1);
-      lua_pushnumber (lstate, xp->real_dist (xp->twister));
-      lua_rawseti (lstate, -2, i+1);
-      //lua_settable (lstate, -3);
-    }
-  }
-  // If we want a single random number
-  else {
-    // Generate the random number
-    double num = xp->real_dist (xp->twister);
-    lua_pushnumber (lstate, num);
-  }
-  
-  return 1;
-}
 
 static QColor
 get_colour (lua_State* lstate, int index)
@@ -636,29 +556,6 @@ get_colour (lua_State* lstate, int index)
   return col;
 }
 
-QColor
-QExperiment::get_colour (const char* name) const
-{
-  qDebug () << "Getting Lua global" << name;
-  lua_getglobal (lstate, name);
-  qDebug () << "calling ::get_colour ()";
-  QColor col = ::get_colour (lstate, -1);
-  qDebug () << "colour returned:" << col;
-  lua_pop (lstate, 1);
-  return col;
-}
-
-static int
-l_qpainter_draw_path (lua_State* lstate)
-{
-  auto painter = (QPainter*) lua_touserdata (lstate, 1);
-  auto path = (QPainterPath*) lua_touserdata (lstate, 2);
-
-  painter->drawPath (*path);
-
-  return 0;
-}
-
 static int
 l_qpainter_draw_line (lua_State* lstate)
 {
@@ -669,20 +566,6 @@ l_qpainter_draw_line (lua_State* lstate)
   int y2 = luaL_checkint (lstate, 5);
 
   painter->drawLine (x1, y1, x2, y2);
-
-  return 0;
-}
-
-static int
-l_qpainter_draw_ellipse (lua_State* lstate)
-{
-  auto painter = (QPainter*) lua_touserdata (lstate, 1);
-  int x = luaL_checkint (lstate, 2);
-  int y = luaL_checkint (lstate, 3);
-  int width = luaL_checkint (lstate, 4);
-  int height = luaL_checkint (lstate, 5);
-
-  painter->drawEllipse (x, y, width, height);
 
   return 0;
 }
@@ -702,17 +585,6 @@ l_qpainter_fill_rect (lua_State* lstate)
   // TODO: pop the arguments?
 
   painter->fillRect (x, y, width, height, col);
-
-  return 0;
-}
-
-static int
-l_qpainter_set_brush (lua_State* lstate)
-{
-  QPainter* painter = (QPainter*) lua_touserdata (lstate, 1);
-  QColor col = get_colour (lstate, 2);
-
-  painter->setBrush (col);
 
   return 0;
 }
@@ -741,30 +613,14 @@ l_qpainter_set_pen (lua_State* lstate)
 }
 
 
-static int
-l_qpainter_gc (lua_State* lstate)
-{
-  qDebug () << "[Lua] Garbage collecting a QPainter";
-
-  // Call the C++ destructor
-  auto painter = static_cast<QPainter*> (lua_touserdata (lstate, 1));
-  painter->~QPainter ();
-
-  return 0;
-}
-
 static const struct luaL_reg qpainter_lib_f [] = {
   {NULL, NULL}
 };
 
 static const struct luaL_reg qpainter_lib_m [] = {
-  {"draw_ellipse", l_qpainter_draw_ellipse},
   {"draw_line", l_qpainter_draw_line},
-  {"draw_path", l_qpainter_draw_path},
   {"fill_rect", l_qpainter_fill_rect},
-  {"set_brush", l_qpainter_set_brush},
   {"set_pen", l_qpainter_set_pen},
-  {"__gc", l_qpainter_gc},
   {NULL, NULL}
 };
 
@@ -780,16 +636,6 @@ l_qpen_new (lua_State* lstate)
   }
 
   return 1;
-}
-
-static int
-l_qpen_gc (lua_State* lstate)
-{
-  // Call the C++ destructor
-  auto pen = static_cast<QPen*> (lua_touserdata (lstate, 1));
-  pen->~QPen ();
-
-  return 0;
 }
 
 static int
@@ -810,75 +656,8 @@ static const struct luaL_reg qpen_lib_f [] = {
 
 static const struct luaL_reg qpen_lib_m [] = {
   {"set_width", l_qpen_set_width},
-  {"__gc", l_qpen_gc},
   {NULL, NULL}
 };
-
-static int
-l_qpainterpath_new (lua_State* lstate)
-{
-  // Create a new Lua accessible QPainterPath
-  new (lstate, "plstim.qpainterpath") QPainterPath ();
-  return 1;
-}
-
-static int
-l_qpainterpath_gc (lua_State* lstate)
-{
-  // Call the C++ destructor
-  auto path = static_cast<QPainterPath*> (lua_touserdata (lstate, 1));
-  path->~QPainterPath ();
-
-  return 0;
-}
-
-static int
-l_qpainterpath_add_rect (lua_State* lstate)
-{
-  // Make sure we got a QPainterPath
-  auto path = (QPainterPath*) luaL_checkudata (lstate, 1, "plstim.qpainterpath");
-
-  int x = luaL_checkint (lstate, 2);
-  int y = luaL_checkint (lstate, 3);
-  int width = luaL_checkint (lstate, 4);
-  int height = luaL_checkint (lstate, 5);
-
-  // TODO: pop the arguments?
-
-  path->addRect (x, y, width, height);
-
-  return 0;
-}
-static int
-l_qpainterpath_add_ellipse (lua_State* lstate)
-{
-  // Make sure we got a QPainterPath
-  auto path = (QPainterPath*) luaL_checkudata (lstate, 1, "plstim.qpainterpath");
-
-  int x = luaL_checkint (lstate, 2);
-  int y = luaL_checkint (lstate, 3);
-  int width = luaL_checkint (lstate, 4);
-  int height = luaL_checkint (lstate, 5);
-
-  // TODO: pop the arguments?
-
-  path->addEllipse (x, y, width, height);
-
-  return 0;
-}
-
-static const struct luaL_reg qpainterpath_lib_f [] = {
-  {"new", l_qpainterpath_new},
-  {NULL, NULL}
-};
-
-static const struct luaL_reg qpainterpath_lib_m [] = {
-  {"add_ellipse", l_qpainterpath_add_ellipse},
-  {"add_rect", l_qpainterpath_add_rect},
-  {"__gc", l_qpainterpath_gc},
-  {NULL, NULL}
-};
-
 
 static void
 register_class (lua_State* lstate,
@@ -891,21 +670,6 @@ register_class (lua_State* lstate,
   lua_pushvalue (lstate, -2);
   lua_settable (lstate, -3);
   luaL_openlib (lstate, NULL, methods, 0);
-}
-
-int
-luaopen_plstim (lua_State* lstate)
-{
-  register_class (lstate, "plstim.qpainter", qpainter_lib_m);
-  luaL_openlib (lstate, "qpainter", qpainter_lib_f, 0);
-
-  register_class (lstate, "plstim.qpainterpath", qpainterpath_lib_m);
-  luaL_openlib (lstate, "qpainterpath", qpainterpath_lib_f, 0);
-
-  register_class (lstate, "plstim.qpen", qpen_lib_m);
-  luaL_openlib (lstate, "qpen", qpen_lib_f, 0);
-
-  return 0;
 }
 
 void
@@ -1033,10 +797,6 @@ QExperiment::load_experiment (const QString& path)
   }
   m_experiment = qobject_cast<Experiment*> (xp);
   qDebug () << "[QML] Number of trials:" << m_experiment->trialCount ();
-  for (int i = 0; i < m_experiment->pageCount (); i++) {
-      auto page = m_experiment->page (i);
-      qDebug () << "  Page" << i << page->name ();
-  }
 
   // Add trial parameters to the record
 #if 0
@@ -1595,10 +1355,9 @@ QExperiment::QExperiment (int & argc, char** argv)
   key_mapping["up"] = Qt::Key_Up;
 
   // Accepted keys for next page presentation
-  next_page_keys.insert (Qt::Key_Return);
-  next_page_keys.insert (Qt::Key_Enter);
-  next_page_keys.insert (Qt::Key_Space);
-  
+  nextPageKeys << Qt::Key_Return
+	       << Qt::Key_Enter
+	       << Qt::Key_Space;
 
   // Get the experimental setup
 
@@ -1816,8 +1575,11 @@ QExperiment::QExperiment (int & argc, char** argv)
     error (tr ("No monotonic timer available on this platform"));
 
   // Register QML types for PlStim
-  qmlRegisterType<plstim::Experiment> ("PlStim", 1, 0, "Experiment");
+  qmlRegisterType<plstim::Vector> ("PlStim", 1, 0, "Vector");
+  qmlRegisterType<plstim::PainterPath> ("PlStim", 1, 0, "PainterPath");
+  qmlRegisterUncreatableType<plstim::Painter> ("PlStim", 1, 0, "Painter", "Painter objects cannot be created from QML");
   qmlRegisterType<plstim::QPage> ("PlStim", 1, 0, "Page");
+  qmlRegisterType<plstim::Experiment> ("PlStim", 1, 0, "Experiment");
 }
 
 void
@@ -2013,7 +1775,6 @@ QExperiment::setup_updated ()
 {
   cout << "Setup updated" << endl;
   // Make sure converters are up to date
-  update_converters ();
 
   if (m_experiment) {
     // Compute the best swap interval
@@ -2050,18 +1811,28 @@ QExperiment::setup_updated ()
       lua_pushnumber (lstate, tex_size);
       lua_settable (lstate, -3);
 
-      qDebug () << "Texture size:" << tex_size << "x" << tex_size;
     }
-    lua_pop (lstate, 1);
-    
-    // Call the update_configuration () callback
-    lua_getglobal (lstate, "update_configuration");
-    if (lua_isfunction (lstate, -1))
-      if (! check_lua (lua_pcall (lstate, 0, 0, 0))) {
-	abortExperiment ();
-	return;
-      }
-      
+#endif
+    float distance = dst_edit->value ();
+
+    float hres = (float) res_x_edit->value ()
+	/ phy_width_edit->value ();
+    float vres = (float) res_y_edit->value ()
+	/ phy_height_edit->value ();
+
+    float refreshRate = (float) refresh_edit->value ();
+
+    m_experiment->setDistance (distance);
+    m_experiment->setHorizontalResolution (hres);
+    m_experiment->setVerticalResolution (vres);
+    m_experiment->setRefreshRate (refreshRate);
+
+    int tex_size = 1024;
+    qDebug () << "Texture size:" << tex_size << "x" << tex_size;
+
+    // Update experiment property
+    m_experiment->setTextureSize (tex_size);
+
     // Make sure the new size is acceptable on the target screen
     auto geom = dsk.screenGeometry (screen_sbox->value ());
     if (tex_size > geom.width () || tex_size > geom.height ()) {
@@ -2071,50 +1842,30 @@ QExperiment::setup_updated ()
     }
 
     // Notify the GLWidget of a new texture size
-    //glwidget->update_texture_size (tex_size, tex_size);
     stim->setTextureSize (tex_size, tex_size);
 
-    // Image on which the frames are painted
+    // Notify of setup changes
+    emit m_experiment->setupUpdated ();
+
+    // QImage and associated QPainter for frames painting
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
+    QPainter painter;
 
-    // Create a QPainter accessible from Lua
-    auto painter = new (lstate, "plstim.qpainter") QPainter;
-
-    // Register the QPainter to avoid collection
-    lua_pushlightuserdata (lstate, (void*) painter);
-    lua_pushvalue (lstate, -2);
-    lua_settable (lstate, LUA_REGISTRYINDEX);
-
-    // Remove the QPainter from the stack
-    lua_pop (lstate, 1);
-
-    // Search for a paint_frame () function
-    lua_getglobal (lstate, "paint_frame");
-    bool pf_is_func = lua_isfunction (lstate, -1);
-    lua_pop (lstate, 1);
-    
-    for (auto p : pages) {
+    for (int i = 0; i < m_experiment->pageCount (); i++) {
+	auto page = m_experiment->page (i);
+#if 0
       if (p->type == Page::Type::FRAMES) {
 	// Make sure animated frames have updated number of frames
 	p->nframes = (int) round ((monitor_rate () / swap_interval)*p->duration/1000.0);
 	qDebug () << "Displaying" << p->nframes << "frames for" << p->title;
 	qDebug () << "  " << monitor_rate () << "/" << swap_interval;
       }
+#endif
 
-      // Repaint the page
-      // Assume that setup is not updated during trials, so
-      // that paint_frame () is called by run_trial () for
-      // per-trial pages
-      if (/*glwidget_initialised &&*/ pf_is_func
-	  && p->paint_time != Page::PaintTime::TRIAL)
-	paint_page (p, img, painter);
+      if (page->paintTime () == QPage::EXPERIMENT)
+	  paintPage (page, img, painter);
     }
 
-    // Mark the QPainter for destruction
-    lua_pushlightuserdata (lstate, (void*) painter);
-    lua_pushnil (lstate);
-    lua_settable (lstate, LUA_REGISTRYINDEX);
-#endif
   }
 }
 
@@ -2136,89 +1887,6 @@ QExperiment::updateRecents ()
   }
   while (i < max_recents)
     recent_actions[i++]->setVisible (false);
-}
-
-void
-QExperiment::update_converters ()
-{
-  float distance = dst_edit->value ();
-
-  float hres = (float) res_x_edit->value ()
-    / phy_width_edit->value ();
-  float vres = (float) res_y_edit->value ()
-    / phy_height_edit->value ();
-
-  if (m_experiment) {
-      m_experiment->setDistance (distance);
-      m_experiment->setHorizontalResolution (hres);
-      m_experiment->setVerticalResolution (vres);
-  }
-  //float err = fabsf ((hres-vres) / (hres+vres));
-
-  // TODO: restablish messages for resolutions
-#if 0
-  // Create an error message if necessary
-  if (res_msg == NULL) {
-    res_msg = NULL;
-    auto label = "too much difference between "
-      "horizontal and vertical resolutions";
-    if (err > 0.1)
-      res_msg = new Message (Message::Type::ERROR, label);
-    else if (err > 0.01)
-      res_msg = new Message (Message::Type::WARNING, label);
-    if (res_msg) {
-      res_msg->widgets << res_x_edit << phy_width_edit
-		       << res_y_edit << phy_height_edit;
-      add_message (res_msg);
-    }
-  }
-
-  // Remove or change message if possible
-  else {
-    // Remove message
-    if (err <= 0.01) {
-      remove_message (res_msg);
-      res_msg = NULL;
-    }
-    // Lower message importance
-    else if (res_msg->type == Message::Type::ERROR && err <= 0.1) {
-      remove_message (res_msg);
-      res_msg->type = Message::Type::WARNING;
-      add_message (res_msg);
-    }
-    // Raise message importance
-    else if (res_msg->type == Message::Type::WARNING && err > 0.01) {
-      remove_message (res_msg);
-      res_msg->type = Message::Type::ERROR;
-      add_message (res_msg);
-    }
-  }
-#endif
-
-  // TODO: restablish resolution messages
-#if 0
-
-  // TODO: put that somewhere else
-  // Check that configured resolution match current one
-  auto geom = dsk.screenGeometry (screen_sbox->value ());
-  bool matching_size = geom.width () == res_x_edit->text ().toInt ()
-      && geom.height () == res_y_edit->text ().toInt ();
-
-  if (match_res_msg == NULL && ! matching_size) {
-    match_res_msg = new Message (Message::Type::ERROR,
-       "configured resolution does not match current one");
-    // TODO: modify current msg on continuing error
-    if (geom.width () != res_x_edit->text ().toInt ())
-      match_res_msg->widgets << screen_sbox << res_x_edit;
-    else
-      match_res_msg->widgets << screen_sbox << res_y_edit;
-    add_message (match_res_msg);
-  }
-  else if (match_res_msg != NULL && matching_size) {
-    remove_message (match_res_msg);
-    match_res_msg = NULL;
-  }
-#endif
 }
 
 QExperiment::~QExperiment ()
