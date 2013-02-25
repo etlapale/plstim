@@ -102,6 +102,34 @@ protected:
 };
 
 
+class Pen : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY (QColor color READ color WRITE setColor)
+
+public:
+    Pen (QObject* parent=NULL)
+	: QObject (parent)
+    {}
+
+    QColor color () const
+    { return m_pen.color (); }
+
+    void setColor (const QColor& color)
+    { m_pen.setColor (color); }
+
+    Q_INVOKABLE void setWidthF (float width)
+    { m_pen.setWidthF (width); }
+
+    const QPen* pen () const
+    { return &m_pen; }
+
+protected:
+
+    QPen m_pen;
+};
+
+
 class Painter : public QObject
 {
     Q_OBJECT
@@ -114,6 +142,11 @@ public:
     Q_INVOKABLE void drawEllipse (int x, int y, int width, int height)
     {
 	m_painter.drawEllipse (x, y, width, height);
+    }
+
+    Q_INVOKABLE void drawLine (int x1, int y1, int x2, int y2)
+    {
+	m_painter.drawLine (x1, y1, x2, y2);
     }
 
     //Q_INVOKABLE void drawPath (const PainterPath& path)
@@ -131,6 +164,16 @@ public:
 	m_painter.setBrush (color);
     }
 
+    Q_INVOKABLE void setPen ()
+    {
+	m_painter.setPen (Qt::NoPen);
+    }
+
+    Q_INVOKABLE void setPen (Pen* pen)
+    {
+	m_painter.setPen (*(pen->pen ()));
+    }
+
 protected:
     QPainter& m_painter;
 };
@@ -143,6 +186,7 @@ class Page : public QObject
     Q_ENUMS (PaintTime)
     Q_PROPERTY (QString name READ name WRITE setName)
     Q_PROPERTY (int duration READ duration WRITE setDuration)
+    Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
     Q_PROPERTY (bool animated READ animated WRITE setAnimated)
     Q_PROPERTY (PaintTime paintTime READ paintTime WRITE setPaintTime)
     Q_PROPERTY (bool waitKey READ waitKey WRITE setWaitKey)
@@ -160,7 +204,8 @@ public:
 
     Page (QObject* parent=NULL)
 	: QObject (parent)
-	, m_duration (0), m_animated (false), m_paintTime (EXPERIMENT)
+	, m_duration (0), m_frameCount (0)
+	, m_animated (false), m_paintTime (EXPERIMENT)
 	, m_waitKey (true)
 #ifdef HAVE_POWERMATE
         , m_waitRotation (false)
@@ -181,6 +226,12 @@ public:
 	m_duration = newDuration;
 	m_waitKey = newDuration <= 0;
     }
+
+    int frameCount () const
+    { return m_frameCount; }
+
+    void setFrameCount (int count)
+    { m_frameCount = count; }
 
     bool animated () const
     { return m_animated; }
@@ -220,12 +271,17 @@ public:
     { return m_waitRotation; }
 
     void setWaitRotation (bool wait)
-    { m_waitRotation = wait; }
+    {
+	m_waitKey = false;
+	m_waitRotation = wait;
+    }
+
 #endif // HAVE_POWERMATE
 
 protected:
     QString m_name;
     int m_duration;
+    int m_frameCount;
     bool m_animated;
     PaintTime m_paintTime;
     bool m_waitKey;
@@ -254,7 +310,8 @@ class Experiment : public QObject
     
 public:
     Experiment (QObject* parent=NULL)
-	: QObject (parent)
+	: QObject (parent),
+	  m_swapInterval (1)
     {
 	// Initialise the random number generator
 	m_twister.seed (time (NULL));

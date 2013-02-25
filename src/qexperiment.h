@@ -86,25 +86,6 @@ namespace plstim
     QSet<int> nextPageKeys;
 
   public:
-    /// Number of trials in a session
-    int ntrials;
-
-    /// Trial frames as OpenGL textures
-    //GLuint* tframes;
-
-    /// Special frames required by the protocol
-    //std::map<std::string,GLuint> special_frames;
-
-    /**
-     * Copy a pixel surface into an OpenGL texture.
-     * The destination texture must have been already created
-     * with gen_frame(), and its size should match the other
-     * textures (tex_width×tex_height).  The source surface can be
-     * destroyed after calling this function.
-     */
-    //bool copy_to_texture (const GLvoid* src, GLuint dest);
-
-  public:
 
     QExperiment (int& argc, char** argv);
 

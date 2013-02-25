@@ -35,7 +35,6 @@ QExperiment::exec ()
   // Watch for PowerMate events in a background thread
   PowerMateWatcher watcher;
   QThread wthread;
-  //QObject::connect (&thread, &QThread
   connect (&wthread, SIGNAL (started ()), &watcher, SLOT (watch ()));
   watcher.moveToThread (&wthread);
   wthread.start ();
@@ -71,49 +70,33 @@ QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
 
     // Multiple frames
     else {
-	qDebug () << "painting animated pages NYI";
+	//timer.start ();
+	stim->deleteAnimatedFrames (page->name ());
+	//qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
+	//timer.start ();
+
+	qDebug () << "number of frames to be painted:"
+		  << page->frameCount ();
+	for (int i = 0; i < page->frameCount (); i++) {
+
+	    painter.begin (&img);
+	    // Reset QImage/QPainter states
+	    img.fill (0); painter.setPen (Qt::NoPen);
+
+	    painter.setRenderHints (render_hints);
+
+	    emit page->paint (&wrappedPainter, i);
+
+	    painter.end ();
 #if 0
-    //timer.start ();
-    //glwidget->delete_animated_frames (page->title);
-    stim->deleteAnimatedFrames (page->title);
-    //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
-    //timer.start ();
-
-    qDebug () << "number of frames to be painted:" << page->frameCount ();
-    for (int i = 0; i < page->frameCount (); i++) {
-
-      painter->begin (&img);
-    // Reset QImage/QPainter states
-    img.fill (0); painter.setPen (Qt::NoPen);
-
-      painter->setRenderHints (render_hints);
-
-      lua_getglobal (lstate, "paint_frame");
-      lua_pushstring (lstate, page->title.toLocal8Bit ().data ());
-
-      // Fetch the QPainter from the registry
-      lua_pushlightuserdata (lstate, (void*) painter);
-      lua_gettable (lstate, LUA_REGISTRYINDEX);
-
-      lua_pushnumber (lstate, i);
-
-      if (! check_lua (lua_pcall (lstate, 3, 0, 0))) {
-	painter->end ();
-	abortExperiment ();
-	return;
-      }
-
-      painter->end ();
-#if 0
-      QString filename;
-      filename.sprintf ("page-%s-%04d.png", qPrintable (page->title), i);
-      img.save (filename);
+	    QString filename;
+	    filename.sprintf ("page-%s-%04d.png", qPrintable (page->name ()), i);
+	    img.save (filename);
 #endif
-      //glwidget->add_animated_frame (page->title, img);
-      stim->addAnimatedFrame (page->title, img);
-    }
-    //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
-#endif
+	    //glwidget->add_animated_frame (page->title, img);
+	    stim->addAnimatedFrame (page->name (), img);
+	}
+	//qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
     }
 }
 
@@ -126,6 +109,7 @@ QExperiment::run_trial ()
   emit m_experiment->newTrial ();
 
   // Paint each per-trial frame
+  int tex_size = 1024;
   QImage img (tex_size, tex_size, QImage::Format_RGB32);
   QPainter painter;
   for (int i = 0; i < m_experiment->pageCount (); i++) {
@@ -209,25 +193,21 @@ QExperiment::show_page (int index)
 #endif
 
     qDebug () << ">>> showing page" << page->name ();
-#if 0
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
     eyemsg_printf ("showing page %s", p->title.toUtf8 ().data ());
 #endif // HAVE_EYELINK
-#endif
 
   if (page->animated ()) {
-      //stim->showAnimatedFrames (p->title);
+      stim->showAnimatedFrames (page->name ());
   }
   else {
       stim->showFixedFrame (page->name ());
   }
 
   current_page = index;
-  //p->make_active ();
 
-#if 0
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
   if (p->fixation) {
@@ -272,7 +252,6 @@ QExperiment::show_page (int index)
     next_page ();
   }
 #endif // HAVE_EYELINK
-#endif
 
     // Fixed frame of defined duration
     if (page->duration () && ! page->animated ()) {
@@ -304,60 +283,59 @@ QExperiment::nextPage ()
     }
 #endif // HAVE_EYELINK
 
-  // Save the page record on HDF5
-  if (hf != NULL) {
-    hsize_t one = 1;
-    DataSpace fspace = dset.getSpace ();
-    hsize_t hframe = current_trial;
-    fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
-    DataSpace mspace (1, &one);
-    dset.write (trial_record, *record_type, mspace, fspace);
-  }
+    // Save the page record on HDF5
+    if (hf != NULL) {
+	hsize_t one = 1;
+	DataSpace fspace = dset.getSpace ();
+	hsize_t hframe = current_trial;
+	fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+	DataSpace mspace (1, &one);
+	dset.write (trial_record, *record_type, mspace, fspace);
+    }
   
-  // End of trial
-  if (current_page + 1 == m_experiment->pageCount ()) {
-      qDebug () << "End of trial";
-#if 0
-    // Next trial
-    if (++current_trial < ntrials) {
-      run_trial ();
-    }
-    // End of session
-    else {
-      if (hf != NULL) {
-#if HAVE_EYELINK
-	// Stop recording
-	stop_recording ();
-	// Choose a name for the local EDF
-	auto subject_id = subject_cbox->currentText ();
-	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-	// Buggy Eyelink headers do not care about const
-	auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
-	switch (res) {
-	case 0:
-	  error ("EyeLink data file transfer cancelled");
-	  break;
-	case FILE_CANT_OPEN:
-	  error ("Cannot open EyeLink data file");
-	  break;
-	case FILE_XFER_ABORTED:
-	  error ("EyeLink data file transfer aborted");
-	  break;
+    // End of trial
+    if (current_page + 1 == m_experiment->pageCount ()) {
+	qDebug () << "End of trial " << current_trial << "of" << m_experiment->trialCount ();
+
+	// Next trial
+	if (++current_trial < m_experiment->trialCount ()) {
+	    run_trial ();
 	}
-	check_eyelink (close_data_file (), "close_data_file");
+	// End of session
+	else {
+	    if (hf != NULL) {
+#if HAVE_EYELINK
+		// Stop recording
+		stop_recording ();
+		// Choose a name for the local EDF
+		auto subject_id = subject_cbox->currentText ();
+		auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+		// Buggy Eyelink headers do not care about const
+		auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+		switch (res) {
+		case 0:
+		    error ("EyeLink data file transfer cancelled");
+		    break;
+		case FILE_CANT_OPEN:
+		    error ("Cannot open EyeLink data file");
+		    break;
+		case FILE_XFER_ABORTED:
+		    error ("EyeLink data file transfer aborted");
+		    break;
+		}
+		check_eyelink (close_data_file (), "close_data_file");
 #endif // HAVE_EYELINK
-	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
-      }
-      //glwidget->normal_screen ();
-      stim->hide ();
-      session_running = false;
+		hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+	    }
+	    //glwidget->normal_screen ();
+	    stim->hide ();
+	    session_running = false;
+	}
     }
-#endif
-  }
-  // There is a next page
-  else {
-    show_page (current_page + 1);
-  }
+    // There is a next page
+    else {
+	show_page (current_page + 1);
+    }
 }
 
 void
@@ -384,32 +362,28 @@ QExperiment::powerMateRotation (PowerMateEvent* evt)
     if (! session_running)
 	return;
 
-#if 0
-    Page* page = pages[current_page];
-
-    if (page->waitRotation) {
+    auto page = m_experiment->page (current_page);
+    if (page->waitRotation ()) {
 	qDebug () << "RECORDING PowerMate event with step of" << evt->step;
-	savePageParameter (page->title, "rotation", evt->step);
-	next_page ();
+	savePageParameter (page->name (), "rotation", evt->step);
+	nextPage ();
     }
-#endif
 }
 
 void
 QExperiment::powerMateButtonPressed (PowerMateEvent* evt)
 {
     Q_UNUSED (evt);
-    qDebug () << "PowerMate button pressed!";
+    //qDebug () << "PowerMate button pressed!";
 
     if (! session_running)
 	return;
 
-#if 0
-    Page* page = pages[current_page];
-    if (page->wait_for_key && page->accepted_keys.empty ()) {
-	next_page ();
+    auto page = m_experiment->page (current_page);
+    if (page->waitKey () && page->acceptAnyKey ()) {
+	qDebug () << "powermate button → next page";
+	nextPage ();
     }
-#endif
 }
 #endif // HAVE_POWERMATE
 
@@ -442,6 +416,7 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
 #endif
 
       // Move to the next page
+      qDebug () << "stim key → next page";
       nextPage ();
     }
   }
@@ -482,7 +457,6 @@ QExperiment::unloadExperiment ()
 #endif
 
   xp_name.clear ();
-  ntrials = 0;
 
   param_spins.clear ();
 
@@ -912,8 +886,7 @@ QExperiment::xp_param_changed (double value)
 void
 QExperiment::set_trial_count (int num_trials)
 {
-  ntrials = num_trials;
-  ntrials_spin->setValue (ntrials);
+  ntrials_spin->setValue (num_trials);
 }
 
 static const QRegExp session_name_re ("session_[0-9]+");
@@ -953,7 +926,7 @@ QExperiment::init_session ()
     auto session_name = QString ("session_%1").arg (session_number);
 
     // Create a new dataset for the block/session
-    hsize_t htrials = ntrials;
+    hsize_t htrials = m_experiment->trialCount ();
     DataSpace dspace (1, &htrials);
     dset = hf->createDataSet (session_name.toUtf8 ().data (),
 			      *record_type, dspace);
@@ -1349,6 +1322,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Register QML types for PlStim
   qmlRegisterType<plstim::Vector> ("PlStim", 1, 0, "Vector");
+  qmlRegisterType<plstim::Pen> ("PlStim", 1, 0, "Pen");
   qmlRegisterType<plstim::PainterPath> ("PlStim", 1, 0, "PainterPath");
   qmlRegisterUncreatableType<plstim::Painter> ("PlStim", 1, 0, "Painter", "Painter objects cannot be created from QML");
   qmlRegisterType<plstim::Page> ("PlStim", 1, 0, "Page");
@@ -1624,21 +1598,20 @@ QExperiment::setup_updated ()
     QImage img (tex_size, tex_size, QImage::Format_RGB32);
     QPainter painter;
 
+    swap_interval = 1;
     for (int i = 0; i < m_experiment->pageCount (); i++) {
 	auto page = m_experiment->page (i);
-#if 0
-      if (p->type == Page::Type::FRAMES) {
-	// Make sure animated frames have updated number of frames
-	p->nframes = (int) round ((monitor_rate () / swap_interval)*p->duration/1000.0);
-	qDebug () << "Displaying" << p->nframes << "frames for" << p->title;
-	qDebug () << "  " << monitor_rate () << "/" << swap_interval;
-      }
-#endif
+	if (page->animated ()) {
+	    // Make sure animated frames have updated number of frames
+	    int nframes = (int) round ((monitor_rate () / swap_interval)*page->duration ()/1000.0);
+	    qDebug () << "Displaying" << nframes << "frames for" << page->name ();
+	    qDebug () << "  " << monitor_rate () << "/" << swap_interval;
+	    page->setFrameCount (nframes);
+	}
 
-      if (page->paintTime () == Page::EXPERIMENT)
-	  paintPage (page, img, painter);
+	if (page->paintTime () == Page::EXPERIMENT)
+	    paintPage (page, img, painter);
     }
-
   }
 }
 
