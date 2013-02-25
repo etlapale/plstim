@@ -124,27 +124,20 @@ QExperiment::run_trial ()
     auto name = it.first.toUtf8 ();
     size_t offset = it.second;
 
-    // TODO: we should check that we have the correct type here
-
-#if 0
-    lua_getglobal (lstate, name.data ());
-    if (lua_isnumber (lstate, -1)) {
-      double* pos = (double*) (((char*) trial_record)+offset);
-      *pos = lua_tonumber (lstate, -1);
-      qDebug () << "storing" << *pos << "for" << param_name;
+    QVariant prop = m_experiment->property (name);
+    if (prop.canConvert<float> ()) {
+	float* pos = (float*) (((char*) trial_record)+offset);
+	*pos = prop.toFloat ();
+	qDebug () << "storing" << *pos << "for" << param_name;
     }
-    else if (lua_istable (lstate, -1)) {
-      double* pos = (double*) (((char*) trial_record)+offset);
-      size_t len = lua_objlen (lstate, -1);
-      for (size_t i = 1; i <= len; i++) {
-	lua_rawgeti (lstate, -1, i);
-	pos[i-1] = lua_tonumber (lstate, -1);
-	lua_pop (lstate, 1);
-      }
-      qDebug () << "storing" << "array" << "for" << param_name;
+    else if (prop.canConvert<plstim::Vector*> ()) {
+	plstim::Vector* vec = prop.value<plstim::Vector*> ();
+	float* pos = (float*) (((char*) trial_record)+offset);
+	int len = vec->length ();
+	for (int i = 0; i <= len; i++)
+	    pos[i] = vec->at (i);
+	qDebug () << "storing" << "array" << "for" << param_name;
     }
-    lua_pop (lstate, 1);
-#endif
   }
 
 #ifdef HAVE_EYELINK
@@ -162,35 +155,33 @@ QExperiment::show_page (int index)
 {
     auto page = m_experiment->page (index);
 
-  // Save page parameters
-#if 0
-  auto it = record_offsets.find (p->title);
-  if (it != record_offsets.end ()) {
-    const std::map<QString,size_t>& params = it->second;
-    for (auto jt : params) {
-      auto param_name = jt.first;
-      size_t begin_offset = jt.second;
-      if (param_name == "begin") {
-	qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
-	qint64 nsecs = timer.nsecsElapsed ();
-	*pos = nsecs;
-      }
-      else if (param_name == "key") {
-	// Key will be known at the end of the page
-      }
+    // Save page parameters
+    auto it = record_offsets.find (page->name ());
+    if (it != record_offsets.end ()) {
+	const std::map<QString,size_t>& params = it->second;
+	for (auto jt : params) {
+	    auto param_name = jt.first;
+	    size_t begin_offset = jt.second;
+	    if (param_name == "begin") {
+		qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+		qint64 nsecs = timer.nsecsElapsed ();
+		*pos = nsecs;
+	    }
+	    else if (param_name == "key") {
+		// Key will be known at the end of the page
+	    }
 #ifdef HAVE_POWERMATE
-      else if (param_name == "rotation") {
-      }
+	    else if (param_name == "rotation") {
+	    }
 #endif
-      else {
-	/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
-	double value = timer.nsecsElapsed ();
-	*pos = nsecs;*/
-	qDebug () << "NYI page param";
-      }
+	    else {
+		/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
+		  double value = timer.nsecsElapsed ();
+		 *pos = nsecs;*/
+		qDebug () << "NYI page param";
+	    }
+	}
     }
-  }
-#endif
 
     qDebug () << ">>> showing page" << page->name ();
 #ifdef HAVE_EYELINK
@@ -513,7 +504,7 @@ QExperiment::load_experiment (const QString& path)
   
   // Add the experiment to the settings
   xp_name = fileinfo.fileName ();
-  if (xp_name.endsWith (".lua"))
+  if (xp_name.endsWith (".qml"))
     xp_name = xp_name.left (xp_name.size () - 4);
   settings->beginGroup (QString ("experiments/%1").arg (xp_name));
   if (settings->contains ("path")) {
@@ -546,62 +537,38 @@ QExperiment::load_experiment (const QString& path)
   qDebug () << "[QML] Number of trials:" << m_experiment->trialCount ();
 
   // Add trial parameters to the record
-#if 0
-  lua_getglobal (lstate, "trial_parameters");
-  if (lua_istable (lstate, -1)) {
-    lua_pushnil (lstate);
-    while (lua_next (lstate, -2) != 0) {
-      if (lua_isstring (lstate, -2)
-	  && lua_istable (lstate, -1)) {
-	QString param_name (lua_tostring (lstate, -2));
-	// Get the current value of the parameter to
-	// check it’s type
-	lua_getglobal (lstate, lua_tostring (lstate, -2));
-
-	// Double parameter (assumed if not found)
-	if (lua_isnil (lstate, -1)
-	    || lua_isnumber (lstate, -1)) {
-	  qDebug () << "Adding trial parameter" << param_name << "as double";
-	  trial_types[param_name] = PredType::NATIVE_DOUBLE;
-	  trial_offsets[param_name] = record_size;
-	  record_size += sizeof (double);
-	}
-	// Array of doubles
-	else if (lua_istable (lstate, -1)) {
-	  // Check for size in parameter description
-	  // TODO: convert that to the ‘page’ style
-	  size_t len = lua_objlen (lstate, -2);
-	  if (len >= 3) {
-	    lua_rawgeti (lstate, -2, 3);
-	    if (lua_isnumber (lstate, -1))
-	      len = lua_tointeger (lstate, -1);
-	    lua_pop (lstate, 1);
+  const QVariantMap& trialParameters = m_experiment->trialParameters ();
+  QMapIterator<QString,QVariant> it (trialParameters);
+  while (it.hasNext ()) {
+      it.next ();
+      const QString& param_name = it.key ();
+      qDebug () << "found trial parameter" << param_name;
+      
+      // Get the current value of the parameter to
+      // check it’s type
+      QVariant prop = m_experiment->property (param_name.toUtf8 ());
+      if (prop.isValid ()) {
+	  if (prop.canConvert<float> ()) {
+	      qDebug () << "Adding trial parameter" << param_name << "as float";
+	      trial_types[param_name] = PredType::NATIVE_FLOAT;
+	      trial_offsets[param_name] = record_size;
+	      record_size += sizeof (float);
+	  }
+	  else if (prop.canConvert<plstim::Vector*> ()) {
+	      plstim::Vector* vec = prop.value<plstim::Vector*> ();
+	      // Get the current size of the array
+	      int len = vec->length ();
+	      qDebug () << "Adding trial parameter" << param_name << "as double array of" << len << "elements";
+	      hsize_t hlen = len;
+	      trial_types[param_name] = ArrayType (PredType::NATIVE_FLOAT, 1, &hlen);
+	      trial_offsets[param_name] = record_size;
+	      record_size += len * sizeof (float);
 	  }
 	  else {
-	    len = 0;
+	      qDebug () << "Unknown type for trial parameter" << param_name;
 	  }
-	  qDebug () << "description length:" << len;
-	  
-	  // Get the current size of the array
-	  if (len == 0)
-	    len = lua_objlen (lstate, -1);
-	  qDebug () << "Adding trial parameter" << param_name << "as double array of" << len << "elements";
-	  hsize_t hlen = len;
-	  trial_types[param_name] = ArrayType (PredType::NATIVE_DOUBLE, 1, &hlen);
-	  trial_offsets[param_name] = record_size;
-	  record_size += len * sizeof (double);
-	}
-	// Unknown parameter type
-	else {
-	  error (QString ("Unknown parameter type for %1").arg (param_name));
-	}
-	// Remove parameter current value from the stack
-	lua_pop (lstate, 1);
       }
-      lua_pop (lstate, 1);
-    }
   }
-#endif
   
   // Check for modules to be loaded
 #if 0
@@ -633,148 +600,65 @@ QExperiment::load_experiment (const QString& path)
 #endif
 
   // Create the pages defined in the experiment
+  for (int i = 0; i < m_experiment->pageCount (); i++) {
+      Page* page = m_experiment->page (i);
+      QString page_title = page->name ();
+      // Compute required memory for the page
+      record_offsets[page_title]["begin"] = record_size;
+      record_size += sizeof (qint64);	// Start page presentation
 #if 0
-  lua_getglobal (lstate, "pages");
-  if (lua_istable (lstate, -1)) {
-    size_t plen = lua_objlen (lstate, -1);
-    for (size_t i = 1; i <= plen; i++) {
-      lua_rawgeti (lstate, -1, i);
-      if (lua_istable (lstate, -1)) {
-	// Page information
-	QString page_title;
-	auto page_type = Page::Type::SINGLE;
-	float page_duration = 0;
-#ifdef HAVE_EYELINK
-	float page_fixation = 0;
-#endif
-#ifdef HAVE_POWERMATE
-	bool page_rotation = false;
-#endif
-	std::set<int> accepted_keys;
-
-	// Process each page parameter
-	lua_pushnil (lstate);
-	while (lua_next (lstate, -2) != 0) {
-	  if (lua_isstring (lstate, -2)) {
-	    QString param (lua_tostring (lstate, -2));
-	    if (param == "name" && lua_isstring (lstate, -1)) {
-	      page_title = lua_tostring (lstate, -1);
-	    }
-	    else if (param == "animated"
-		&& lua_isboolean (lstate, -1)) {
-	      page_type = lua_toboolean (lstate, -1)
-		? Page::Type::FRAMES : Page::Type::SINGLE;
-	    }
-	    else if (param == "duration"
-		     && lua_isnumber (lstate, -1)) {
-	      page_duration = lua_tonumber (lstate, -1);
-	    }
-	    else if (param == "keys"
-		     && lua_isstring (lstate, -1)) {
-	      QString str (lua_tostring (lstate, -1));
-	      auto keys = str.split (" ", QString::SkipEmptyParts);
-	      for (auto k : keys) {
-		auto it = key_mapping.find (k);
-		if (it == key_mapping.end ()) {
-		  qDebug () << "error: no mapping for key " << k;
-		}
-		else {
-		  accepted_keys.insert (it->second);
-		  xp_keys.insert (k);
-		}
-	      }
-	    }
-#if HAVE_EYELINK
-	    else if (param == "fixation"
-		     && lua_isnumber (lstate, -1)) {
-	      page_fixation = lua_tonumber (lstate, -1);
-	    }
-#endif // HAVE_EYELINK
-	    else if (param == "answer"
-		    && lua_isstring (lstate, -1)) {
-		QString str (lua_tostring (lstate, -1));
-#ifdef HAVE_POWERMATE
-		if (str == "rotation") {
-		    page_rotation = true;
-		}
-#endif // HAVE_POWERMATE
-	    }
-	  }
-	  lua_pop (lstate, 1);
-	}
-
-	// Create a new page and add it to the experiment
-	auto page = new Page (page_type, page_title);
-	page->duration = page_duration;
-#ifdef HAVE_EYELINK
-	page->fixation = page_fixation;
-#endif // HAVE_EYELINK
-#ifdef HAVE_POWERMATE
-	page->waitRotation = page_rotation;
-#endif // HAVE_POWERMATE
-	page->accepted_keys = accepted_keys;
-	add_page (page);
-
-	// Compute required memory for the page
-	record_offsets[page_title]["begin"] = record_size;
-	record_size += sizeof (qint64);	// Start page presentation
-	if (! accepted_keys.empty ()) {
-	    record_offsets[page_title]["key"] = record_size;
-	    record_size += sizeof (int);	// Pressed key
-	}
-#ifdef HAVE_POWERMATE
-	if (page_rotation) {
-	    record_offsets[page_title]["rotation"] = record_size;
-	    record_size += sizeof (int);	// PowerMate rotation
-	}
-#endif // HAVE_POWERMATE
+      if (! accepted_keys.empty ()) {
+	  record_offsets[page_title]["key"] = record_size;
+	  record_size += sizeof (int);	// Pressed key
       }
-      lua_pop (lstate, 1);
-    }
-  }
 #endif
+#ifdef HAVE_POWERMATE
+      if (page->waitRotation ()) {
+	  record_offsets[page_title]["rotation"] = record_size;
+	  record_size += sizeof (int);	// PowerMate rotation
+      }
+#endif // HAVE_POWERMATE
+  }
 
   // Define the trial record
-#if 0
   if (record_size) {
-    qDebug () << "record size set to" << record_size;
-    trial_record = malloc (record_size);
-    record_type = new CompType (record_size);
-    // Add trial info to the record
-    for (auto it : trial_offsets) {
-      const QString & param_name = it.first;
-      qDebug () << "  Trial for" << it.first << "at" << it.second;
-      record_type->insertMember (param_name.toUtf8 ().data (), it.second, trial_types[param_name]);
-    }
-    // Add pages info to the record
-    QString fmt ("%1_%2");
-    for (auto p : pages) {
-      auto page_name = p->title;
-      for (auto param : record_offsets[page_name]) {
-	auto param_name = param.first;
-	auto offset = param.second;
-	H5::DataType param_type;
-	if (param_name == "begin")
-	    param_type = PredType::NATIVE_LONG;
-	else if (param_name == "key")
-	    param_type = PredType::NATIVE_INT;
-#ifdef HAVE_POWERMATE
-	else if (param_name == "rotation")
-	    param_type = PredType::NATIVE_INT;
-#endif // HAVE_POWERMATE
-	else
-	    param_type = PredType::NATIVE_DOUBLE;
-	qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
-	record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
+      qDebug () << "record size set to" << record_size;
+      trial_record = malloc (record_size);
+      record_type = new CompType (record_size);
+      // Add trial info to the record
+      for (auto it : trial_offsets) {
+	  const QString & param_name = it.first;
+	  qDebug () << "  Trial for" << it.first << "at" << it.second;
+	  record_type->insertMember (param_name.toUtf8 ().data (), it.second, trial_types[param_name]);
       }
-    }
-    qDebug () << "Trial record size:" << record_size;
+      // Add pages info to the record
+      QString fmt ("%1_%2");
+      for (int i = 0; i < m_experiment->pageCount (); i++) {
+	  plstim::Page* page = m_experiment->page (i);
+	  auto page_name = page->name ();
+	  for (auto param : record_offsets[page_name]) {
+	      auto param_name = param.first;
+	      auto offset = param.second;
+	      H5::DataType param_type;
+	      if (param_name == "begin")
+		  param_type = PredType::NATIVE_LONG;
+	      else if (param_name == "key")
+		  param_type = PredType::NATIVE_INT;
+#ifdef HAVE_POWERMATE
+	      else if (param_name == "rotation")
+		  param_type = PredType::NATIVE_INT;
+#endif // HAVE_POWERMATE
+	      else
+		  param_type = PredType::NATIVE_DOUBLE;
+	      qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
+	      record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
+	  }
+      }
+      qDebug () << "Trial record size:" << record_size;
   }
-#endif
 
 
   // Setup an experiment item in the left toolbox
-#if 0
   xp_item = new QWidget;
   auto flayout = new QFormLayout;
   // Experiment name flayout->addRow ("Experiment", new QLabel (xp_name)); // Number of trials
@@ -784,6 +668,7 @@ QExperiment::load_experiment (const QString& path)
 	   this, SLOT (set_trial_count (int)));
   flayout->addRow ("Number of trials", ntrials_spin);
   // Add spins for experiment specific parameters
+#if 0
   lua_getglobal (lstate, "parameters");
   if (lua_istable (lstate, -1)) {
     lua_pushnil (lstate);
@@ -814,16 +699,14 @@ QExperiment::load_experiment (const QString& path)
     }
   }
   lua_pop (lstate, 1);
+#endif
   // Finish the experiment item
   xp_item->setLayout (flayout);
   tbox->addItem (xp_item, "Experiment");
 
+  set_trial_count (m_experiment->trialCount ());
+#if 0
   // Fetch experiment parameters
-  lua_getglobal (lstate, "ntrials");
-  if (lua_isnumber (lstate, -1)) {
-    set_trial_count ((int) lua_tonumber (lstate, -1));
-  }
-  lua_pop (lstate, 1);
   for (auto it : param_spins) {
     lua_getglobal (lstate, it.first.toUtf8().data ());
     if (lua_isnumber (lstate, -1))
@@ -836,7 +719,6 @@ QExperiment::load_experiment (const QString& path)
 
 
   // Setup a subject item in the left toolbox
-#if 0
   subject_item = new QWidget;
   flayout = new QFormLayout;
   subject_cbox = new QComboBox;
@@ -861,8 +743,6 @@ QExperiment::load_experiment (const QString& path)
 
   // Prepare for running the experiment
   tbox->setCurrentWidget (subject_item);
-
-#endif
 
   // Initialise the experiment
   setup_updated ();

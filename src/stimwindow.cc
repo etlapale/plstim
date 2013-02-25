@@ -58,7 +58,7 @@ void
 StimWindow::addFixedFrame (const QString& name, const QImage& img)
 {
     if (isExposed ()) {
-	qDebug () << "binding fixed texture" << name;
+	//qDebug () << "binding fixed texture" << name;
 	
 	GLuint texid;
 
@@ -83,7 +83,7 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 void
 StimWindow::addAnimatedFrame (const QString& name, const QImage& img)
 {
-    qDebug () << "adding animated frame" << name;
+    //qDebug () << "adding animated frame" << name;
     if (isExposed ()) {
 	m_context->makeCurrent (this);
 
