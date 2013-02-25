@@ -11,9 +11,6 @@
 
 #include <QtQml>
 
-// Lua interpreter
-#include <lua.hpp>
-
 // HDF5 C++ library
 #include <H5Cpp.h>
 
@@ -251,8 +248,6 @@ namespace plstim
     QQmlComponent* m_component;
     /// Currently loaded experiment
     plstim::Experiment* m_experiment;
-
-    lua_State* lstate;
 
     /// Last opened directory in file dialog
     QString last_dialog_dir;

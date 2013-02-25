@@ -117,29 +117,6 @@ QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
     }
 }
 
-bool
-QExperiment::check_lua (int retcode)
-{
-  switch (retcode) {
-  case 0:
-    return true;
-  case LUA_ERRERR:
-    error ("Problem in Lua error handler", lua_tostring (lstate, -1));
-    break;
-  case LUA_ERRMEM:
-    error ("Lua memory allocation error", lua_tostring (lstate, -1));
-    break;
-  case LUA_ERRRUN:
-    error ("Lua runtime error", lua_tostring (lstate, -1));
-    break;
-  case LUA_ERRSYNTAX:
-    error ("Lua syntax error", lua_tostring (lstate, -1));
-    break;
-  }
-  lua_pop (lstate, 1);
-  return false;
-}
-
 void
 QExperiment::run_trial ()
 {
@@ -470,19 +447,6 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   }
 }
 
-
-static void
-register_class (lua_State* lstate,
-		const char* fullname, const luaL_reg* methods)
-{
-  luaL_newmetatable (lstate, fullname);
-
-  // Register the methods
-  lua_pushstring (lstate, "__index");
-  lua_pushvalue (lstate, -2);
-  lua_settable (lstate, -3);
-  luaL_openlib (lstate, NULL, methods, 0);
-}
 
 void
 QExperiment::open_recent ()
@@ -938,8 +902,10 @@ QExperiment::xp_param_changed (double value)
   auto spin = qobject_cast<QDoubleSpinBox*> (sender());
   if (spin) {
     auto param = spin->property ("plstim_param_name").toString ();
+#if 0
     lua_pushnumber (lstate, value);
     lua_setglobal (lstate, param.toUtf8 ().data ());
+#endif
   }
 }
 
@@ -1061,8 +1027,7 @@ void
 QExperiment::run_session ()
 {
   // No experiment loaded
-  if (lstate == NULL)
-    return;
+  if (! m_experiment) return;
 
   init_session ();
 #ifdef HAVE_EYELINK
@@ -1137,7 +1102,6 @@ QExperiment::QExperiment (int & argc, char** argv)
   plstim::initialise ();
 
   win = new QMainWindow;
-  lstate = NULL;
   m_component = NULL;
   m_experiment = NULL;
   xp_item = NULL;
@@ -1703,10 +1667,6 @@ QExperiment::~QExperiment ()
     delete settings;
     delete stim;
     delete win;
-
-    // TODO: debug the double free corruption here
-    if (lstate != NULL)
-	lua_close (lstate);
 }
 
 void

@@ -18,14 +18,8 @@ powermate {
   HEADERS += src/powermate.h
 }
 
-unix {
-  LIBS += -llua
-}
-
 win32 {
-  INCLUDEPATH += "C:/Program Files/Lua/5.1/include"
   INCLUDEPATH += C:/MinGW/msys/1.0/local/include
-  LIBS += -L "C:/Program Files/Lua/5.1/lib" -llua51
   LIBS += -L C:/MinGW/msys/1.0/local/lib
   RC_FILE += src/plstim.rc
 }
