@@ -285,7 +285,9 @@ QExperiment::nextPage ()
     }
   
     // End of trial
-    if (current_page + 1 == m_experiment->pageCount ()) {
+    auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
+    if ((page && page->last ())
+	    || current_page + 1 == m_experiment->pageCount ()) {
 	qDebug () << "End of trial " << current_trial << "of" << m_experiment->trialCount ();
 
 	// Next trial
@@ -325,6 +327,20 @@ QExperiment::nextPage ()
     }
     // There is a next page
     else {
+	// Check if there is a next page user defined
+	if (page) {
+	    QString next = page->nextPage ();
+	    if (! next.isEmpty ()) {
+		for (int i = 0; i < m_experiment->pageCount (); i++) {
+		    Page* p = m_experiment->page (i);
+		    if (p->name () == next) {
+			current_page = i - 1;
+			break;
+		    }
+		}
+	    }
+	}
+	
 	show_page (current_page + 1);
     }
 }
@@ -357,6 +373,10 @@ QExperiment::powerMateRotation (PowerMateEvent* evt)
     if (page->waitRotation ()) {
 	qDebug () << "RECORDING PowerMate event with step of" << evt->step;
 	savePageParameter (page->name (), "rotation", evt->step);
+
+	// Notify the page of a rotation
+	emit page->rotation (evt->step);
+
 	nextPage ();
     }
 }

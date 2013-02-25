@@ -29,7 +29,7 @@ public:
     Q_INVOKABLE float at (int index) const
     {
 	if (index < 0 || index >= m_length) {
-	    qDebug () << "out of range Vector index";
+	    qDebug () << "out of range Vector index" << index << "but" << m_length;
 	    return 0;
 	}
 	return m_data[index];
@@ -38,7 +38,7 @@ public:
     Q_INVOKABLE void set (int index, float value)
     {
 	if (index < 0 || index >= m_length)
-	    qDebug () << "out of range Vector index";
+	    qDebug () << "out of range Vector index" << index << "but" << m_length;
 	else
 	    m_data[index] = value;
     }
@@ -185,6 +185,8 @@ class Page : public QObject
     Q_OBJECT
     Q_ENUMS (PaintTime)
     Q_PROPERTY (QString name READ name WRITE setName)
+    Q_PROPERTY (bool last READ last WRITE setLast)
+    Q_PROPERTY (QString nextPage READ nextPage WRITE setNextPage)
     Q_PROPERTY (int duration READ duration WRITE setDuration)
     Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
     Q_PROPERTY (bool animated READ animated WRITE setAnimated)
@@ -204,6 +206,7 @@ public:
 
     Page (QObject* parent=NULL)
 	: QObject (parent)
+	, m_last (false)
 	, m_duration (0), m_frameCount (0)
 	, m_animated (false), m_paintTime (EXPERIMENT)
 	, m_waitKey (true)
@@ -226,6 +229,18 @@ public:
 	m_duration = newDuration;
 	m_waitKey = newDuration <= 0;
     }
+
+    bool last () const
+    { return m_last; }
+
+    void setLast (bool last)
+    { m_last = last; }
+
+    const QString& nextPage () const
+    { return m_nextPage; }
+
+    void setNextPage (const QString& page)
+    { m_nextPage = page; }
 
     int frameCount () const
     { return m_frameCount; }
@@ -280,6 +295,8 @@ public:
 
 protected:
     QString m_name;
+    bool m_last;
+    QString m_nextPage;
     int m_duration;
     int m_frameCount;
     bool m_animated;
@@ -291,8 +308,10 @@ protected:
 #endif // HAVE_POWERMATE
 
 signals:
-    //void paint (QPainter* painter, int frameNumber);
     void paint (plstim::Painter* painter, int frameNumber);
+#ifdef HAVE_POWERMATE
+    void rotation (int step);
+#endif // HAVE_POWERMATE
 };
 
 class Experiment : public QObject
