@@ -35,7 +35,6 @@ namespace plstim
   {
     Q_OBJECT
     Q_PROPERTY (float monitor_rate READ monitor_rate)
-    Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
   public:
     /// Associated Qt application
     QApplication app;
@@ -76,9 +75,6 @@ namespace plstim
     /// Location of the current texture
     int texloc;
 
-    /// Texture width (2ⁿ)
-    int tex_size;
-
     /// Current trial number
     int current_trial;
 
@@ -112,11 +108,6 @@ namespace plstim
 
     /// Clear the screen
     bool clear_screen ();
-
-    int textureSize () const { return tex_size; }
-    void setTextureSize (int size) { tex_size = size; }
-
-    //void set_glformat (QGLFormat glformat);
 
     float monitor_rate () const;
 
@@ -281,8 +272,6 @@ namespace plstim
 
   public:
     void error (const QString& msg, const QString& desc="");
-
-    QColor get_colour (const char* name) const;
 
 #ifdef HAVE_EYELINK
   protected:

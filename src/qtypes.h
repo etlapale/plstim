@@ -192,6 +192,9 @@ class Page : public QObject
     Q_PROPERTY (bool animated READ animated WRITE setAnimated)
     Q_PROPERTY (PaintTime paintTime READ paintTime WRITE setPaintTime)
     Q_PROPERTY (bool waitKey READ waitKey WRITE setWaitKey)
+#ifdef HAVE_EYELINK
+    Q_PROPERTY (int fixation READ fixation WRITE setFixation)
+#endif
 #ifdef HAVE_POWERMATE
     Q_PROPERTY (bool waitRotation READ waitRotation WRITE setWaitRotation)
 #endif // HAVE_POWERMATE
@@ -210,6 +213,9 @@ public:
 	, m_duration (0), m_frameCount (0)
 	, m_animated (false), m_paintTime (EXPERIMENT)
 	, m_waitKey (true)
+#if HAVE_EYELINK
+	, m_fixation (0)
+#endif
 #ifdef HAVE_POWERMATE
         , m_waitRotation (false)
 #endif // HAVE_POWERMATE
@@ -235,6 +241,14 @@ public:
 
     void setLast (bool last)
     { m_last = last; }
+
+#ifdef HAVE_EYELINK
+    int fixation () const
+    { return m_fixation; }
+
+    void setFixation (int fix)
+    { m_fixation = fix; }
+#endif
 
     const QString& nextPage () const
     { return m_nextPage; }
@@ -277,8 +291,7 @@ public:
 
     bool acceptKey (int key) const
     {
-	return m_acceptedKeys.isEmpty ()
-	    || m_acceptedKeys.contains (key);
+	return m_acceptedKeys.contains (key);
     }
 
 #ifdef HAVE_POWERMATE
@@ -303,6 +316,9 @@ protected:
     PaintTime m_paintTime;
     bool m_waitKey;
     QSet<int> m_acceptedKeys;
+#ifdef HAVE_EYELINK
+    int m_fixation;
+#endif
 #ifdef HAVE_POWERMATE
     bool m_waitRotation;
 #endif // HAVE_POWERMATE
@@ -326,6 +342,7 @@ class Experiment : public QObject
     Q_PROPERTY (QColor background READ background WRITE setBackground)
     Q_PROPERTY (QQmlListProperty<plstim::Page> pages READ pages)
     Q_PROPERTY (QVariantMap trialParameters READ trialParameters WRITE setTrialParameters)
+    Q_PROPERTY (QVariantList modules READ modules WRITE setModules)
     Q_CLASSINFO ("DefaultProperty", "pages")
     
 public:
@@ -438,6 +455,12 @@ public:
     void setTrialParameters (const QVariantMap& params)
     { m_trialParameters = params; }
 
+    const QVariantList& modules () const
+    { return m_modules; }
+
+    void setModules (const QVariantList& modules)
+    { m_modules = modules; }
+
 protected:
     /// Pseudo random number generator
     std::mt19937 m_twister;
@@ -453,6 +476,7 @@ protected:
     QColor m_background;
     QList<plstim::Page*> m_pages;
     QVariantMap m_trialParameters;
+    QVariantList m_modules;
 
 signals:
     void newTrial ();

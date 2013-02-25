@@ -109,7 +109,7 @@ QExperiment::run_trial ()
   emit m_experiment->newTrial ();
 
   // Paint each per-trial frame
-  int tex_size = 1024;
+  int tex_size = m_experiment->textureSize ();
   QImage img (tex_size, tex_size, QImage::Format_RGB32);
   QPainter painter;
   for (int i = 0; i < m_experiment->pageCount (); i++) {
@@ -187,7 +187,7 @@ QExperiment::show_page (int index)
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
-    eyemsg_printf ("showing page %s", p->title.toUtf8 ().data ());
+    eyemsg_printf ("showing page %s", page->name ().toUtf8 ().data ());
 #endif // HAVE_EYELINK
 
   if (page->animated ()) {
@@ -201,13 +201,13 @@ QExperiment::show_page (int index)
 
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
-  if (p->fixation) {
-    qDebug () << "page" << p->title << "wants a" << p->fixation << "ms fixation";
+  if (page->fixation ()) {
+    qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
     float tx = (float) res_x_edit->value () / 2.0;
     float ty = (float) res_y_edit->value () / 2.0;
-    float fix_threshold = deg2pix (1.0);
+    float fix_threshold = m_experiment->degreesToPixels (1.0);
     qDebug () << "checking for fix at" << tx << ty << "threshold is" << fix_threshold << "px";
 
     waiting_fixation = true;
@@ -216,7 +216,7 @@ QExperiment::show_page (int index)
     float dst = 2*fix_threshold;
     while (waiting_fixation
 	   && (dst > fix_threshold
-	       || timer.elapsed () < p->fixation)) {
+	       || timer.elapsed () < page->fixation ())) {
       // Check for eye data
       if (eyelink_newest_float_sample (NULL) > 0) {
 	// Get eye position
@@ -240,7 +240,7 @@ QExperiment::show_page (int index)
     }
 
     waiting_fixation = false;
-    next_page ();
+    nextPage ();
   }
 #endif // HAVE_EYELINK
 
@@ -411,7 +411,7 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   if (page->waitKey ()) {
 #ifdef HAVE_EYELINK
     // Allows EyeLink calibration and validation
-    if (page->fixation > 0
+    if (page->fixation () > 0
 	&& evt->key () == Qt::Key_C) {
       calibrate_eyelink ();
       return;
@@ -591,33 +591,18 @@ QExperiment::load_experiment (const QString& path)
   }
   
   // Check for modules to be loaded
-#if 0
-  lua_getglobal (lstate, "modules");
-  if (lua_istable (lstate, -1)) {
-    size_t mlen = lua_objlen (lstate, -1);
-    for (size_t i = 1; i <= mlen; i++) {
-      lua_rawgeti (lstate, -1, i);
-      if (lua_isstring (lstate, -1)) {
-	QString mod_name (lua_tostring (lstate, -1));
-	if (mod_name.isEmpty ()) {
-	}
+  const QVariantList& modules = m_experiment->modules ();
+  for (int i = 0; i < modules.size (); i++) {
+      QVariant var = modules.at (i);
+      if (var.canConvert<QString> ()) {
+	  QString name = var.toString ();
 #ifdef HAVE_EYELINK
-	else if (mod_name == "eyelink") {
-	  load_eyelink ();
-	}
+	  if (name == "eyelink") {
+	      load_eyelink ();
+	  }
 #endif
-#ifdef HAVE_POWERMATE
-	else if (mod_name == "powermate") {
-	}
-#endif
-	else {
-	    qDebug () << "error: unknown plstim module:" << mod_name;
-	}
       }
-      lua_pop (lstate, 1);
-    }
   }
-#endif
 
   // Create the pages defined in the experiment
   for (int i = 0; i < m_experiment->pageCount (); i++) {
@@ -923,7 +908,8 @@ QExperiment::runSessionInline ()
   if (! m_experiment) return;
 
   init_session ();
-  stim->resize (1024, 1024);
+  int tex_size = m_experiment->textureSize ();
+  stim->resize (tex_size, tex_size);
   stim->show ();
   //glwidget->setFocus (Qt::OtherFocusReason);
   session_running = true;
@@ -1439,26 +1425,6 @@ QExperiment::setup_updated ()
       swap_interval = coef;
     }
     lua_pop (lstate, 1);
-
-    // Compute the minimal texture size
-    lua_getglobal (lstate, "size");
-    if (lua_isnumber (lstate, -1)) {
-      double size_degs = lua_tonumber (lstate, -1);
-      double size_px = ceil (deg2pix (size_degs));
-      qDebug () << "Stimulus size:" << size_px;
-
-      // Minimal base-2 texture size
-      tex_size = 1 << (int) floor (log2 (size_px));
-      if (tex_size < size_px)
-	tex_size <<= 1;
-
-      // Update Lua’s (TODO: read-only) info
-      lua_getglobal (lstate, "xp");
-      lua_pushstring (lstate, "tex_size");
-      lua_pushnumber (lstate, tex_size);
-      lua_settable (lstate, -3);
-
-    }
 #endif
     float distance = dst_edit->value ();
 
@@ -1474,7 +1440,16 @@ QExperiment::setup_updated ()
     m_experiment->setVerticalResolution (vres);
     m_experiment->setRefreshRate (refreshRate);
 
-    int tex_size = 1024;
+    // Compute the minimal texture size
+    float size_degs = m_experiment->size ();
+    double size_px = ceil (m_experiment->degreesToPixels (size_degs));
+    qDebug () << "Stimulus size:" << size_px << "from" << size_degs;
+
+    // Minimal base-2 texture size
+    int tex_size = 1 << (int) floor (log2 (size_px));
+    if (tex_size < size_px)
+	tex_size <<= 1;
+
     qDebug () << "Texture size:" << tex_size << "x" << tex_size;
 
     // Update experiment property

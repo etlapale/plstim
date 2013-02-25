@@ -334,7 +334,7 @@ StimWindow::initialize ()
     }
     m_toabind.clear ();
 
-    glClearColor (1, 0, 0, 0);
+    glClearColor (0, 0, 0, 0);
 
     updateShaders ();
 
