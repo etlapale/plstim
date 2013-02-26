@@ -24,6 +24,8 @@ public:
     void render ();
     void setTextureSize (int twidth, int theight);
     void showFullScreen (int x, int y);
+    /// Delete everything created for this stimulus window
+    void clear ();
 public slots:
     void renderNow ();
     void updateShaders ();

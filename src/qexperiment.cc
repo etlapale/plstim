@@ -201,7 +201,7 @@ QExperiment::show_page (int index)
 
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
-  if (page->fixation ()) {
+  if (false) {//page->fixation ()) {
     qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
@@ -493,11 +493,7 @@ QExperiment::unloadExperiment ()
     hf = NULL;
   }
 
-  //glwidget->delete_fixed_frames ();
-  //glwidget->delete_animated_frames ();
-  // TODO: also delete shaders. put everything in cleanup ()
-  qDebug () << "!!! StimWindow cleanup NYI !!!";
-
+  stim->clear ();
 
   xp_label->setText ("No experiment loaded");
 }

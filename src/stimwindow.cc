@@ -116,6 +116,42 @@ StimWindow::deleteAnimatedFrames (const QString& name)
     }
 }
 
+void
+StimWindow::clear ()
+{
+    // Clear buffered commands
+    m_tobind.clear ();
+    m_toabind.clear ();
+    m_toshow.clear ();
+
+    // Unset current frame
+    m_currentFrame = 0;
+
+    GLuint texid;
+
+    // Destroy fixed frame textures
+    QMapIterator<QString,GLuint> it (m_fixedFrames);
+    while (it.hasNext ()) {
+	it.next ();
+	texid = it.value ();
+	glDeleteTextures (1, &texid);
+    }
+    m_fixedFrames.clear ();
+
+    // Destroy animated frame textures
+    QMapIterator<QString,QVector<GLuint>> jt (m_animatedFrames);
+    while (jt.hasNext ()) {
+	jt.next ();
+	const QVector<GLuint>& vec = jt.value ();
+	for (GLuint t : vec)
+	    glDeleteTextures (1, &t);
+    }
+    m_animatedFrames.clear ();
+
+    // Empty current display
+    renderNow ();
+}
+
 bool
 StimWindow::event (QEvent* evt)
 {
@@ -166,10 +202,8 @@ StimWindow::showFullScreen (int offx, int offy)
 void
 StimWindow::renderNow ()
 {
-    if (! isExposed ()) {
-	qDebug () << "cannot renderNow since not exposed";
+    if (! isExposed ())
 	return;
-    }
 
     bool needInit = false;
 
