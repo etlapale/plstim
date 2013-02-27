@@ -6,16 +6,15 @@ Rectangle {
 
     width : 400
     height : 800
-    color : "#040f15"
+    color : theme.background
+
+    property bool running : false
 
     Column {
 	width : parent.width
 
-	Text {
+	SectionText {
 	    text : "Setup"
-	    color : theme.titleColor
-	    font.bold : true
-	    font.pointSize : theme.pointSize
 	}
 
 	IntInput {
@@ -68,16 +67,8 @@ Rectangle {
 	    value : "85 Hz"
 	}
 
-	Item {
-	    width : 1
-	    height : 10
-	}
-
-	Text {
+	SectionText {
 	    text : "Experiment"
-	    color : theme.titleColor
-	    font.bold : true
-	    font.pointSize : theme.pointSize
 	}
 
 	IntInput {
@@ -85,16 +76,8 @@ Rectangle {
 	    value : "160"
 	}
 
-	Item {
-	    width : 1
-	    height : 10
-	}
-
-	Text {
+	SectionText {
 	    text : "Subject"
-	    color : theme.titleColor
-	    font.bold : true
-	    font.pointSize : theme.pointSize
 	}
 
 	Text {
@@ -116,14 +99,50 @@ Rectangle {
 	    Button {
 		objectName : "runButton"
 		text : "Run"
+		visible : ! running
 	    }
 	    Button {
 		objectName : "runInlineButton"
 		text : "Run inline"
+		visible : ! running
 	    }
+
+	    Button {
+		objectName : "abortButton"
+		text : "Abort"
+		visible : running
+	    }
+
 	    Button {
 		objectName : "quitButton"
 		text : "Quit"
+	    }
+	}
+
+	Item {
+	    width : 1
+	    height : 50
+	}
+
+	SectionText {
+	    text : "Session"
+	    visible : running
+	}
+
+	Row {
+	    width : parent.width
+	    visible : running
+	    Text {
+		text : "Trial"
+		width : 180
+		color : theme.foreground
+		font.pointSize : theme.pointSize
+	    }
+	    Text {
+		objectName : "trialText"
+		width : 50
+		color : theme.foreground
+		font.pointSize : theme.pointSize
 	    }
 	}
     }

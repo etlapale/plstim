@@ -9,7 +9,7 @@ Row {
 	Text {
 	    text : label
 	    color : theme.foreground
-	    font.pointSize : 12
+	    font.pointSize : theme.pointSize
 	}
     }
     Column {

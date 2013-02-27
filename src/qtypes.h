@@ -317,7 +317,6 @@ public:
 	m_waitKey = false;
 	m_waitRotation = wait;
     }
-
 #endif // HAVE_POWERMATE
 
 protected:

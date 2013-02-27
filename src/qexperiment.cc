@@ -49,6 +49,18 @@ QExperiment::exec ()
   if (obj)
       QObject::connect (obj, SIGNAL (buttonClick ()),
 	                this, SLOT (runSessionInline ()));
+  obj = gui.rootObject ()->findChild<QObject*> ("abortButton");
+  if (obj)
+      QObject::connect (obj, SIGNAL (buttonClick ()),
+	                this, SLOT (endSession ()));
+  connect (this, &QExperiment::runningChanged, [&gui] (bool running) {
+	  gui.rootObject ()->setProperty ("running", running);
+      });
+  connect (this, &QExperiment::currentTrialChanged, [&gui,m_experiment] (int trial) {
+	  auto obj = gui.rootObject ()->findChild<QObject*> ("trialText");
+	  if (obj)
+	    obj->setProperty ("text", QString ("%1/%2").arg (trial+1).arg (m_experiment ? m_experiment->trialCount () : 0));
+      });
 
 #ifdef HAVE_POWERMATE
   // Watch for PowerMate events in a background thread
@@ -162,7 +174,7 @@ QExperiment::run_trial ()
 #ifdef HAVE_EYELINK
   // Save trial timestamp in EDF file
   if (hf != NULL)
-    eyemsg_printf ("trial %d", current_trial+1);
+    eyemsg_printf ("trial %d", m_currentTrial+1);
 #endif // HAVE_EYELINK
 
   current_page = -1;
@@ -297,52 +309,28 @@ QExperiment::nextPage ()
     if (hf != NULL) {
 	hsize_t one = 1;
 	DataSpace fspace = dset.getSpace ();
-	hsize_t hframe = current_trial;
+	hsize_t hframe = m_currentTrial;
 	fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
 	DataSpace mspace (1, &one);
 	dset.write (trial_record, *record_type, mspace, fspace);
+
+	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
     }
   
     // End of trial
     auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
     if ((page && page->last ())
 	    || current_page + 1 == m_experiment->pageCount ()) {
-	qDebug () << "End of trial " << current_trial << "of" << m_experiment->trialCount ();
+	qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
 
 	// Next trial
-	if (++current_trial < m_experiment->trialCount ()) {
+	if (m_currentTrial + 1 < m_experiment->trialCount ()) {
+	    setCurrentTrial (m_currentTrial + 1);
 	    run_trial ();
 	}
 	// End of session
-	else {
-	    if (hf != NULL) {
-#if HAVE_EYELINK
-		// Stop recording
-		stop_recording ();
-		// Choose a name for the local EDF
-		auto subject_id = subject_cbox->currentText ();
-		auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-		// Buggy Eyelink headers do not care about const
-		auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
-		switch (res) {
-		case 0:
-		    error ("EyeLink data file transfer cancelled");
-		    break;
-		case FILE_CANT_OPEN:
-		    error ("Cannot open EyeLink data file");
-		    break;
-		case FILE_XFER_ABORTED:
-		    error ("EyeLink data file transfer aborted");
-		    break;
-		}
-		check_eyelink (close_data_file (), "close_data_file");
-#endif // HAVE_EYELINK
-		hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
-	    }
-	    //glwidget->normal_screen ();
-	    stim->hide ();
-	    session_running = false;
-	}
+	else
+	    endSession ();
     }
     // There is a next page
     else {
@@ -385,7 +373,7 @@ QExperiment::savePageParameter (const QString& pageTitle,
 void
 QExperiment::powerMateRotation (PowerMateEvent* evt)
 {
-    if (! session_running)
+    if (! m_running)
 	return;
 
     auto page = m_experiment->page (current_page);
@@ -406,7 +394,7 @@ QExperiment::powerMateButtonPressed (PowerMateEvent* evt)
     Q_UNUSED (evt);
     //qDebug () << "PowerMate button pressed!";
 
-    if (! session_running)
+    if (! m_running)
 	return;
 
     auto page = m_experiment->page (current_page);
@@ -421,7 +409,7 @@ void
 QExperiment::stimKeyPressed (QKeyEvent* evt)
 {
   // Keyboard events are only handled in sessions
-  if (! session_running)
+  if (! m_running)
     return;
 
   auto page = m_experiment->page (current_page);
@@ -462,17 +450,41 @@ QExperiment::open_recent ()
 }
 
 void
-QExperiment::abortExperiment ()
+QExperiment::endSession ()
 {
-  current_page = -1;
-  stim->hide ();
-  session_running = false;
+    if (hf != NULL) {
+#if HAVE_EYELINK
+	// Stop recording
+	stop_recording ();
+	// Choose a name for the local EDF
+	auto subject_id = subject_cbox->currentText ();
+	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+	// Buggy Eyelink headers do not care about const
+	auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+	switch (res) {
+	case 0:
+	    error ("EyeLink data file transfer cancelled");
+	    break;
+	case FILE_CANT_OPEN:
+	    error ("Cannot open EyeLink data file");
+	    break;
+	case FILE_XFER_ABORTED:
+	    error ("EyeLink data file transfer aborted");
+	    break;
+	}
+	check_eyelink (close_data_file (), "close_data_file");
+#endif // HAVE_EYELINK
+	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+    }
+    current_page = -1;
+    stim->hide ();
+    setRunning (false);
 }
 
 void
 QExperiment::unloadExperiment ()
 {
-  abortExperiment ();
+  endSession ();
 
   // Erase all components from QML engine memroy
   m_engine.clearComponentCache ();
@@ -812,7 +824,7 @@ find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 void
 QExperiment::init_session ()
 {
-  current_trial = 0;
+  setCurrentTrial (0);
 
   // Check if a subject datafile is opened
   if (hf != NULL) {
@@ -912,7 +924,7 @@ QExperiment::runSession ()
 
   // Launch a stimulus window
   stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
-  session_running = true;
+  setRunning (true);
   run_trial ();
 }
 
@@ -927,7 +939,7 @@ QExperiment::runSessionInline ()
   stim->resize (tex_size, tex_size);
   stim->show ();
   //glwidget->setFocus (Qt::OtherFocusReason);
-  session_running = true;
+  setRunning (true);
   run_trial ();
 }
 
@@ -940,17 +952,19 @@ QExperiment::clear_screen ()
 void
 QExperiment::quit ()
 {
-  cout << "Goodbye!" << endl;
-  app.quit ();
+    endSession ();
+    cout << "Goodbye!" << endl;
+    app.quit ();
 }
 
 void
 QExperiment::about_to_quit ()
 {
-  // Save the GUI state
-  QSize sz = win->size ();
-  settings->setValue ("gui_width", sz.width ());
-  settings->setValue ("gui_height", sz.height ());
+    endSession ();
+    // Save the GUI state
+    QSize sz = win->size ();
+    settings->setValue ("gui_width", sz.width ());
+    settings->setValue ("gui_height", sz.height ());
 }
 
 QSpinBox*
@@ -982,7 +996,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   subject_item = NULL;
   record_type = NULL;
 
-  session_running = false;
+  m_running = false;
   creating_subject = false;
 
 #ifdef HAVE_EYELINK

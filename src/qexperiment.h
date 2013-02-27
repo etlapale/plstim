@@ -31,11 +31,14 @@
 
 namespace plstim
 {
-  class QExperiment : public QObject
-  {
+class QExperiment : public QObject
+{
     Q_OBJECT
     Q_PROPERTY (float monitor_rate READ monitor_rate)
-  public:
+    Q_PROPERTY (bool sessionRunning READ running WRITE setRunning NOTIFY runningChanged)
+    Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
+
+public:
     /// Associated Qt application
     QApplication app;
   protected:
@@ -75,9 +78,6 @@ namespace plstim
     /// Location of the current texture
     int texloc;
 
-    /// Current trial number
-    int current_trial;
-
     /// Accepted keys to switch to next page
     QSet<int> nextPageKeys;
 
@@ -92,7 +92,7 @@ namespace plstim
   public slots:
     void unloadExperiment ();
 
-    void abortExperiment ();
+    void endSession ();
 
     void nextPage ();
 
@@ -112,6 +112,24 @@ namespace plstim
     float monitor_rate () const;
 
     //void set_swap_interval (int swap_interval);
+    
+    bool running () const
+    { return m_running; }
+
+    void setRunning (bool running)
+    {
+	m_running = running;
+	emit runningChanged (running);
+    }
+
+    int currentTrial () const
+    { return m_currentTrial; }
+
+    void setCurrentTrial (int trial)
+    {
+	m_currentTrial = trial;
+	emit currentTrialChanged (trial);
+    }
 
   public slots:
 
@@ -170,6 +188,8 @@ namespace plstim
     void subject_changed (const QString& subject);
 
   protected:
+    bool m_running;
+    int m_currentTrial;
     bool save_setup;
     QToolBar* toolbar;
     QToolBox* tbox;
@@ -202,8 +222,6 @@ namespace plstim
 
     QSplitter* hsplitter;
     QTabWidget* logtab;
-
-    bool session_running;
 
     QString xp_name;
     int session_number;
@@ -285,7 +303,11 @@ namespace plstim
     void calibrate_eyelink ();
     bool check_eyelink (INT16 errcode, const QString& func_name);
 #endif
-  };
+
+signals:
+    void runningChanged (bool running);
+    void currentTrialChanged (int trial);
+};
 
   class MyLineEdit : public QLineEdit
   {
