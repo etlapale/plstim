@@ -27,6 +27,8 @@ StimWindow::StimWindow (QWindow* prnt)
     fmt.setMajorVersion (3);
     fmt.setMinorVersion (0);
     setFormat (fmt);
+
+    setCursor (Qt::BlankCursor);
 }
 
 StimWindow::~StimWindow ()

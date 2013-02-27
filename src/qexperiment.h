@@ -123,7 +123,7 @@ namespace plstim
      * Sessions may run asynchronously, so this method may return
      * before the session being finished.
      */
-    void run_session ();
+    void runSession ();
     void runSessionInline ();
 
     void set_trial_count (int ntrials);

@@ -31,6 +31,25 @@ QExperiment::exec ()
     load_experiment (args.at (1));
   }
 
+  // Create a QtQuick interface
+  QQuickView gui;
+  gui.setSource (QUrl::fromLocalFile ("qml/ui.qml"));
+  gui.show ();
+
+  // Connect the QtQuick interface to the experiment
+  auto obj = gui.rootObject ()->findChild<QObject*> ("quitButton");
+  if (obj)
+      QObject::connect (obj, SIGNAL (buttonClick ()),
+	                this, SLOT (quit ()));
+  obj = gui.rootObject ()->findChild<QObject*> ("runButton");
+  if (obj)
+      QObject::connect (obj, SIGNAL (buttonClick ()),
+	                this, SLOT (runSession ()));
+  obj = gui.rootObject ()->findChild<QObject*> ("runInlineButton");
+  if (obj)
+      QObject::connect (obj, SIGNAL (buttonClick ()),
+	                this, SLOT (runSessionInline ()));
+
 #ifdef HAVE_POWERMATE
   // Watch for PowerMate events in a background thread
   PowerMateWatcher watcher;
@@ -201,7 +220,7 @@ QExperiment::show_page (int index)
 
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
-  if (false) {//page->fixation ()) {
+  if (page->fixation ()) {
     qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
@@ -411,7 +430,7 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   if (page->waitKey ()) {
 #ifdef HAVE_EYELINK
     // Allows EyeLink calibration and validation
-    if (page->fixation () > 0
+    if (page->fixation ()
 	&& evt->key () == Qt::Key_C) {
       calibrate_eyelink ();
       return;
@@ -878,7 +897,7 @@ QExperiment::init_session ()
 }
 
 void
-QExperiment::run_session ()
+QExperiment::runSession ()
 {
   // No experiment loaded
   if (! m_experiment) return;
@@ -1003,7 +1022,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   action = xp_menu->addAction ("&Run");
   action->setShortcut (tr ("Ctrl+R"));
   action->setStatusTip (tr ("&Run the experiment"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (run_session ()));
+  connect (action, SIGNAL (triggered ()), this, SLOT (runSession ()));
   
   // Run an experiment inside the main window
   action = xp_menu->addAction ("Run &inline");

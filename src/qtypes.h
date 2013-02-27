@@ -6,6 +6,8 @@
 
 #include <QtGui>
 
+#include <algorithm>
+
 #include "utils.h"
 
 namespace plstim
@@ -43,6 +45,19 @@ public:
 	    m_data[index] = value;
     }
 
+    Q_INVOKABLE void linear (float from=0, float step=1)
+    {
+	for (int i = 0; i < m_length; i++) {
+	    m_data[i] = from;
+	    from += step;
+	}
+    }
+
+    Q_INVOKABLE void shuffle ()
+    {
+	std::random_shuffle (m_data, m_data+m_length);
+    }
+
     int length () const
     { return m_length; }
 
@@ -55,7 +70,6 @@ public:
 	m_length = l;
 	m_data = new float[m_length];
     }
-
 
 protected:
     int m_length;
