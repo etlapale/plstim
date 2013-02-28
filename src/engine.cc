@@ -179,13 +179,8 @@ Engine::show_page (int index)
     qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
-#if 0
-    float tx = (float) res_x_edit->value () / 2.0;
-    float ty = (float) res_y_edit->value () / 2.0;
-#else
-    float tx = 0;
-    float ty = 0;
-#endif
+    float tx = setup.horizontalResolution () / 2.0;
+    float ty = setup.verticalResolution () / 2.0;
     float fix_threshold = m_experiment->degreesToPixels (1.0);
     qDebug () << "checking for fix at" << tx << ty << "threshold is" << fix_threshold << "px";
 
@@ -512,6 +507,7 @@ Engine::load_experiment (const QString& path)
       return false;
   }
   m_experiment = qobject_cast<Experiment*> (xp);
+  m_experiment->setSetup (&m_setup);
   qDebug () << "[QML] Number of trials:" << m_experiment->trialCount ();
 
   // Add trial parameters to the record
@@ -935,12 +931,13 @@ Engine::Engine ()
     settings = new QSettings;
     settings->beginGroup ("setups");
     auto groups = settings->childGroups ();
+    settings->endGroup ();
 
     // No setup previously defined, infer a new one
     if (groups.empty ()) {
-#if 0
 	auto hostname = QHostInfo::localHostName ();
 	qDebug () << "creating a new setup for" << hostname;
+#if 0
 	setup_cbox->addItem (hostname);
 
 	// Search for a secondary screen
@@ -962,29 +959,11 @@ Engine::Engine ()
 
     // Use an existing setup
     else {
-#if 0
-	// Add all the setups to the combo box
-	for (auto g : groups) {
-	    if (g != "General") {
-		setup_cbox->addItem (g);
-	    }
-	}
-	settings->endGroup ();
-
-	// Check if there was a ‘last’ setup
-	if (settings->contains ("last_setup")) {
-	    auto last = settings->value ("last_setup").toString ();
-	    // Make sure the setup still exists
-	    int idx = setup_cbox->findText (last);
-	    if (idx >= 0)
-		setup_cbox->setCurrentIndex (idx);
-	}
-
-	// Restore setup
-	update_setup ();
-#endif
+	QString setupName = settings->contains ("lastSetup") ?
+	    settings->value ("lastSetup").toString () :
+	    groups.at (0);
+	loadSetup (setupName);
     }
-    settings->endGroup ();
 
     // Set recent experiments
     updateRecents ();
@@ -1157,16 +1136,6 @@ Engine::setup_updated ()
     }
     lua_pop (lstate, 1);
 #endif
-    float distance = 125;
-    float hres = 72;
-    float vres = 72;
-
-    float refreshRate = monitor_rate ();
-
-    m_experiment->setDistance (distance);
-    m_experiment->setHorizontalResolution (hres);
-    m_experiment->setVerticalResolution (vres);
-    m_experiment->setRefreshRate (refreshRate);
 
     // Compute the minimal texture size
     float size_degs = m_experiment->size ();
@@ -1208,6 +1177,8 @@ Engine::setup_updated ()
 	    paintPage (page, img, painter);
     }
   }
+
+  //emit setupUpdated (&setup);
 }
 
 void
@@ -1237,13 +1208,25 @@ Engine::~Engine ()
 }
 
 void
-Engine::update_setup ()
+Engine::loadSetup (const QString& setupName)
 {
-  //auto sname = setup_cbox->currentText ();
-  auto sname = "BLA";
-  qDebug () << "restoring setup for" << sname;
+  // Load the setup from the settings
+  settings->beginGroup (QString ("setups/%1").arg (setupName));
+  m_setup.setName (setupName);
+  m_setup.setPhysicalWidth (settings->value ("phy_w").toInt ());
+  m_setup.setPhysicalHeight (settings->value ("phy_h").toInt ());
+  m_setup.setHorizontalOffset (settings->value ("off_x").toInt ());
+  m_setup.setVerticalOffset (settings->value ("off_y").toInt ());
+  m_setup.setHorizontalResolution (settings->value ("res_x").toInt ());
+  m_setup.setVerticalResolution (settings->value ("res_y").toInt ());
 
-  settings->setValue ("last_setup", sname);
+  m_setup.setDistance (settings->value ("dst").toInt ());
+  m_setup.setRefreshRate (settings->value ("rate").toFloat ());
+
+  settings->endGroup ();
+
+  // Save the setup as the last one used
+  settings->setValue ("lastSetup", setupName);
 
   setup_updated ();
 }

@@ -36,7 +36,7 @@ class Engine : public QObject
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
 
 public:
-    const Setup* setup () const
+    const plstim::Setup* setup () const
     { return &m_setup; }
 
 protected:
@@ -145,7 +145,7 @@ protected:
     bool creating_subject;
 
   protected slots:
-    void update_setup ();
+    void loadSetup (const QString& setupName);
     void updateRecents ();
     void about_to_quit ();
     void quit ();

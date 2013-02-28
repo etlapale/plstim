@@ -8,6 +8,7 @@
 
 #include <algorithm>
 
+#include "setup.h"
 #include "utils.h"
 
 namespace plstim
@@ -348,8 +349,8 @@ class Experiment : public QObject
     Q_OBJECT
     Q_PROPERTY (int trialCount READ trialCount WRITE setTrialCount)
     Q_PROPERTY (float size READ size WRITE setSize)
-    Q_PROPERTY (int distance READ distance WRITE setDistance)
-    Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate)
+    //Q_PROPERTY (int distance READ distance WRITE setDistance)
+    //Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate)
     Q_PROPERTY (float swapInterval READ swapInterval WRITE setSwapInterval)
     Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
     Q_PROPERTY (QColor background READ background WRITE setBackground)
@@ -360,8 +361,9 @@ class Experiment : public QObject
     
 public:
     Experiment (QObject* parent=NULL)
-	: QObject (parent),
-	  m_swapInterval (1)
+	: QObject (parent)
+	, m_swapInterval (1)
+	, m_setup (NULL)
     {
 	// Initialise the random number generator
 	m_twister.seed (time (NULL));
@@ -396,18 +398,6 @@ public:
     plstim::Page* page (int index)
     { return m_pages.at (index); }
 
-    float distance () const
-    { return m_distance; }
-
-    void setDistance (float dst)
-    { m_distance = dst; }
-
-    float refreshRate () const
-    { return m_refreshRate; }
-
-    void setRefreshRate (float rate)
-    { m_refreshRate = rate; }
-
     int swapInterval () const
     { return m_swapInterval; }
 
@@ -419,18 +409,6 @@ public:
 
     void setTextureSize (int size)
     { m_textureSize = size; }
-
-    float verticalResolution () const
-    { return m_verticalResolution; }
-
-    void setVerticalResolution (float vres)
-    { m_verticalResolution = vres; }
-
-    float horizontalResolution () const
-    { return m_horizontalResolution; }
-
-    void setHorizontalResolution (float hres)
-    { m_horizontalResolution = hres; }
 
     Q_INVOKABLE int randint (int maxval)
     {
@@ -453,13 +431,22 @@ public:
     /// Convert a distance from degrees to pixels
     Q_INVOKABLE float degreesToPixels (float dst) const
     {
-	float avgRes = (m_horizontalResolution + m_verticalResolution) / 2;
-	return 2*m_distance*tan (radians (dst)/2)*avgRes;
+	if (! m_setup) return 0;
+	// Avoid division by zero on missing information
+	if (! m_setup->physicalWidth () || ! m_setup->physicalHeight ())
+	    return 0;
+
+	int distance = m_setup->distance ();
+	float hres = m_setup->horizontalResolution () / m_setup->physicalWidth ();
+	float vres = m_setup->verticalResolution () / m_setup->physicalHeight ();
+
+	return distance*tan (radians (dst)/2)*(hres+vres);
     }
 
     Q_INVOKABLE float degreesPerSecondToPixelsPerFrame (float speed) const
     {
-	return degreesToPixels (speed/m_refreshRate*m_swapInterval);
+	float rate = m_setup ? m_setup->refreshRate () : 0;
+	return degreesToPixels (speed/rate*m_swapInterval);
     }
 
     const QVariantMap& trialParameters () const
@@ -474,6 +461,9 @@ public:
     void setModules (const QVariantList& modules)
     { m_modules = modules; }
 
+    void setSetup (Setup* setup)
+    { m_setup = setup; }
+
 protected:
     /// Pseudo random number generator
     std::mt19937 m_twister;
@@ -481,15 +471,12 @@ protected:
     int m_trialCount;
     float m_size;
     int m_textureSize;
-    float m_distance;
-    float m_verticalResolution;
-    float m_horizontalResolution;
-    float m_refreshRate;
     float m_swapInterval;
     QColor m_background;
     QList<plstim::Page*> m_pages;
     QVariantMap m_trialParameters;
     QVariantList m_modules;
+    Setup* m_setup;
 
 signals:
     void newTrial ();

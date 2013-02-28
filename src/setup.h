@@ -14,10 +14,20 @@ class Setup : public QObject
     Q_PROPERTY (QString name READ name WRITE setName)
     Q_PROPERTY (int horizontalOffset READ horizontalOffset WRITE setHorizontalOffset)
     Q_PROPERTY (int verticalOffset READ verticalOffset WRITE setVerticalOffset)
+    Q_PROPERTY (int horizontalResolution READ horizontalResolution WRITE setHorizontalResolution)
+    Q_PROPERTY (int verticalResolution READ verticalResolution WRITE setVerticalResolution)
+    Q_PROPERTY (int distance READ distance WRITE setDistance)
+    Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate)
+    Q_PROPERTY (int physicalWidth READ physicalWidth WRITE setPhysicalWidth)
+    Q_PROPERTY (int physicalHeight READ physicalHeight WRITE setPhysicalHeight)
 
 public:
     Setup (QObject* parent=NULL)
 	: QObject (parent)
+	, m_horizontalOffset (0), m_verticalOffset (0)
+	, m_horizontalResolution (0), m_verticalResolution (0)
+	, m_distance (0), m_refreshRate (0)
+	, m_physicalWidth (0), m_physicalHeight (0)
     {}
 
     QString name () const
@@ -38,15 +48,54 @@ public:
     void setVerticalOffset (int offset)
     { m_verticalOffset = offset; }
 
+    int horizontalResolution () const
+    { return m_horizontalResolution; }
+
+    void setHorizontalResolution (int resolution)
+    { m_horizontalResolution = resolution; }
+
+    int verticalResolution () const
+    { return m_verticalResolution; }
+
+    void setVerticalResolution (int resolution)
+    { m_verticalResolution = resolution; }
+
+    int distance () const
+    { return m_distance; }
+
+    void setDistance (int distance)
+    { m_distance = distance; }
+
+    float refreshRate () const
+    { return m_refreshRate; }
+
+    void setRefreshRate (float rate)
+    { m_refreshRate = rate; }
+
+    int physicalWidth () const
+    { return m_physicalWidth; }
+
+    void setPhysicalWidth (int width)
+    { m_physicalWidth = width; }
+
+    int physicalHeight () const
+    { return m_physicalHeight; }
+
+    void setPhysicalHeight (int height)
+    { m_physicalHeight = height; }
+
 protected:
     QString m_name;
     int m_horizontalOffset;
     int m_verticalOffset;
+    int m_horizontalResolution;
+    int m_verticalResolution;
+    int m_distance;
+    float m_refreshRate;
+    int m_physicalWidth;
+    int m_physicalHeight;
 
 #if 0
-    /// Load a configuration file
-    bool load (const std::string& filename=default_source);
-
     /// Convert a pixel distance to degrees
     float pix2deg (float dst) const {
 	return degrees (2 * atan2 (dst, 2*distance*px_mm));

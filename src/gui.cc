@@ -6,6 +6,10 @@ using namespace plstim;
 GUI::GUI (QWindow* parent)
     : QQuickView (parent)
 {
+    // Link setup to GUI
+    rootContext ()->setContextProperty ("setup",
+	    (plstim::Setup*) m_engine.setup ());
+
     // Load the QtQuick interface
     setSource (QUrl::fromLocalFile ("qml/ui.qml"));
 
@@ -18,9 +22,6 @@ GUI::GUI (QWindow* parent)
     obj = rootObject ()->findChild<QObject*> ("hostParam");
     if (obj)
 	obj->setProperty ("value", QHostInfo::localHostName ());
-
-    // Link setup to GUI
-    rootContext ()->setContextProperty ("setup", m_engine.setup ());
 
     // Connect the QtQuick interface to the experiment
     obj = rootObject ()->findChild<QObject*> ("quitButton");
@@ -39,6 +40,11 @@ GUI::GUI (QWindow* parent)
     if (obj)
 	QObject::connect (obj, SIGNAL (buttonClick ()),
 		&m_engine, SLOT (endSession ()));
+    
+    // Dynamically update setup
+    /*connect (&m_engine, &Engine::setupUpdated, [this] (Setup* setup) {
+	    this->rootContext ()->setContextProperty ("setup", m_engine.setup ());
+	});*/
 
     // Dynamically show action buttons
     connect (&m_engine, &Engine::runningChanged, [this] (bool running) {

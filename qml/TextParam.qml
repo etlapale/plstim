@@ -2,8 +2,7 @@ import QtQuick 2.0
 
 Row {
     property string label
-    property real value
-    property string unit
+    property string value
 
     Column {
 	width : 180
@@ -15,8 +14,8 @@ Row {
     }
     Column {
 	width : 50
-	TextInput {
-	    text : "" + value + (unit.length ? " " + unit : "")
+	Text {
+	    text : value
 	    color : theme.foreground
 	    font.pointSize : theme.pointSize
 	}

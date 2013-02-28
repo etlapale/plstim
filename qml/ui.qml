@@ -3,8 +3,6 @@ import QtQuick 2.0
 
 Rectangle {
 
-    property QtObject setup
-
     Style { id : theme }
 
     width : 400
@@ -34,6 +32,11 @@ Rectangle {
 	    text : "Setup"
 	}
 
+	TextParam {
+	    label : "Name"
+	    value : setup.name
+	}
+
 	IntInput {
 	    label : "Horizontal offset"
 	    value : setup.horizontalOffset
@@ -47,33 +50,37 @@ Rectangle {
 	    unit : "px"
 	}
 
-	/*
 	IntInput {
 	    label : "Horizontal resolution"
-	    value : "1280 px"
+	    value : setup.horizontalResolution
+	    unit : "px"
 	}
 
 	IntInput {
 	    label : "Vertical resolution"
-	    value : "1024 px"
+	    value : setup.verticalResolution
+	    unit : "px"
 	}
 
 	IntInput {
 	    label : "Physical width"
-	    value : "394 mm"
+	    value : setup.physicalWidth
+	    unit : "mm"
 	}
 
 	IntInput {
 	    label : "Physical height"
-	    value : "292 mm"
+	    value : setup.physicalHeight
+	    unit : "mm"
 	}
 
 	IntInput {
 	    label : "Distance"
-	    value : "750 mm"
+	    value : setup.distance
+	    unit : "mm"
 	}
 
-	IntInput {
+	/*IntInput {
 	    label : "Minimum luminance"
 	    value : "15 cd/m²"
 	}
@@ -81,12 +88,13 @@ Rectangle {
 	IntInput {
 	    label : "Maximum luminance"
 	    value : "150 cd/m²"
-	}
+	}*/
 
 	IntInput {
 	    label : "Refresh rate"
-	    value : "85 Hz"
-	}*/
+	    value : setup.refreshRate
+	    unit : "Hz"
+	}
 
 	SectionText {
 	    text : "Experiment"
