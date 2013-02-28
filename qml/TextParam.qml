@@ -4,21 +4,17 @@ Row {
     property string label
     property string value
 
-    Column {
-	width : 180
-	Text {
-	    text : label
-	    color : theme.foreground
-	    font.pointSize : theme.pointSize
-	}
+    Text {
+    width : 180
+	text : label
+	color : theme.foreground
+	font.pointSize : theme.pointSize
     }
-    Column {
+    Text {
 	width : 50
-	Text {
-	    text : value
-	    color : theme.foreground
-	    font.pointSize : theme.pointSize
-	}
+	text : value
+	color : theme.foreground
+	font.pointSize : theme.pointSize
     }
 }
 

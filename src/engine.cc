@@ -664,7 +664,6 @@ Engine::load_experiment (const QString& path)
   }
 #endif
 
-
   // Load the available subject ids for the experiment
 #if 0
   QString subject_path ("experiments/%1/subjects");
@@ -1073,7 +1072,7 @@ Engine::select_subject_datafile ()
 #endif
 
 void
-Engine::subject_changed (const QString& subject_id)
+Engine::selectSubject (const QString& subjectName)
 {
 #if 0
   if (creating_subject)
@@ -1086,29 +1085,30 @@ Engine::subject_changed (const QString& subject_id)
     subject_databutton->setDisabled (true);
   }
   else {
-    auto subject_path = QString ("experiments/%1/subjects/%2")
-      .arg (xp_name).arg (subject_id);
+#endif
+      qDebug () << "Loading subject" << subjectName;
 
-    auto datafile = settings->value (subject_path).toString ();
-    QFileInfo fi (datafile);
+      auto subject_path = QString ("experiments/%1/subjects/%2")
+	  .arg (xp_name).arg (subjectName);
 
-    // Make sure the datafile still exists
-    if (! fi.exists ())
-      error (tr ("Subject data file is missing"));
-    // Open the HDF5 datafile
-    else {
-      // TODO: handle HDF5 exceptions here
-      if (hf != NULL) {
-	hf->close ();
-	hf = NULL;
+      auto datafile = settings->value (subject_path).toString ();
+      QFileInfo fi (datafile);
+
+      // Make sure the datafile still exists
+      if (! fi.exists ())
+	  error (tr ("Subject data file is missing"));
+      // Open the HDF5 datafile
+      else {
+	  // TODO: handle HDF5 exceptions here
+	  if (hf != NULL) {
+	      hf->close ();
+	      hf = NULL;
+	  }
+	  hf = new H5File (datafile.toLocal8Bit ().data (),
+		  H5F_ACC_RDWR);
+	  qDebug () << "Subject data file loaded";
       }
-      hf = new H5File (datafile.toLocal8Bit ().data (),
-		       H5F_ACC_RDWR);
-    }
-
-    subject_databutton->setText (fi.fileName ());
-    subject_databutton->setToolTip (fi.absoluteFilePath ());
-    subject_databutton->setDisabled (false);
+#if 0
   }
 #endif
 }

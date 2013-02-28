@@ -11,6 +11,11 @@ Rectangle {
 
     property bool running : false
 
+    property var subjects
+    property string subject
+
+    signal subjectSelected (string subjectName)
+
     Column {
 	width : parent.width
 
@@ -109,11 +114,53 @@ Rectangle {
 	    text : "Subject"
 	}
 
-	Text {
-	    text : "No subject loaded"
-	    font.bold : true
-	    color : theme.warningColor
-	    font.pointSize : theme.pointSize
+	Row {
+	    Text {
+		text : "ID"
+		width : 180
+		color : theme.foreground
+		font.pointSize : theme.pointSize
+	    }
+	    Column {
+		Text {
+		    text : subject ? subject : "No subject loaded"
+		    font.bold : ! subject
+		    color : subject ? theme.foreground :  theme.warningColor
+		    font.pointSize : theme.pointSize
+
+		    MouseArea {
+			anchors.fill : parent
+			onClicked : subjectList.visible = ! subjectList.visible
+		    }
+		}
+		ListView {
+		    id : subjectList
+		    objectName : "subjectList"
+		    visible : false
+		    delegate : subjectDelegate
+		    width : 300
+		    height : 100
+		}
+	    }
+	}
+
+
+	Component {
+	    id : subjectDelegate
+	    Text {
+		text : modelData
+		color : theme.foreground
+		font.pointSize : theme.pointSize
+
+		MouseArea {
+		    anchors.fill : parent
+		    onClicked : {
+			subject = modelData
+			subjectList.visible = false
+			subjectSelected (modelData)
+		    }
+		}
+	    }
 	}
 
 	Item {

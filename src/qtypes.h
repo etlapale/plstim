@@ -14,6 +14,26 @@
 namespace plstim
 {
 
+class Subject : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY (QString name READ name)
+public:
+    Subject (QObject* parent=NULL)
+	: QObject (parent)
+    { }
+
+    Subject (const QString& name, QObject* parent=NULL)
+	: QObject (parent)
+	, m_name (name)
+    { }
+
+    QString name () const
+    { return m_name; }
+protected:
+    QString m_name;
+};
+
 class Vector : public QObject
 {
     Q_OBJECT

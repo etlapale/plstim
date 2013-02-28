@@ -43,8 +43,10 @@ protected:
     /// Stimulus OpenGL window
     StimWindow* stim;
 
+public:
     /// Application settings
     QSettings* settings;
+protected:
 
     /// Current setup
     Setup m_setup;
@@ -155,14 +157,17 @@ protected:
     void powerMateRotation (PowerMateEvent* evt);
     void powerMateButtonPressed (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
-    void subject_changed (const QString& subject);
+
+    void selectSubject (const QString& subjectName);
 
   protected:
     bool m_running;
     int m_currentTrial;
     bool save_setup;
 
+  public:
     QString xp_name;
+  protected:
     int session_number;
 
     int max_recents;

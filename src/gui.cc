@@ -40,6 +40,8 @@ GUI::GUI (QWindow* parent)
     if (obj)
 	QObject::connect (obj, SIGNAL (buttonClick ()),
 		&m_engine, SLOT (endSession ()));
+    QObject::connect (rootObject (), SIGNAL (subjectSelected (const QString&)),
+	    &m_engine, SLOT (selectSubject (const QString&)));
     
     // Dynamically update setup
     /*connect (&m_engine, &Engine::setupUpdated, [this] (Setup* setup) {
@@ -64,4 +66,17 @@ void
 GUI::loadExperiment (const QString& path)
 {
     m_engine.load_experiment (path);
+   
+    // Update the subject list
+    auto settings = m_engine.settings;
+    QStringList list;
+    settings->beginGroup (QString ("experiments/%1/subjects").arg (m_engine.xp_name));
+    for (auto name : settings->childKeys ()) {
+	list << name;
+	qDebug () << "adding" << name;
+    }
+    settings->endGroup ();
+    auto obj = rootObject ()->findChild<QObject*> ("subjectList");
+    if (obj)
+	obj->setProperty ("model", QVariant::fromValue (list));
 }
