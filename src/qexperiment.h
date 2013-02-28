@@ -6,9 +6,6 @@
 #include <random>
 #include <set>
 
-#include <QApplication>
-#include <QMainWindow>
-
 #include <QtQml>
 
 // HDF5 C++ library
@@ -24,8 +21,8 @@
 #endif // HAVE_POWERMATE
 
 #include "qtypes.h"
+#include "setup.h"
 #include "stimwindow.h"
-#include "messagebox.h"
 #include "utils.h"
 
 
@@ -39,22 +36,15 @@ class QExperiment : public QObject
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
 
 public:
-    /// Associated Qt application
-    QApplication app;
   protected:
-    QMainWindow* win;
-
     /// Stimulus OpenGL window
     StimWindow* stim;
 
     /// Application settings
     QSettings* settings;
 
-    QDesktopWidget dsk;
-
-    MyMessageBox* msgbox;
-    //Message* res_msg;
-    //Message* match_res_msg;
+    /// Current setup
+    Setup m_setup;
 
     /// Current page in a trial
     int current_page;
@@ -83,7 +73,7 @@ public:
 
   public:
 
-    QExperiment (int& argc, char** argv);
+    QExperiment ();
 
     virtual ~QExperiment ();
 
@@ -97,17 +87,9 @@ public:
     void nextPage ();
 
   public:
-    bool exec ();
-
     void run_trial ();
 
     void show_page (int index);
-
-    /// Define a special frame
-    bool gen_frame (const std::string& frame_name);
-
-    /// Clear the screen
-    bool clear_screen ();
 
     float monitor_rate () const;
 
@@ -133,9 +115,6 @@ public:
 
   public slots:
 
-    void new_setup ();
-    void new_subject ();
-
     /**
      * Run a session of multiple trials.
      * Sessions may run asynchronously, so this method may return
@@ -145,8 +124,6 @@ public:
     void runSessionInline ();
 
     void set_trial_count (int ntrials);
-
-    void set_subject_datafile (const QString& path);
 
   protected:
     void init_session ();
@@ -165,12 +142,9 @@ public:
     bool creating_subject;
 
   protected slots:
-    //void screen_param_changed ();
-    void setup_param_changed ();
     void update_setup ();
     void updateRecents ();
     void about_to_quit ();
-    void open ();
     void quit ();
     void stimKeyPressed (QKeyEvent* evt);
     //void stimScreenChanged (QScreen* screen);
@@ -178,66 +152,27 @@ public:
     void powerMateRotation (PowerMateEvent* evt);
     void powerMateButtonPressed (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
-    void open_recent ();
-    void xp_param_changed (double);
-    void new_setup_validated ();
-    void new_setup_cancelled ();
-    void new_subject_validated ();
-    void new_subject_cancelled ();
-    void select_subject_datafile ();
     void subject_changed (const QString& subject);
 
   protected:
     bool m_running;
     int m_currentTrial;
     bool save_setup;
-    QToolBar* toolbar;
-    QToolBox* tbox;
-
-    QWidget* setup_item;
-
-    QWidget* xp_item;
-    QSpinBox* ntrials_spin;
-    std::map<QString,QDoubleSpinBox*> param_spins;
-
-    QWidget* subject_item;
-    QComboBox* subject_cbox;
-    QPushButton* subject_databutton;
-
-    QComboBox* setup_cbox;
-    QSpinBox* screen_sbox;
-  public:
-    QSpinBox* off_x_edit;
-    QSpinBox* off_y_edit;
-    QSpinBox* res_x_edit;
-    QSpinBox* res_y_edit;
-  protected:
-    QSpinBox* phy_width_edit;
-    QSpinBox* phy_height_edit;
-    QSpinBox* dst_edit;
-    QSpinBox* lum_min_edit;
-    QSpinBox* lum_max_edit;
-    QSpinBox* refresh_edit;
-    QLabel* xp_label;
-
-    QSplitter* hsplitter;
-    QTabWidget* logtab;
 
     QString xp_name;
     int session_number;
 
-    QMenu* xp_menu;
     int max_recents;
-    QAction** recent_actions;
-
-    QAction* close_action;
 
     /// QML scripting engine to load the experiments
     QQmlEngine m_engine;
     /// QML component for the current experiment
     QQmlComponent* m_component;
+
+  public:
     /// Currently loaded experiment
     plstim::Experiment* m_experiment;
+  protected:
 
     /// Last opened directory in file dialog
     QString last_dialog_dir;
@@ -284,10 +219,6 @@ public:
 
     QElapsedTimer timer;
 
-  protected:
-
-    QSpinBox* make_setup_spin (int min, int max, const char* suffix);
-
   public:
     void error (const QString& msg, const QString& desc="");
 
@@ -308,26 +239,6 @@ signals:
     void runningChanged (bool running);
     void currentTrialChanged (int trial);
 };
-
-  class MyLineEdit : public QLineEdit
-  {
-    Q_OBJECT
-  public:
-    MyLineEdit ()
-      : QLineEdit ()
-    {
-    }
-  signals: 
-    void escapePressed ();
-  protected:
-    virtual void keyPressEvent (QKeyEvent* evt)
-    {
-      if (evt->key () == Qt::Key_Escape)
-	emit escapePressed ();
-      else
-	QLineEdit::keyPressEvent (evt);
-    }
-  };
 }
 
 #endif

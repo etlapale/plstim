@@ -19,14 +19,18 @@ Rectangle {
 
 	IntInput {
 	    label : "Horizontal offset"
-	    value : "0 px"
+	    value : setup ? setup.horizontalOffset : 0
+	    unit : "px"
+
 	}
 
 	IntInput {
 	    label : "Vertical offset"
-	    value : "0 px"
+	    value : setup ? setup.verticalOffset : 0
+	    unit : "px"
 	}
 
+	/*
 	IntInput {
 	    label : "Horizontal resolution"
 	    value : "1280 px"
@@ -65,7 +69,7 @@ Rectangle {
 	IntInput {
 	    label : "Refresh rate"
 	    value : "85 Hz"
-	}
+	}*/
 
 	SectionText {
 	    text : "Experiment"
@@ -73,7 +77,7 @@ Rectangle {
 
 	IntInput {
 	    label : "Number of trials"
-	    value : "160"
+	    value : 160
 	}
 
 	SectionText {

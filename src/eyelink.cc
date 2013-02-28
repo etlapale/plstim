@@ -37,15 +37,17 @@ QExperiment::load_eyelink ()
 static INT16 ELCALLBACK
 el_setup_image_display (void* userdata, INT16 width, INT16 height)
 {
-  qDebug () << "EyeLink camera image resolution:" << width << "×" << height;
-  return 0;
+    Q_UNUSED (userdata);
+    qDebug () << "EyeLink camera image resolution:" << width << "×" << height;
+    return 0;
 }
 
 static INT16 ELCALLBACK
 el_image_title (void* userdata, char* title)
 {
-  qDebug () << "EyeLink camera image title:" << title;
-  return 0;
+    Q_UNUSED (userdata);
+    qDebug () << "EyeLink camera image title:" << title;
+    return 0;
 }
 
 static INT16 ELCALLBACK
@@ -99,10 +101,9 @@ el_draw_cal_target (void* userdata, float x, float y)
 static INT16 ELCALLBACK
 el_play_target_beep (void* userdata, EL_CAL_BEEP beep_type)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
-  xp->app.beep ();
-  qDebug () << "beep";
-  return 0;
+    Q_UNUSED (userdata);
+    qDebug () << "beep";
+    return 0;
 }
 
 static bool key_up = true;
@@ -113,7 +114,8 @@ el_get_input_key (void* userdata, InputEvent* event)
   auto xp = static_cast<QExperiment*> (userdata);
 
   // Process any event in the application
-  xp->app.processEvents ();
+  QCoreApplication::instance ()->processEvents ();
+
   // Check for key events in the queue
   auto calib = xp->calibrator;
   if (! calib->key_queue.isEmpty ()) {
@@ -144,7 +146,7 @@ el_setup_display (void* userdata)
   xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
   // Put the calibration window at the correct position
   xp->calibrator->show ();
-  xp->calibrator->move (xp->off_x_edit->value (), xp->off_y_edit->value ());
+  //xp->calibrator->move (xp->off_x_edit->value (), xp->off_y_edit->value ());
   // Display the calibrator in full screen
   xp->calibrator->showFullScreen ();
   // Focus the new widget

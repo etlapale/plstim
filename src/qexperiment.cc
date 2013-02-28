@@ -7,73 +7,16 @@
 using namespace std;
 
 #include "qexperiment.h"
-#include "messagebox.h"
 using namespace plstim;
 
 
-#include <QMenuBar>
-#include <QHostInfo>
 
 #include <QtCore>
+#include <QHostInfo>
 #include <QtQuick>
 
 using namespace H5;
 
-
-bool
-QExperiment::exec ()
-{
-  win->show ();
-
-  // Load an experiment if given as command line argument
-  auto args = app.arguments ();
-  if (args.size () == 2) {
-    load_experiment (args.at (1));
-  }
-
-  // Create a QtQuick interface
-  QQuickView gui;
-  gui.setSource (QUrl::fromLocalFile ("qml/ui.qml"));
-  gui.show ();
-
-  // Connect the QtQuick interface to the experiment
-  auto obj = gui.rootObject ()->findChild<QObject*> ("quitButton");
-  if (obj)
-      QObject::connect (obj, SIGNAL (buttonClick ()),
-	                this, SLOT (quit ()));
-  obj = gui.rootObject ()->findChild<QObject*> ("runButton");
-  if (obj)
-      QObject::connect (obj, SIGNAL (buttonClick ()),
-	                this, SLOT (runSession ()));
-  obj = gui.rootObject ()->findChild<QObject*> ("runInlineButton");
-  if (obj)
-      QObject::connect (obj, SIGNAL (buttonClick ()),
-	                this, SLOT (runSessionInline ()));
-  obj = gui.rootObject ()->findChild<QObject*> ("abortButton");
-  if (obj)
-      QObject::connect (obj, SIGNAL (buttonClick ()),
-	                this, SLOT (endSession ()));
-  connect (this, &QExperiment::runningChanged, [&gui] (bool running) {
-	  gui.rootObject ()->setProperty ("running", running);
-      });
-  connect (this, &QExperiment::currentTrialChanged, [&gui,m_experiment] (int trial) {
-	  auto obj = gui.rootObject ()->findChild<QObject*> ("trialText");
-	  if (obj)
-	    obj->setProperty ("text", QString ("%1/%2").arg (trial+1).arg (m_experiment ? m_experiment->trialCount () : 0));
-      });
-
-#ifdef HAVE_POWERMATE
-  // Watch for PowerMate events in a background thread
-  PowerMateWatcher watcher;
-  QThread wthread;
-  connect (&wthread, SIGNAL (started ()), &watcher, SLOT (watch ()));
-  watcher.moveToThread (&wthread);
-  wthread.start ();
-#endif // HAVE_POWERMATE
-
-
-  return app.exec () == 0;
-}
 
 void
 QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
@@ -236,8 +179,13 @@ QExperiment::show_page (int index)
     qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
+#if 0
     float tx = (float) res_x_edit->value () / 2.0;
     float ty = (float) res_y_edit->value () / 2.0;
+#else
+    float tx = 0;
+    float ty = 0;
+#endif
     float fix_threshold = m_experiment->degreesToPixels (1.0);
     qDebug () << "checking for fix at" << tx << ty << "threshold is" << fix_threshold << "px";
 
@@ -266,8 +214,9 @@ QExperiment::show_page (int index)
 	  timer.restart ();
       }
       // Allow calibration and forced skip
-      else
-	app.processEvents ();
+      else {
+	  QCoreApplication::instance ()->processEvents ();
+      }
     }
 
     waiting_fixation = false;
@@ -440,15 +389,6 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
   }
 }
 
-
-void
-QExperiment::open_recent ()
-{
-  auto action = qobject_cast<QAction*> (sender());
-  if (action)
-    load_experiment (action->data ().toString ());
-}
-
 void
 QExperiment::endSession ()
 {
@@ -500,13 +440,6 @@ QExperiment::unloadExperiment ()
 
   xp_name.clear ();
 
-  param_spins.clear ();
-
-  if (xp_item)
-    delete xp_item;
-  if (subject_item)
-    delete subject_item;
-
   if (trial_record != NULL) {
     free (trial_record);
     trial_record = NULL;
@@ -525,8 +458,6 @@ QExperiment::unloadExperiment ()
   }
 
   stim->clear ();
-
-  xp_label->setText ("No experiment loaded");
 }
 
 bool
@@ -691,14 +622,7 @@ QExperiment::load_experiment (const QString& path)
 
 
   // Setup an experiment item in the left toolbox
-  xp_item = new QWidget;
-  auto flayout = new QFormLayout;
   // Experiment name flayout->addRow ("Experiment", new QLabel (xp_name)); // Number of trials
-  ntrials_spin = new QSpinBox;
-  ntrials_spin->setRange (0, 8000);
-  connect (ntrials_spin, SIGNAL (valueChanged (int)),
-	   this, SLOT (set_trial_count (int)));
-  flayout->addRow ("Number of trials", ntrials_spin);
   // Add spins for experiment specific parameters
 #if 0
   lua_getglobal (lstate, "parameters");
@@ -732,9 +656,6 @@ QExperiment::load_experiment (const QString& path)
   }
   lua_pop (lstate, 1);
 #endif
-  // Finish the experiment item
-  xp_item->setLayout (flayout);
-  tbox->addItem (xp_item, "Experiment");
 
   set_trial_count (m_experiment->trialCount ());
 #if 0
@@ -747,34 +668,15 @@ QExperiment::load_experiment (const QString& path)
   }
 #endif
 
-  xp_label->setText (script_path);
-
-
-  // Setup a subject item in the left toolbox
-  subject_item = new QWidget;
-  flayout = new QFormLayout;
-  subject_cbox = new QComboBox;
-  subject_cbox->addItem (tr ("None"));
-  flayout->addRow ("Subject", subject_cbox);
-  connect (subject_cbox, SIGNAL (currentIndexChanged (const QString&)),
-	   this, SLOT (subject_changed (const QString&)));
-  subject_databutton = new QPushButton ( tr( "Subject data file"));
-  subject_databutton->setDisabled (true);
-  connect (subject_databutton, SIGNAL (clicked ()),
-	   this, SLOT (select_subject_datafile ()));
-  flayout->addRow ("Data file", subject_databutton);
-  subject_item->setLayout (flayout);
-  tbox->addItem (subject_item, "Subject");
 
   // Load the available subject ids for the experiment
+#if 0
   QString subject_path ("experiments/%1/subjects");
   settings->beginGroup (subject_path.arg (xp_name));
   for (auto s : settings->childKeys ())
     subject_cbox->addItem (s);
   settings->endGroup ();
-
-  // Prepare for running the experiment
-  tbox->setCurrentWidget (subject_item);
+#endif
 
   // Initialise the experiment
   setup_updated ();
@@ -783,22 +685,9 @@ QExperiment::load_experiment (const QString& path)
 }
 
 void
-QExperiment::xp_param_changed (double value)
-{
-  auto spin = qobject_cast<QDoubleSpinBox*> (sender());
-  if (spin) {
-    auto param = spin->property ("plstim_param_name").toString ();
-#if 0
-    lua_pushnumber (lstate, value);
-    lua_setglobal (lstate, param.toUtf8 ().data ());
-#endif
-  }
-}
-
-void
 QExperiment::set_trial_count (int num_trials)
 {
-  ntrials_spin->setValue (num_trials);
+  //ntrials_spin->setValue (num_trials);
 }
 
 static const QRegExp session_name_re ("session_[0-9]+");
@@ -844,7 +733,7 @@ QExperiment::init_session ()
 			      *record_type, dspace);
     
     // Save subject ID
-    auto subject = subject_cbox->currentText ().toUtf8 ();
+    auto subject = QString ("FAKE").toUtf8 ();//subject_cbox->currentText ().toUtf8 ();
     StrType str_type (PredType::C_S1, subject.size ());
     DataSpace scalar_space (H5S_SCALAR);
     dset.createAttribute ("subject", str_type, scalar_space)
@@ -923,7 +812,8 @@ QExperiment::runSession ()
 #endif // HAVE_EYELINK
 
   // Launch a stimulus window
-  stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
+  //stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
+  stim->showFullScreen (0, 0);
   setRunning (true);
   run_trial ();
 }
@@ -943,44 +833,25 @@ QExperiment::runSessionInline ()
   run_trial ();
 }
 
-bool
-QExperiment::clear_screen ()
-{
-  return false;
-}
-
 void
 QExperiment::quit ()
 {
-    endSession ();
-    cout << "Goodbye!" << endl;
-    app.quit ();
+    QCoreApplication::instance ()->quit ();
 }
 
 void
 QExperiment::about_to_quit ()
 {
+    qDebug () << "About to quit";
     endSession ();
-    // Save the GUI state
-    QSize sz = win->size ();
-    settings->setValue ("gui_width", sz.width ());
-    settings->setValue ("gui_height", sz.height ());
+    if (hf != NULL) {
+	hf->close ();
+	hf = NULL;
+    }
 }
 
-QSpinBox*
-QExperiment::make_setup_spin (int min, int max, const char* suffix)
-{
-  auto spin = new QSpinBox;
-  spin->setRange (min, max);
-  spin->setSuffix (suffix);
-  connect (spin, SIGNAL (valueChanged (int)),
-	   this, SLOT (setup_param_changed ()));
-  return spin;
-}
-
-QExperiment::QExperiment (int & argc, char** argv)
-  : app (argc, argv),
-    save_setup (false),
+QExperiment::QExperiment ()
+  : save_setup (false),
     bin_dist (0, 1),
     real_dist (0, 1),
     trial_record (NULL),
@@ -989,11 +860,8 @@ QExperiment::QExperiment (int & argc, char** argv)
 {
   plstim::initialise ();
 
-  win = new QMainWindow;
   m_component = NULL;
   m_experiment = NULL;
-  xp_item = NULL;
-  subject_item = NULL;
   record_type = NULL;
 
   m_running = false;
@@ -1024,39 +892,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   stim = NULL;
 
-  // Create a basic menu
-  xp_menu = win->menuBar ()->addMenu (tr ("&Experiment"));
-  // 
-  auto action = xp_menu->addAction ("&Open");
-  action->setShortcut (tr ("Ctrl+O"));
-  action->setStatusTip (tr ("&Open an experiment"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
-
-  // Run an experiment in full screen
-  action = xp_menu->addAction ("&Run");
-  action->setShortcut (tr ("Ctrl+R"));
-  action->setStatusTip (tr ("&Run the experiment"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (runSession ()));
-  
-  // Run an experiment inside the main window
-  action = xp_menu->addAction ("Run &inline");
-  action->setShortcut (tr ("Ctrl+Shift+R"));
-  action->setStatusTip (tr ("&Run the experiment inside the window"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (runSessionInline ()));
-
-  // Open an existing experiment
-  action = xp_menu->addAction ("&Open");
-  action->setShortcut (tr ("Ctrl+O"));
-  action->setStatusTip (tr ("&Open an experiment"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (open ()));
-
-  // Close the current simulation
-  close_action = xp_menu->addAction ("&Close");
-  close_action->setShortcut (tr ("Ctrl+W"));
-  close_action->setStatusTip (tr ("&Close the experiment"));
-  connect (close_action, SIGNAL (triggered ()), this, SLOT (unloadExperiment ()));
-  xp_menu->addSeparator ();
-
+#if 0
   // Maximum number of recent experiments displayed
   max_recents = 5;
   recent_actions = new QAction*[max_recents];
@@ -1067,56 +903,9 @@ QExperiment::QExperiment (int & argc, char** argv)
     connect (recent_actions[i], SIGNAL (triggered ()),
 	     this, SLOT (open_recent ()));
   }
-  xp_menu->addSeparator ();
+#endif
 
-  // Terminate the program
-  action = xp_menu->addAction ("&Quit");
-  action->setShortcut(tr("Ctrl+Q"));
-  action->setStatusTip(tr("&Quit the program"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (quit ()));
-
-  // Setup menu
-  auto menu = win->menuBar ()->addMenu (tr ("&Setup"));
-  action = menu->addAction (tr ("&New"));
-  action->setStatusTip (tr ("&Create a new setup"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (new_setup ()));
-
-  // Subject menu
-  menu = win->menuBar ()->addMenu (tr ("&Subject"));
-  action = menu->addAction (tr ("&New"));
-  action->setShortcut (tr ("Ctrl+N"));
-  action->setStatusTip (tr ("&Create a new subject"));
-  connect (action, SIGNAL (triggered ()), this, SLOT (new_subject ()));
-
-  // Top toolbar
-  //toolbar = new QToolBar ("Simulation");
-  //action = 
-
-  // Left toolbox
-  tbox = new QToolBox;
-
-  // Horizontal splitter (top: GLwidget, bottom: message box)
-  hsplitter = new QSplitter (Qt::Vertical);
-  hsplitter->addWidget (tbox);
-  logtab = new QTabWidget;
-  msgbox = new MyMessageBox;
-  logtab->addTab (msgbox, "Messages");
-  hsplitter->addWidget (logtab);
-
-  win->setCentralWidget (hsplitter);
-
-  // Status bar with current experiment name
-  xp_label = new QLabel ("No experiment loaded");
-  win->statusBar ()->addWidget (xp_label);
-
-  // Experimental setup
-  setup_item = new QWidget;
-  setup_cbox = new QComboBox;
-  connect (setup_cbox, SIGNAL (currentIndexChanged (const QString&)),
-	   this, SLOT (update_setup ()));
-  screen_sbox = new QSpinBox;
-  connect (screen_sbox, SIGNAL (valueChanged (int)),
-	   this, SLOT (setup_param_changed ()));
+#if 0
   // Set minimum to mode 13h, and maximum to 4320p
   off_x_edit = make_setup_spin (0, 7680, " px");
   off_y_edit = make_setup_spin (0, 4320, " px");
@@ -1128,28 +917,7 @@ QExperiment::QExperiment (int & argc, char** argv)
   lum_min_edit = make_setup_spin (1, 800, " cd/m²");
   lum_max_edit = make_setup_spin (1, 800, " cd/m²");
   refresh_edit = make_setup_spin (1, 300, " Hz"); 
-
-  auto flayout = new QFormLayout;
-  flayout->addRow ("Setup name", setup_cbox);
-  flayout->addRow ("Screen", screen_sbox);
-  flayout->addRow ("Horizontal offset", off_x_edit);
-  flayout->addRow ("Vertical offset", off_y_edit);
-  flayout->addRow ("Horizontal resolution", res_x_edit);
-  flayout->addRow ("Vertical resolution", res_y_edit);
-  flayout->addRow ("Physical width", phy_width_edit);
-  flayout->addRow ("Physical height", phy_height_edit);
-  flayout->addRow ("Distance", dst_edit);
-  flayout->addRow ("Minimum luminance", lum_min_edit);
-  flayout->addRow ("Maximum luminance", lum_max_edit);
-  flayout->addRow ("Refresh rate", refresh_edit);
-  setup_item->setLayout (flayout);
-  tbox->addItem (setup_item, "Setup");
-  
-  /*
-  auto gdsk = dsk.screenGeometry ();
-  QString dsk_msg ("Found %1 screens in a %2 desktop of %3×%4");
-  error (dsk_msg.arg (dsk.screenCount ()).arg (dsk.isVirtualDesktop () ? "virtual" : "normal").arg (gdsk.width ()).arg (gdsk.height ()));
-  */
+#endif
 
   stim = new StimWindow;
   connect (stim, &StimWindow::keyPressed,
@@ -1165,6 +933,7 @@ QExperiment::QExperiment (int & argc, char** argv)
 
   // Try to fetch back setup
   settings = new QSettings;
+#if 0
   settings->beginGroup ("setups");
   auto groups = settings->childGroups ();
 
@@ -1212,23 +981,15 @@ QExperiment::QExperiment (int & argc, char** argv)
     // Restore setup
     update_setup ();
   }
-
-  // Restore GUI state
-  if (settings->contains ("gui_width"))
-    win->resize (settings->value ("gui_width").toInt (),
-		settings->value ("gui_height").toInt ());
+#endif
 
   // Set recent experiments
   updateRecents ();
 
-  // Constrain the screen selector
-  screen_sbox->setMinimum (0);
-  screen_sbox->setMaximum (dsk.screenCount () - 1);
-
   save_setup = true;
 
   // Close event termination
-  connect (&app, SIGNAL (aboutToQuit ()),
+  connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
 	   this, SLOT (about_to_quit ()));
 
   // Make sure the timer is monotonic
@@ -1248,49 +1009,21 @@ void
 QExperiment::error (const QString& msg, const QString& desc)
 {
     Q_UNUSED (desc);
-    msgbox->add (new Message (MESSAGE_TYPE_ERROR, msg));
+    qDebug () << msg;
+    qDebug () << desc;
 }
 
-void
-QExperiment::new_subject ()
-{
-  creating_subject = true;
-
-  tbox->setCurrentWidget (subject_item);
-  subject_cbox->setEditable (true);
-  auto le = new MyLineEdit;
-  subject_cbox->setLineEdit (le);
-  le->clear ();
-
-  connect (le, SIGNAL (returnPressed ()),
-	   this, SLOT (new_subject_validated ()));
-  connect (le, SIGNAL (escapePressed ()),
-	   this, SLOT (new_subject_cancelled ()));
-
-  QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
-  le->setValidator (new QRegExpValidator (rx));
-  subject_cbox->setFocus (Qt::OtherFocusReason);
-}
-
+#if 0
 void
 QExperiment::new_setup ()
 {
-  tbox->setCurrentWidget (setup_item);
-  setup_cbox->setEditable (true);
-  auto le = new MyLineEdit;
-  setup_cbox->setLineEdit (le);
-  le->clear ();
-
-  connect (le, SIGNAL (returnPressed ()),
-	   this, SLOT (new_setup_validated ()));
-  connect (le, SIGNAL (escapePressed ()),
-	   this, SLOT (new_setup_cancelled ()));
-
   QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
   le->setValidator (new QRegExpValidator (rx));
   setup_cbox->setFocus (Qt::OtherFocusReason);
 }
+#endif
 
+#if 0
 void
 QExperiment::new_setup_validated ()
 {
@@ -1306,17 +1039,9 @@ QExperiment::new_setup_validated ()
 
   setup_cbox->setEditable (false);
 }
+#endif
 
-void
-QExperiment::new_setup_cancelled ()
-{
-  auto le = qobject_cast<MyLineEdit*> (sender());
-  if (le) {
-    le->clear ();
-    setup_cbox->setEditable (false);
-  }
-}
-
+#if 0
 void
 QExperiment::new_subject_validated ()
 {
@@ -1360,19 +1085,10 @@ QExperiment::new_subject_validated ()
   // Create a new subject
   settings->setValue (subject_path, fi.absoluteFilePath ());
 }
+#endif
 
-void
-QExperiment::new_subject_cancelled ()
-{
-  creating_subject = false;
 
-  auto le = qobject_cast<MyLineEdit*> (sender());
-  if (le) {
-    le->clear ();
-    subject_cbox->setEditable (false);
-  }
-}
-
+#if 0
 void
 QExperiment::select_subject_datafile ()
 {
@@ -1384,10 +1100,12 @@ QExperiment::select_subject_datafile ()
     set_subject_datafile (dialog.selectedFiles ().at (0));
   }
 }
+#endif
 
 void
 QExperiment::subject_changed (const QString& subject_id)
 {
+#if 0
   if (creating_subject)
     return;
 
@@ -1422,14 +1140,7 @@ QExperiment::subject_changed (const QString& subject_id)
     subject_databutton->setToolTip (fi.absoluteFilePath ());
     subject_databutton->setDisabled (false);
   }
-}
-
-void
-QExperiment::set_subject_datafile (const QString& path)
-{
-  QFileInfo fi (path);
-  subject_databutton->setText (fi.fileName ());
-  subject_databutton->setToolTip (path);
+#endif
 }
 
 void
@@ -1455,14 +1166,11 @@ QExperiment::setup_updated ()
     }
     lua_pop (lstate, 1);
 #endif
-    float distance = dst_edit->value ();
+    float distance = 125;
+    float hres = 72;
+    float vres = 72;
 
-    float hres = (float) res_x_edit->value ()
-	/ phy_width_edit->value ();
-    float vres = (float) res_y_edit->value ()
-	/ phy_height_edit->value ();
-
-    float refreshRate = (float) refresh_edit->value ();
+    float refreshRate = monitor_rate ();
 
     m_experiment->setDistance (distance);
     m_experiment->setHorizontalResolution (hres);
@@ -1483,14 +1191,6 @@ QExperiment::setup_updated ()
 
     // Update experiment property
     m_experiment->setTextureSize (tex_size);
-
-    // Make sure the new size is acceptable on the target screen
-    auto geom = dsk.screenGeometry (screen_sbox->value ());
-    if (tex_size > geom.width () || tex_size > geom.height ()) {
-      // TODO: use the message GUI logging facilities
-      qDebug () << "error: texture too big for the screen";
-      return;
-    }
 
     // Notify the GLWidget of a new texture size
     stim->setTextureSize (tex_size, tex_size);
@@ -1522,6 +1222,7 @@ QExperiment::setup_updated ()
 void
 QExperiment::updateRecents ()
 {
+#if 0
   auto rlist = settings->value ("recents").toStringList ();
   int i = 0;
   QString label ("&%1 %2");
@@ -1535,66 +1236,21 @@ QExperiment::updateRecents ()
     recent_actions[i]->setVisible (true);
     i++;
   }
-  while (i < max_recents)
-    recent_actions[i++]->setVisible (false);
+#endif
 }
 
 QExperiment::~QExperiment ()
 {
     delete settings;
     delete stim;
-    delete win;
-}
-
-void
-QExperiment::setup_param_changed ()
-{
-  if (! save_setup)
-    return;
-
-  qDebug () << "changing setup param value";
-
-  settings->beginGroup ("setups");
-  settings->beginGroup (setup_cbox->currentText ());
-  settings->setValue ("scr", screen_sbox->value ());
-  settings->setValue ("off_x", off_x_edit->value ());
-  settings->setValue ("off_y", off_y_edit->value ());
-  settings->setValue ("res_x", res_x_edit->value ());
-  settings->setValue ("res_y", res_y_edit->value ());
-  settings->setValue ("phy_w", phy_width_edit->value ());
-  settings->setValue ("phy_h", phy_height_edit->value ());
-  settings->setValue ("dst", dst_edit->value ());
-  settings->setValue ("lmin", lum_min_edit->value ());
-  settings->setValue ("lmax", lum_max_edit->value ());
-  settings->setValue ("rate", refresh_edit->value ());
-  settings->endGroup ();
-  settings->endGroup ();
-
-  // Emit the signal
-  setup_updated ();
 }
 
 void
 QExperiment::update_setup ()
 {
-  auto sname = setup_cbox->currentText ();
+  //auto sname = setup_cbox->currentText ();
+  auto sname = "BLA";
   qDebug () << "restoring setup for" << sname;
-
-  settings->beginGroup ("setups");
-  settings->beginGroup (sname);
-  screen_sbox->setValue (settings->value ("scr").toInt ());
-  off_x_edit->setValue (settings->value ("off_x").toInt ());
-  off_y_edit->setValue (settings->value ("off_y").toInt ());
-  res_x_edit->setValue (settings->value ("res_x").toInt ());
-  res_y_edit->setValue (settings->value ("res_y").toInt ());
-  phy_width_edit->setValue (settings->value ("phy_w").toInt ());
-  phy_height_edit->setValue (settings->value ("phy_h").toInt ());
-  dst_edit->setValue (settings->value ("dst").toInt ());
-  lum_min_edit->setValue (settings->value ("lmin").toInt ());
-  lum_max_edit->setValue (settings->value ("lmax").toInt ());
-  refresh_edit->setValue (settings->value ("rate").toInt ());
-  settings->endGroup ();
-  settings->endGroup ();
 
   settings->setValue ("last_setup", sname);
 
@@ -1604,18 +1260,5 @@ QExperiment::update_setup ()
 float
 QExperiment::monitor_rate () const
 {
-  return (float) refresh_edit->value ();
-}
-
-void
-QExperiment::open ()
-{
-  QFileDialog dialog (win, tr ("Open experiment"), last_dialog_dir);
-  dialog.setFileMode (QFileDialog::ExistingFile);
-  dialog.setNameFilter (tr ("Experiment (*.lua);;All files (*)"));
-
-  if (dialog.exec () == QDialog::Accepted) {
-    last_dialog_dir = dialog.directory ().absolutePath ();
-    load_experiment (dialog.selectedFiles ().at (0));
-  }
+  return 85;
 }
