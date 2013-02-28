@@ -36,7 +36,10 @@ class QExperiment : public QObject
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
 
 public:
-  protected:
+    const Setup* setup () const
+    { return &m_setup; }
+
+protected:
     /// Stimulus OpenGL window
     StimWindow* stim;
 

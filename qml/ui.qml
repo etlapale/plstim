@@ -1,6 +1,9 @@
 import QtQuick 2.0
 
+
 Rectangle {
+
+    property QtObject setup
 
     Style { id : theme }
 
@@ -14,19 +17,33 @@ Rectangle {
 	width : parent.width
 
 	SectionText {
+	    text : "Machine"
+	}
+
+	TextParam {
+	    objectName : "hostParam"
+	    label : "Host name"
+	}
+
+	TextParam {
+	    objectName : "timerParam"
+	    label : "Timer"
+	}
+
+	SectionText {
 	    text : "Setup"
 	}
 
 	IntInput {
 	    label : "Horizontal offset"
-	    value : setup ? setup.horizontalOffset : 0
+	    value : setup.horizontalOffset
 	    unit : "px"
 
 	}
 
 	IntInput {
 	    label : "Vertical offset"
-	    value : setup ? setup.verticalOffset : 0
+	    value : setup.verticalOffset
 	    unit : "px"
 	}
 

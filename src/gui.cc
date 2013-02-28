@@ -9,8 +9,24 @@ GUI::GUI (QWindow* parent)
     // Load the QtQuick interface
     setSource (QUrl::fromLocalFile ("qml/ui.qml"));
 
+    // Display machine information
+    auto obj = rootObject ()->findChild<QObject*> ("timerParam");
+    if (obj)
+	obj->setProperty ("value",
+		m_engine.timer.isMonotonic () ?
+		"monotonic" : "non monotonic");
+    obj = rootObject ()->findChild<QObject*> ("hostParam");
+    if (obj)
+	obj->setProperty ("value", QHostInfo::localHostName ());
+
+    // Link setup to GUI
+    //qRegisterMetaType<plstim::Setup> ();
+    //QVariant var = m_engine.setup ();
+    //rootObject ()->setProperty ("setup", m_engine.setup ());
+    rootContext ()->setContextProperty ("setup", m_engine.setup ());
+
     // Connect the QtQuick interface to the experiment
-    auto obj = rootObject ()->findChild<QObject*> ("quitButton");
+    obj = rootObject ()->findChild<QObject*> ("quitButton");
     if (obj)
 	QObject::connect (obj, SIGNAL (buttonClick ()),
 		&m_engine, SLOT (quit ()));

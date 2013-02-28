@@ -929,80 +929,71 @@ QExperiment::QExperiment ()
 	   this, &QExperiment::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
-  // Show OpenGL version in GUI
+    // Show OpenGL version in GUI
 
-  // Try to fetch back setup
-  settings = new QSettings;
+    // Try to fetch back setup
+    settings = new QSettings;
+    settings->beginGroup ("setups");
+    auto groups = settings->childGroups ();
+
+    // No setup previously defined, infer a new one
+    if (groups.empty ()) {
 #if 0
-  settings->beginGroup ("setups");
-  auto groups = settings->childGroups ();
+	auto hostname = QHostInfo::localHostName ();
+	qDebug () << "creating a new setup for" << hostname;
+	setup_cbox->addItem (hostname);
 
-  // No setup previously defined, infer a new one
-  if (groups.empty ()) {
-    auto hostname = QHostInfo::localHostName ();
-    qDebug () << "creating a new setup for" << hostname;
-    setup_cbox->addItem (hostname);
+	// Search for a secondary screen
+	int i;
+	for (i = 0; i < dsk.screenCount (); i++)
+	    if (i != dsk.primaryScreen ())
+		break;
 
-    // Search for a secondary screen
-    int i;
-    for (i = 0; i < dsk.screenCount (); i++)
-      if (i != dsk.primaryScreen ())
-	break;
-
-    // Get screen geometry
-    auto geom = dsk.screenGeometry (i);
-    qDebug () << "screen geometry: " << geom.width () << "x"
-              << geom.height () << "+" << geom.x () << "+" << geom.y ();
-    screen_sbox->setValue (i);
-    res_x_edit->setValue (geom.width ());
-    res_y_edit->setValue (geom.height ());
-    settings->endGroup ();
-  }
-
-  // Use an existing setup
-  else {
-    // Add all the setups to the combo box
-    for (auto g : groups) {
-      if (g != "General") {
-	setup_cbox->addItem (g);
-      }
-    }
-    settings->endGroup ();
-
-    // Check if there was a ‘last’ setup
-    if (settings->contains ("last_setup")) {
-      auto last = settings->value ("last_setup").toString ();
-      // Make sure the setup still exists
-      int idx = setup_cbox->findText (last);
-      if (idx >= 0)
-	setup_cbox->setCurrentIndex (idx);
-    }
-    
-    // Restore setup
-    update_setup ();
-  }
+	// Get screen geometry
+	auto geom = dsk.screenGeometry (i);
+	qDebug () << "screen geometry: " << geom.width () << "x"
+	    << geom.height () << "+" << geom.x () << "+" << geom.y ();
+	screen_sbox->setValue (i);
+	res_x_edit->setValue (geom.width ());
+	res_y_edit->setValue (geom.height ());
+	settings->endGroup ();
 #endif
+    }
 
-  // Set recent experiments
-  updateRecents ();
+    // Use an existing setup
+    else {
+#if 0
+	// Add all the setups to the combo box
+	for (auto g : groups) {
+	    if (g != "General") {
+		setup_cbox->addItem (g);
+	    }
+	}
+	settings->endGroup ();
 
-  save_setup = true;
+	// Check if there was a ‘last’ setup
+	if (settings->contains ("last_setup")) {
+	    auto last = settings->value ("last_setup").toString ();
+	    // Make sure the setup still exists
+	    int idx = setup_cbox->findText (last);
+	    if (idx >= 0)
+		setup_cbox->setCurrentIndex (idx);
+	}
 
-  // Close event termination
-  connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
-	   this, SLOT (about_to_quit ()));
+	// Restore setup
+	update_setup ();
+#endif
+    }
+    settings->endGroup ();
 
-  // Make sure the timer is monotonic
-  if (! timer.isMonotonic ())
-    error (tr ("No monotonic timer available on this platform"));
+    // Set recent experiments
+    updateRecents ();
 
-  // Register QML types for PlStim
-  qmlRegisterType<plstim::Vector> ("PlStim", 1, 0, "Vector");
-  qmlRegisterType<plstim::Pen> ("PlStim", 1, 0, "Pen");
-  qmlRegisterType<plstim::PainterPath> ("PlStim", 1, 0, "PainterPath");
-  qmlRegisterUncreatableType<plstim::Painter> ("PlStim", 1, 0, "Painter", "Painter objects cannot be created from QML");
-  qmlRegisterType<plstim::Page> ("PlStim", 1, 0, "Page");
-  qmlRegisterType<plstim::Experiment> ("PlStim", 1, 0, "Experiment");
+    save_setup = true;
+
+    // Close event termination
+    connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
+	    this, SLOT (about_to_quit ()));
 }
 
 void
