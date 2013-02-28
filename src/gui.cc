@@ -20,9 +20,6 @@ GUI::GUI (QWindow* parent)
 	obj->setProperty ("value", QHostInfo::localHostName ());
 
     // Link setup to GUI
-    //qRegisterMetaType<plstim::Setup> ();
-    //QVariant var = m_engine.setup ();
-    //rootObject ()->setProperty ("setup", m_engine.setup ());
     rootContext ()->setContextProperty ("setup", m_engine.setup ());
 
     // Connect the QtQuick interface to the experiment
@@ -44,13 +41,13 @@ GUI::GUI (QWindow* parent)
 		&m_engine, SLOT (endSession ()));
 
     // Dynamically show action buttons
-    connect (&m_engine, &QExperiment::runningChanged, [this] (bool running) {
+    connect (&m_engine, &Engine::runningChanged, [this] (bool running) {
 	    this->rootObject ()->setProperty ("running", running);
 	});
 
 
     // Show trial number in the current session block
-    connect (&m_engine, &QExperiment::currentTrialChanged, [this] (int trial) {
+    connect (&m_engine, &Engine::currentTrialChanged, [this] (int trial) {
 	    auto obj = this->rootObject ()->findChild<QObject*> ("trialText");
 	    if (obj)
 		obj->setProperty ("text", QString ("%1/%2").arg (trial+1).arg (m_engine.m_experiment ? m_engine.m_experiment->trialCount () : 0));

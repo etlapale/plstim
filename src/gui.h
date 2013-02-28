@@ -2,7 +2,7 @@
 #define __PLSTIM_GUI_H
 
 #include <QtQuick>
-#include "qexperiment.h"
+#include "engine.h"
 
 
 namespace plstim
@@ -13,7 +13,7 @@ public:
     GUI (QWindow* parent=NULL);
     void loadExperiment (const QString& path);
 protected:
-    plstim::QExperiment m_engine;
+    plstim::Engine m_engine;
 };
 }
 

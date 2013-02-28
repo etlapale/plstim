@@ -1,4 +1,4 @@
-// plstim/qexperiment.cc – Base class for experimental stimuli
+// plstim/engine.cc – Base class for experimental stimuli
 
 
 #include <iomanip>
@@ -6,7 +6,7 @@
 #include <sstream>
 using namespace std;
 
-#include "qexperiment.h"
+#include "engine.h"
 using namespace plstim;
 
 
@@ -19,7 +19,7 @@ using namespace H5;
 
 
 void
-QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
+Engine::paintPage (Page* page, QImage& img, QPainter& painter)
 {
     QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
@@ -75,7 +75,7 @@ QExperiment::paintPage (Page* page, QImage& img, QPainter& painter)
 }
 
 void
-QExperiment::run_trial ()
+Engine::run_trial ()
 {
   timer.start ();
 
@@ -125,7 +125,7 @@ QExperiment::run_trial ()
 }
 
 void
-QExperiment::show_page (int index)
+Engine::show_page (int index)
 {
     auto page = m_experiment->page (index);
 
@@ -242,7 +242,7 @@ QExperiment::show_page (int index)
 }
 
 void
-QExperiment::nextPage ()
+Engine::nextPage ()
 {
 #ifdef HAVE_EYELINK
     // Exit the inner fixation loop
@@ -302,7 +302,7 @@ QExperiment::nextPage ()
 }
 
 void
-QExperiment::savePageParameter (const QString& pageTitle,
+Engine::savePageParameter (const QString& pageTitle,
 				const QString& paramName,
 				int paramValue)
 {
@@ -320,7 +320,7 @@ QExperiment::savePageParameter (const QString& pageTitle,
 
 #ifdef HAVE_POWERMATE
 void
-QExperiment::powerMateRotation (PowerMateEvent* evt)
+Engine::powerMateRotation (PowerMateEvent* evt)
 {
     if (! m_running)
 	return;
@@ -338,7 +338,7 @@ QExperiment::powerMateRotation (PowerMateEvent* evt)
 }
 
 void
-QExperiment::powerMateButtonPressed (PowerMateEvent* evt)
+Engine::powerMateButtonPressed (PowerMateEvent* evt)
 {
     Q_UNUSED (evt);
     //qDebug () << "PowerMate button pressed!";
@@ -355,7 +355,7 @@ QExperiment::powerMateButtonPressed (PowerMateEvent* evt)
 #endif // HAVE_POWERMATE
 
 void
-QExperiment::stimKeyPressed (QKeyEvent* evt)
+Engine::stimKeyPressed (QKeyEvent* evt)
 {
   // Keyboard events are only handled in sessions
   if (! m_running)
@@ -390,7 +390,7 @@ QExperiment::stimKeyPressed (QKeyEvent* evt)
 }
 
 void
-QExperiment::endSession ()
+Engine::endSession ()
 {
     if (hf != NULL) {
 #if HAVE_EYELINK
@@ -422,7 +422,7 @@ QExperiment::endSession ()
 }
 
 void
-QExperiment::unloadExperiment ()
+Engine::unloadExperiment ()
 {
   endSession ();
 
@@ -461,7 +461,7 @@ QExperiment::unloadExperiment ()
 }
 
 bool
-QExperiment::load_experiment (const QString& path)
+Engine::load_experiment (const QString& path)
 {
 
   // Canonicalise the script path
@@ -685,7 +685,7 @@ QExperiment::load_experiment (const QString& path)
 }
 
 void
-QExperiment::set_trial_count (int num_trials)
+Engine::set_trial_count (int num_trials)
 {
   //ntrials_spin->setValue (num_trials);
 }
@@ -711,7 +711,7 @@ find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 
 
 void
-QExperiment::init_session ()
+Engine::init_session ()
 {
   setCurrentTrial (0);
 
@@ -798,7 +798,7 @@ QExperiment::init_session ()
 }
 
 void
-QExperiment::runSession ()
+Engine::runSession ()
 {
   // No experiment loaded
   if (! m_experiment) return;
@@ -819,7 +819,7 @@ QExperiment::runSession ()
 }
 
 void
-QExperiment::runSessionInline ()
+Engine::runSessionInline ()
 {
   // No experiment loaded
   if (! m_experiment) return;
@@ -834,13 +834,13 @@ QExperiment::runSessionInline ()
 }
 
 void
-QExperiment::quit ()
+Engine::quit ()
 {
     QCoreApplication::instance ()->quit ();
 }
 
 void
-QExperiment::about_to_quit ()
+Engine::about_to_quit ()
 {
     qDebug () << "About to quit";
     endSession ();
@@ -850,7 +850,7 @@ QExperiment::about_to_quit ()
     }
 }
 
-QExperiment::QExperiment ()
+Engine::Engine ()
   : save_setup (false),
     bin_dist (0, 1),
     real_dist (0, 1),
@@ -921,12 +921,12 @@ QExperiment::QExperiment ()
 
   stim = new StimWindow;
   connect (stim, &StimWindow::keyPressed,
-	  this, &QExperiment::stimKeyPressed);
+	  this, &Engine::stimKeyPressed);
 #ifdef HAVE_POWERMATE
   connect (stim, &StimWindow::powerMateRotation,
-	   this, &QExperiment::powerMateRotation);
+	   this, &Engine::powerMateRotation);
   connect (stim, &StimWindow::powerMateButtonPressed,
-	   this, &QExperiment::powerMateButtonPressed);
+	   this, &Engine::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
     // Show OpenGL version in GUI
@@ -997,7 +997,7 @@ QExperiment::QExperiment ()
 }
 
 void
-QExperiment::error (const QString& msg, const QString& desc)
+Engine::error (const QString& msg, const QString& desc)
 {
     Q_UNUSED (desc);
     qDebug () << msg;
@@ -1006,7 +1006,7 @@ QExperiment::error (const QString& msg, const QString& desc)
 
 #if 0
 void
-QExperiment::new_setup ()
+Engine::new_setup ()
 {
   QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
   le->setValidator (new QRegExpValidator (rx));
@@ -1016,7 +1016,7 @@ QExperiment::new_setup ()
 
 #if 0
 void
-QExperiment::new_setup_validated ()
+Engine::new_setup_validated ()
 {
   auto le = qobject_cast<MyLineEdit*> (sender());
   auto setup_name = le->text ();
@@ -1034,7 +1034,7 @@ QExperiment::new_setup_validated ()
 
 #if 0
 void
-QExperiment::new_subject_validated ()
+Engine::new_subject_validated ()
 {
   creating_subject = false;
 
@@ -1081,7 +1081,7 @@ QExperiment::new_subject_validated ()
 
 #if 0
 void
-QExperiment::select_subject_datafile ()
+Engine::select_subject_datafile ()
 {
   QFileDialog dialog (win, tr ("Select datafile"), last_datafile_dir);
   dialog.setDefaultSuffix (".h5");
@@ -1094,7 +1094,7 @@ QExperiment::select_subject_datafile ()
 #endif
 
 void
-QExperiment::subject_changed (const QString& subject_id)
+Engine::subject_changed (const QString& subject_id)
 {
 #if 0
   if (creating_subject)
@@ -1135,7 +1135,7 @@ QExperiment::subject_changed (const QString& subject_id)
 }
 
 void
-QExperiment::setup_updated ()
+Engine::setup_updated ()
 {
   cout << "Setup updated" << endl;
   // Make sure converters are up to date
@@ -1211,7 +1211,7 @@ QExperiment::setup_updated ()
 }
 
 void
-QExperiment::updateRecents ()
+Engine::updateRecents ()
 {
 #if 0
   auto rlist = settings->value ("recents").toStringList ();
@@ -1230,14 +1230,14 @@ QExperiment::updateRecents ()
 #endif
 }
 
-QExperiment::~QExperiment ()
+Engine::~Engine ()
 {
     delete settings;
     delete stim;
 }
 
 void
-QExperiment::update_setup ()
+Engine::update_setup ()
 {
   //auto sname = setup_cbox->currentText ();
   auto sname = "BLA";
@@ -1249,7 +1249,7 @@ QExperiment::update_setup ()
 }
 
 float
-QExperiment::monitor_rate () const
+Engine::monitor_rate () const
 {
   return 85;
 }

@@ -1,7 +1,7 @@
-// plstim/qexperiment.h – Manage a real experiment
+// plstim/engine.h – Manage a real experiment
 
-#ifndef __PLSTIM_QEXPERIMENT_H
-#define __PLSTIM_QEXPERIMENT_H
+#ifndef __PLSTIM_ENGINE_H
+#define __PLSTIM_ENGINE_H
 
 #include <random>
 #include <set>
@@ -28,7 +28,7 @@
 
 namespace plstim
 {
-class QExperiment : public QObject
+class Engine : public QObject
 {
     Q_OBJECT
     Q_PROPERTY (float monitor_rate READ monitor_rate)
@@ -76,9 +76,9 @@ protected:
 
   public:
 
-    QExperiment ();
+    Engine ();
 
-    virtual ~QExperiment ();
+    virtual ~Engine ();
 
     bool load_experiment (const QString& path);
 
