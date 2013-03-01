@@ -1,4 +1,5 @@
 #include <QtGui>
+#include <QtWidgets>
 #include "gui.h"
 
 
@@ -6,7 +7,8 @@ int
 main (int argc, char* argv[])
 {
     // Qt application with a GUI
-    QGuiApplication app (argc, argv);
+    //QGuiApplication app (argc, argv);
+    QApplication app (argc, argv);
 
     // Create a window for PlStim
     plstim::GUI gui;

@@ -6,6 +6,7 @@
 #include <random>
 #include <set>
 
+#include <QtCore>
 #include <QtQml>
 
 // HDF5 C++ library
@@ -43,13 +44,16 @@ protected:
     /// Stimulus OpenGL window
     StimWindow* stim;
 
-public:
     /// Application settings
-    QSettings* settings;
-protected:
+    QSettings* m_settings;
 
     /// Current setup
     Setup m_setup;
+
+    /// Experiment description
+    QJsonDocument m_json;
+
+    QStringList m_errors;
 
     /// Current page in a trial
     int current_page;
@@ -82,7 +86,13 @@ protected:
 
     virtual ~Engine ();
 
-    bool load_experiment (const QString& path);
+    QStringList& errors ()
+    { return m_errors; }
+
+    bool loadExperiment (const QString& path);
+
+    QJsonDocument& experimentDescription ()
+    { return m_json; }
 
   public slots:
     void unloadExperiment ();
@@ -143,12 +153,8 @@ protected:
 	                    const QString& paramName,
 			    int paramValue);
 
-  protected:
-    bool creating_subject;
-
   protected slots:
     void loadSetup (const QString& setupName);
-    void updateRecents ();
     void about_to_quit ();
     void quit ();
     void stimKeyPressed (QKeyEvent* evt);
@@ -164,13 +170,12 @@ protected:
     bool m_running;
     int m_currentTrial;
     bool save_setup;
+    QString m_subjectName;
 
   public:
     QString xp_name;
   protected:
     int session_number;
-
-    int max_recents;
 
     /// QML scripting engine to load the experiments
     QQmlEngine m_engine;
@@ -227,9 +232,6 @@ protected:
 
     QElapsedTimer timer;
 
-  public:
-    void error (const QString& msg, const QString& desc="");
-
 #ifdef HAVE_EYELINK
   protected:
     bool eyelink_connected;
@@ -241,11 +243,13 @@ protected:
     void load_eyelink ();
     void calibrate_eyelink ();
     bool check_eyelink (INT16 errcode, const QString& func_name);
-#endif
+#endif // HAVE_EYELINK
 
 signals:
+    void error (const QString& msg, const QString& desc="");
     void runningChanged (bool running);
     void currentTrialChanged (int trial);
+    void experimentChanged (Experiment* experiment);
 };
 }
 

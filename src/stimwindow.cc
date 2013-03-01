@@ -19,7 +19,6 @@ StimWindow::StimWindow (QWindow* prnt)
       tex_width (0), tex_height (0),
       m_texloc (0), m_currentFrame (0)
 {
-    qDebug () << "creating a stimulus window";
     setSurfaceType (QWindow::OpenGLSurface);
 
     QSurfaceFormat fmt;
@@ -33,7 +32,6 @@ StimWindow::StimWindow (QWindow* prnt)
 
 StimWindow::~StimWindow ()
 {
-    qDebug () << "destroying a stimulus window";
 }
 
 static GLuint

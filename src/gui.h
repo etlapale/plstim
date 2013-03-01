@@ -14,6 +14,7 @@ public:
     void loadExperiment (const QString& path);
 protected:
     plstim::Engine m_engine;
+    QStringList m_errorList;
 };
 }
 

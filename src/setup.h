@@ -11,15 +11,26 @@ namespace plstim
 class Setup : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY (QString name READ name WRITE setName)
-    Q_PROPERTY (int horizontalOffset READ horizontalOffset WRITE setHorizontalOffset)
-    Q_PROPERTY (int verticalOffset READ verticalOffset WRITE setVerticalOffset)
-    Q_PROPERTY (int horizontalResolution READ horizontalResolution WRITE setHorizontalResolution)
-    Q_PROPERTY (int verticalResolution READ verticalResolution WRITE setVerticalResolution)
-    Q_PROPERTY (int distance READ distance WRITE setDistance)
-    Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate)
-    Q_PROPERTY (int physicalWidth READ physicalWidth WRITE setPhysicalWidth)
-    Q_PROPERTY (int physicalHeight READ physicalHeight WRITE setPhysicalHeight)
+    Q_PROPERTY (QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY (int horizontalOffset READ horizontalOffset WRITE setHorizontalOffset NOTIFY horizontalOffsetChanged)
+    Q_PROPERTY (int verticalOffset READ verticalOffset WRITE setVerticalOffset NOTIFY verticalOffsetChanged NOTIFY verticalOffsetChanged)
+    Q_PROPERTY (int horizontalResolution READ horizontalResolution WRITE setHorizontalResolution NOTIFY horizontalResolutionChanged)
+    Q_PROPERTY (int verticalResolution READ verticalResolution WRITE setVerticalResolution NOTIFY verticalResolutionChanged)
+    Q_PROPERTY (int distance READ distance WRITE setDistance NOTIFY distanceChanged)
+    Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate NOTIFY refreshRateChanged)
+    Q_PROPERTY (int physicalWidth READ physicalWidth WRITE setPhysicalWidth NOTIFY physicalWidthChanged)
+    Q_PROPERTY (int physicalHeight READ physicalHeight WRITE setPhysicalHeight NOTIFY physicalHeightChanged)
+
+signals:
+    void nameChanged (const QString& name);
+    void horizontalOffsetChanged (int offset);
+    void verticalOffsetChanged (int offset);
+    void horizontalResolutionChanged (int resolution);
+    void verticalResolutionChanged (int resolution);
+    void distanceChanged (int distance);
+    void refreshRateChanged (float rate);
+    void physicalWidthChanged (int width);
+    void physicalHeightChanged (int height);
 
 public:
     Setup (QObject* parent=NULL)
@@ -34,55 +45,82 @@ public:
     { return m_name; }
 
     void setName (const QString& name)
-    { m_name = name; }
+    {
+	m_name = name;
+	emit nameChanged (name);
+    }
 
     int horizontalOffset () const
     { return m_horizontalOffset; }
 
     void setHorizontalOffset (int offset)
-    { m_horizontalOffset = offset; }
+    {
+	m_horizontalOffset = offset;
+	emit horizontalOffsetChanged (offset);
+    }
 
     int verticalOffset () const
     { return m_verticalOffset; }
 
     void setVerticalOffset (int offset)
-    { m_verticalOffset = offset; }
+    {
+	m_verticalOffset = offset;
+	emit verticalOffsetChanged (offset);
+    }
 
     int horizontalResolution () const
     { return m_horizontalResolution; }
 
     void setHorizontalResolution (int resolution)
-    { m_horizontalResolution = resolution; }
+    {
+	m_horizontalResolution = resolution;
+	emit horizontalOffsetChanged (resolution);
+    }
 
     int verticalResolution () const
     { return m_verticalResolution; }
 
     void setVerticalResolution (int resolution)
-    { m_verticalResolution = resolution; }
+    {
+	m_verticalResolution = resolution;
+	emit verticalResolutionChanged (resolution);
+    }
 
     int distance () const
     { return m_distance; }
 
     void setDistance (int distance)
-    { m_distance = distance; }
+    {
+	m_distance = distance;
+	emit distanceChanged (distance);
+    }
 
     float refreshRate () const
     { return m_refreshRate; }
 
     void setRefreshRate (float rate)
-    { m_refreshRate = rate; }
+    {
+	m_refreshRate = rate;
+	emit refreshRateChanged (rate);
+    }
 
     int physicalWidth () const
     { return m_physicalWidth; }
 
     void setPhysicalWidth (int width)
-    { m_physicalWidth = width; }
+    {
+	m_physicalWidth = width;
+	emit physicalWidthChanged (width);
+    }
 
     int physicalHeight () const
     { return m_physicalHeight; }
 
     void setPhysicalHeight (int height)
-    { m_physicalHeight = height; }
+    {
+	m_physicalHeight = height;
+	emit physicalHeightChanged (height);
+    }
 
 protected:
     QString m_name;

@@ -376,6 +376,7 @@ class Experiment : public QObject
     Q_PROPERTY (QColor background READ background WRITE setBackground)
     Q_PROPERTY (QQmlListProperty<plstim::Page> pages READ pages)
     Q_PROPERTY (QVariantMap trialParameters READ trialParameters WRITE setTrialParameters)
+    Q_PROPERTY (QVariantMap subjectParameters READ subjectParameters WRITE setSubjectParameters)
     Q_PROPERTY (QVariantList modules READ modules WRITE setModules)
     Q_CLASSINFO ("DefaultProperty", "pages")
     
@@ -475,6 +476,12 @@ public:
     void setTrialParameters (const QVariantMap& params)
     { m_trialParameters = params; }
 
+    const QVariantMap& subjectParameters () const
+    { return m_subjectParameters; }
+
+    void setSubjectParameters (const QVariantMap& params)
+    { m_subjectParameters = params; }
+
     const QVariantList& modules () const
     { return m_modules; }
 
@@ -495,6 +502,7 @@ protected:
     QColor m_background;
     QList<plstim::Page*> m_pages;
     QVariantMap m_trialParameters;
+    QVariantMap m_subjectParameters;
     QVariantList m_modules;
     Setup* m_setup;
 

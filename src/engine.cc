@@ -179,8 +179,8 @@ Engine::show_page (int index)
     qDebug () << "page" << page->name () << "wants a" << page->fixation () << "ms fixation";
     QElapsedTimer timer;
     // Target
-    float tx = setup.horizontalResolution () / 2.0;
-    float ty = setup.verticalResolution () / 2.0;
+    float tx = m_setup.horizontalResolution () / 2.0;
+    float ty = m_setup.verticalResolution () / 2.0;
     float fix_threshold = m_experiment->degreesToPixels (1.0);
     qDebug () << "checking for fix at" << tx << ty << "threshold is" << fix_threshold << "px";
 
@@ -392,7 +392,7 @@ Engine::endSession ()
 	// Stop recording
 	stop_recording ();
 	// Choose a name for the local EDF
-	auto subject_id = subject_cbox->currentText ();
+	auto subject_id = m_subjectName;
 	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
 	// Buggy Eyelink headers do not care about const
 	auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
@@ -420,6 +420,9 @@ void
 Engine::unloadExperiment ()
 {
   endSession ();
+
+  m_experiment = NULL;
+  experimentChanged (NULL);
 
   // Erase all components from QML engine memroy
   m_engine.clearComponentCache ();
@@ -456,47 +459,49 @@ Engine::unloadExperiment ()
 }
 
 bool
-Engine::load_experiment (const QString& path)
+Engine::loadExperiment (const QString& path)
 {
-
-  // Canonicalise the script path
-  QFileInfo fileinfo (path);
-  auto script_path = fileinfo.canonicalFilePath ();
-
-  // Store the experiment path in the recent list
-  auto rlist = settings->value ("recents").toStringList ();
-  rlist.removeAll (script_path);
-  rlist.prepend (script_path);
-  while (rlist.size () > max_recents)
-    rlist.removeLast ();
-  settings->setValue ("recents", rlist);
-  updateRecents ();
-
-  // TODO: cleanup any existing experiment
+  // Cleanup any existing experiment
   unloadExperiment ();
-  
-  // Add the experiment to the settings
-  xp_name = fileinfo.fileName ();
-  if (xp_name.endsWith (".qml"))
-    xp_name = xp_name.left (xp_name.size () - 4);
-  settings->beginGroup (QString ("experiments/%1").arg (xp_name));
-  if (settings->contains ("path")) {
-    if (settings->value ("path").toString () != script_path) {
-      error ("Homonymous experiment");
-      xp_name.clear ();
-      return false;
-    }
-  }
-  else {
-    settings->setValue ("path", script_path);
-  }
-  settings->endGroup ();
 
-  m_component = new QQmlComponent (&m_engine, script_path);
+
+  // Canonicalise the experiment description path
+  QFileInfo fileinfo (path);
+  
+  // Get the experiment short name
+  xp_name = fileinfo.fileName ();
+  if (xp_name.endsWith (".json"))
+    xp_name = xp_name.left (xp_name.size () - 5);
+
+  // Load the JSON description of the experiment
+  QFile f (path);
+  f.open (QIODevice::ReadOnly);
+  QByteArray ba = f.readAll ();
+  f.close ();
+  QJsonParseError jerr;
+  m_json = QJsonDocument::fromJson (ba, &jerr);
+  if (jerr.error != QJsonParseError::NoError) {
+      error ("Could not parse the JSON description",
+	      jerr.errorString ());
+      unloadExperiment ();
+      return false;
+  }
+  if (! m_json.isObject ()) {
+      error ("Invalid JSON description",
+	      "JSON root is not an object");
+      unloadExperiment ();
+      return false;
+  }
+  QJsonObject jroot = m_json.object ();
+  QString qmlPath = jroot["Source"].toString ();
+
+  m_component = new QQmlComponent (&m_engine, qmlPath);
   if (m_component->isError ()) {
-      qDebug () << "error: could not load the QML experiment";
+      QString errDesc;
       for (auto& err : m_component->errors ())
-	  qDebug () << err;
+	  errDesc.append (err.toString ()).append ("\n");
+      error ("Could not load the QML experiment", errDesc);
+      unloadExperiment ();
       return false;
   }
   QObject* xp = m_component->create ();
@@ -508,7 +513,6 @@ Engine::load_experiment (const QString& path)
   }
   m_experiment = qobject_cast<Experiment*> (xp);
   m_experiment->setSetup (&m_setup);
-  qDebug () << "[QML] Number of trials:" << m_experiment->trialCount ();
 
   // Add trial parameters to the record
   const QVariantMap& trialParameters = m_experiment->trialParameters ();
@@ -617,61 +621,8 @@ Engine::load_experiment (const QString& path)
   }
 
 
-  // Setup an experiment item in the left toolbox
-  // Experiment name flayout->addRow ("Experiment", new QLabel (xp_name)); // Number of trials
-  // Add spins for experiment specific parameters
-#if 0
-  lua_getglobal (lstate, "parameters");
-  if (lua_istable (lstate, -1)) {
-    lua_pushnil (lstate);
-    while (lua_next (lstate, -2) != 0) {
-      if (lua_isstring (lstate, -2)
-	  && lua_istable (lstate, -1)) {
-	QString param_name (lua_tostring (lstate, -2));
-
-	lua_rawgeti (lstate, -1, 1);
-	QString param_desc (lua_tostring (lstate, -1));
-	lua_pop (lstate, 1);
-
-	lua_rawgeti (lstate, -1, 2);
-	auto param_unit = QString (" %1").arg(lua_tostring (lstate, -1));
-	lua_pop (lstate, 1);
-
-	auto spin = new QDoubleSpinBox;
-	spin->setRange (-8000, 8000);
-	spin->setSuffix (param_unit);
-	spin->setProperty ("plstim_param_name", param_name);
-	connect (spin, SIGNAL (valueChanged (double)),
-		 this, SLOT (xp_param_changed (double)));
-	flayout->addRow (param_desc, spin);
-	
-	param_spins[param_name] = spin;
-      }
-      lua_pop (lstate, 1);
-    }
-  }
-  lua_pop (lstate, 1);
-#endif
-
   set_trial_count (m_experiment->trialCount ());
-#if 0
-  // Fetch experiment parameters
-  for (auto it : param_spins) {
-    lua_getglobal (lstate, it.first.toUtf8().data ());
-    if (lua_isnumber (lstate, -1))
-      it.second->setValue (lua_tonumber (lstate, -1));
-    lua_pop (lstate, 1);
-  }
-#endif
-
-  // Load the available subject ids for the experiment
-#if 0
-  QString subject_path ("experiments/%1/subjects");
-  settings->beginGroup (subject_path.arg (xp_name));
-  for (auto s : settings->childKeys ())
-    subject_cbox->addItem (s);
-  settings->endGroup ();
-#endif
+  experimentChanged (m_experiment);
 
   // Initialise the experiment
   setup_updated ();
@@ -727,8 +678,8 @@ Engine::init_session ()
     dset = hf->createDataSet (session_name.toUtf8 ().data (),
 			      *record_type, dspace);
     
-    // Save subject ID
-    auto subject = QString ("FAKE").toUtf8 ();//subject_cbox->currentText ().toUtf8 ();
+    // Save subject ID TODO: restore subject name
+    auto subject = QString (m_subjectName).toUtf8 ();
     StrType str_type (PredType::C_S1, subject.size ());
     DataSpace scalar_space (H5S_SCALAR);
     dset.createAttribute ("subject", str_type, scalar_space)
@@ -853,92 +804,56 @@ Engine::Engine ()
     record_size (0),
     hf (NULL)
 {
-  plstim::initialise ();
+    plstim::initialise ();
 
-  m_component = NULL;
-  m_experiment = NULL;
-  record_type = NULL;
+    m_component = NULL;
+    m_experiment = NULL;
+    record_type = NULL;
 
-  m_running = false;
-  creating_subject = false;
+    m_running = false;
 
 #ifdef HAVE_EYELINK
-  eyelink_connected = false;
-  waiting_fixation = false;
+    eyelink_connected = false;
+    waiting_fixation = false;
 #ifdef DUMMY_EYELINK
-  eyelink_dummy = true;
+    eyelink_dummy = true;
 #else
-  eyelink_dummy = false;
+    eyelink_dummy = false;
 #endif
 #endif
 
-  // Mapping of key names to keys for Lua
-  key_mapping["down"] = Qt::Key_Down;
-  key_mapping["left"] = Qt::Key_Left;
-  key_mapping["right"] = Qt::Key_Right;
-  key_mapping["up"] = Qt::Key_Up;
+    // Mapping of key names to keys for Lua
+    key_mapping["down"] = Qt::Key_Down;
+    key_mapping["left"] = Qt::Key_Left;
+    key_mapping["right"] = Qt::Key_Right;
+    key_mapping["up"] = Qt::Key_Up;
 
-  // Accepted keys for next page presentation
-  nextPageKeys << Qt::Key_Return
-	       << Qt::Key_Enter
-	       << Qt::Key_Space;
+    // Accepted keys for next page presentation
+    nextPageKeys << Qt::Key_Return
+	<< Qt::Key_Enter
+	<< Qt::Key_Space;
 
-  // Get the experimental setup
-
-  stim = NULL;
-
-#if 0
-  // Maximum number of recent experiments displayed
-  max_recents = 5;
-  recent_actions = new QAction*[max_recents];
-  for (int i = 0; i < max_recents; i++) {
-    recent_actions[i] = new QAction (xp_menu);
-    recent_actions[i]->setVisible (false);
-    xp_menu->addAction (recent_actions[i]);
-    connect (recent_actions[i], SIGNAL (triggered ()),
-	     this, SLOT (open_recent ()));
-  }
-#endif
-
-#if 0
-  // Set minimum to mode 13h, and maximum to 4320p
-  off_x_edit = make_setup_spin (0, 7680, " px");
-  off_y_edit = make_setup_spin (0, 4320, " px");
-  res_x_edit = make_setup_spin (320, 7680, " px");
-  res_y_edit = make_setup_spin (200, 4320, " px");
-  phy_width_edit = make_setup_spin (10, 8000, " mm");
-  phy_height_edit = make_setup_spin (10, 8000, " mm");
-  dst_edit = make_setup_spin (10, 8000, " mm");
-  lum_min_edit = make_setup_spin (1, 800, " cd/m²");
-  lum_max_edit = make_setup_spin (1, 800, " cd/m²");
-  refresh_edit = make_setup_spin (1, 300, " Hz"); 
-#endif
-
-  stim = new StimWindow;
-  connect (stim, &StimWindow::keyPressed,
-	  this, &Engine::stimKeyPressed);
+    stim = new StimWindow;
+    connect (stim, &StimWindow::keyPressed,
+	    this, &Engine::stimKeyPressed);
 #ifdef HAVE_POWERMATE
-  connect (stim, &StimWindow::powerMateRotation,
-	   this, &Engine::powerMateRotation);
-  connect (stim, &StimWindow::powerMateButtonPressed,
-	   this, &Engine::powerMateButtonPressed);
+    connect (stim, &StimWindow::powerMateRotation,
+	    this, &Engine::powerMateRotation);
+    connect (stim, &StimWindow::powerMateButtonPressed,
+	    this, &Engine::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
-    // Show OpenGL version in GUI
-
     // Try to fetch back setup
-    settings = new QSettings;
-    settings->beginGroup ("setups");
-    auto groups = settings->childGroups ();
-    settings->endGroup ();
+    m_settings = new QSettings;
+    m_settings->beginGroup ("setups");
+    auto groups = m_settings->childGroups ();
+    m_settings->endGroup ();
 
     // No setup previously defined, infer a new one
     if (groups.empty ()) {
 	auto hostname = QHostInfo::localHostName ();
 	qDebug () << "creating a new setup for" << hostname;
 #if 0
-	setup_cbox->addItem (hostname);
-
 	// Search for a secondary screen
 	int i;
 	for (i = 0; i < dsk.screenCount (); i++)
@@ -958,14 +873,11 @@ Engine::Engine ()
 
     // Use an existing setup
     else {
-	QString setupName = settings->contains ("lastSetup") ?
-	    settings->value ("lastSetup").toString () :
+	QString setupName = m_settings->contains ("lastSetup") ?
+	    m_settings->value ("lastSetup").toString () :
 	    groups.at (0);
 	loadSetup (setupName);
     }
-
-    // Set recent experiments
-    updateRecents ();
 
     save_setup = true;
 
@@ -973,42 +885,6 @@ Engine::Engine ()
     connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
 	    this, SLOT (about_to_quit ()));
 }
-
-void
-Engine::error (const QString& msg, const QString& desc)
-{
-    Q_UNUSED (desc);
-    qDebug () << msg;
-    qDebug () << desc;
-}
-
-#if 0
-void
-Engine::new_setup ()
-{
-  QRegExp rx ("[a-zA-Z0-9\\-_]{1,10}");
-  le->setValidator (new QRegExpValidator (rx));
-  setup_cbox->setFocus (Qt::OtherFocusReason);
-}
-#endif
-
-#if 0
-void
-Engine::new_setup_validated ()
-{
-  auto le = qobject_cast<MyLineEdit*> (sender());
-  auto setup_name = le->text ();
-  auto setup_path = QString ("setups/%1").arg (setup_name);
-  
-  // Make sure the setup name is not already present
-  if (settings->contains (setup_path)) {
-    error (tr ("Setup name already existing"));
-    return;
-  }
-
-  setup_cbox->setEditable (false);
-}
-#endif
 
 #if 0
 void
@@ -1056,61 +932,53 @@ Engine::new_subject_validated ()
 }
 #endif
 
-
-#if 0
-void
-Engine::select_subject_datafile ()
-{
-  QFileDialog dialog (win, tr ("Select datafile"), last_datafile_dir);
-  dialog.setDefaultSuffix (".h5");
-  dialog.setNameFilter (tr ("Subject data (*.h5 *.hdf);;All files (*)"));
-  if (dialog.exec () == QDialog::Accepted) {
-    last_datafile_dir = dialog.directory ().absolutePath ();
-    set_subject_datafile (dialog.selectedFiles ().at (0));
-  }
-}
-#endif
-
 void
 Engine::selectSubject (const QString& subjectName)
 {
+    qDebug () << "Loading subject" << subjectName;
+
+
+    // No subject list found
+    auto subjects = m_json.object ()["Subjects"];
+    if (! subjects.isObject ()) {
+	return;
+    }
+
+    // Subject not found
+    auto subject = subjects.toObject ()[subjectName].toObject ();
+    if (! subject.contains ("Data")) {
+	return;
+    }
+
+    auto datafile = subject["Data"].toString ();
+    QFileInfo fi (datafile);
+
+    // Make sure the datafile still exists
+    if (! fi.exists ())
+	error (tr ("Subject data file is missing"));
+    // Open the HDF5 datafile
+    else {
+	// TODO: handle HDF5 exceptions here
+	if (hf != NULL) {
+	    hf->close ();
+	    hf = NULL;
+	}
+	hf = new H5File (datafile.toLocal8Bit ().data (),
+		H5F_ACC_RDWR);
+	m_subjectName = subjectName;
+	qDebug () << "Subject data file loaded";
+    }
 #if 0
-  if (creating_subject)
-    return;
-
-  // Selection removal
-  if (subject_cbox->currentIndex () == 0) {
-    subject_databutton->setText (tr ("Subject data file"));
-    subject_databutton->setToolTip (QString ());
-    subject_databutton->setDisabled (true);
-  }
-  else {
+    // Load subject parameters
+    auto& params = m_experiment->subjectParameters ();
+    QMapIterator<QString,QVariant> it (params);
+    while (it.hasNext ()) {
+	it.next ();
+	auto& paramName = it.key ();
+	qDebug () << "Trying to load subject parameter" << paramName;
+    }
 #endif
-      qDebug () << "Loading subject" << subjectName;
-
-      auto subject_path = QString ("experiments/%1/subjects/%2")
-	  .arg (xp_name).arg (subjectName);
-
-      auto datafile = settings->value (subject_path).toString ();
-      QFileInfo fi (datafile);
-
-      // Make sure the datafile still exists
-      if (! fi.exists ())
-	  error (tr ("Subject data file is missing"));
-      // Open the HDF5 datafile
-      else {
-	  // TODO: handle HDF5 exceptions here
-	  if (hf != NULL) {
-	      hf->close ();
-	      hf = NULL;
-	  }
-	  hf = new H5File (datafile.toLocal8Bit ().data (),
-		  H5F_ACC_RDWR);
-	  qDebug () << "Subject data file loaded";
-      }
-#if 0
-  }
-#endif
+    //emit subjectLoaded (subjectName);
 }
 
 void
@@ -1140,7 +1008,6 @@ Engine::setup_updated ()
     // Compute the minimal texture size
     float size_degs = m_experiment->size ();
     double size_px = ceil (m_experiment->degreesToPixels (size_degs));
-    qDebug () << "Stimulus size:" << size_px << "from" << size_degs;
 
     // Minimal base-2 texture size
     int tex_size = 1 << (int) floor (log2 (size_px));
@@ -1181,29 +1048,9 @@ Engine::setup_updated ()
   //emit setupUpdated (&setup);
 }
 
-void
-Engine::updateRecents ()
-{
-#if 0
-  auto rlist = settings->value ("recents").toStringList ();
-  int i = 0;
-  QString label ("&%1 %2");
-  for (auto path : rlist) {
-    QFileInfo fi (path);
-    QString name = fi.fileName ();
-    if (name.endsWith (".qml"))
-      name = name.left (name.size () - 4);
-    recent_actions[i]->setText (label.arg (i+1).arg (name));
-    recent_actions[i]->setData (path);
-    recent_actions[i]->setVisible (true);
-    i++;
-  }
-#endif
-}
-
 Engine::~Engine ()
 {
-    delete settings;
+    delete m_settings;
     delete stim;
 }
 
@@ -1211,22 +1058,22 @@ void
 Engine::loadSetup (const QString& setupName)
 {
   // Load the setup from the settings
-  settings->beginGroup (QString ("setups/%1").arg (setupName));
+  m_settings->beginGroup (QString ("setups/%1").arg (setupName));
   m_setup.setName (setupName);
-  m_setup.setPhysicalWidth (settings->value ("phy_w").toInt ());
-  m_setup.setPhysicalHeight (settings->value ("phy_h").toInt ());
-  m_setup.setHorizontalOffset (settings->value ("off_x").toInt ());
-  m_setup.setVerticalOffset (settings->value ("off_y").toInt ());
-  m_setup.setHorizontalResolution (settings->value ("res_x").toInt ());
-  m_setup.setVerticalResolution (settings->value ("res_y").toInt ());
+  m_setup.setPhysicalWidth (m_settings->value ("phy_w").toInt ());
+  m_setup.setPhysicalHeight (m_settings->value ("phy_h").toInt ());
+  m_setup.setHorizontalOffset (m_settings->value ("off_x").toInt ());
+  m_setup.setVerticalOffset (m_settings->value ("off_y").toInt ());
+  m_setup.setHorizontalResolution (m_settings->value ("res_x").toInt ());
+  m_setup.setVerticalResolution (m_settings->value ("res_y").toInt ());
 
-  m_setup.setDistance (settings->value ("dst").toInt ());
-  m_setup.setRefreshRate (settings->value ("rate").toFloat ());
+  m_setup.setDistance (m_settings->value ("dst").toInt ());
+  m_setup.setRefreshRate (m_settings->value ("rate").toFloat ());
 
-  settings->endGroup ();
+  m_settings->endGroup ();
 
   // Save the setup as the last one used
-  settings->setValue ("lastSetup", setupName);
+  m_settings->setValue ("lastSetup", setupName);
 
   setup_updated ();
 }

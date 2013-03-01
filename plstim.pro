@@ -1,5 +1,5 @@
 CONFIG += qt debug -release -eyelink powermate
-QT += core gui network qml quick
+QT += core gui network qml quick widgets
 SOURCES += src/engine.cc src/stimwindow.cc src/utils.cc src/gui.cc src/main.cc
 HEADERS += src/stimwindow.h src/plstim.h src/engine.h src/utils.h src/elcalibration.h src/qtypes.h src/gui.h src/setup.h
 TARGET = plstim

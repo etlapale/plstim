@@ -48,11 +48,30 @@ GUI::GUI (QWindow* parent)
 	    this->rootContext ()->setContextProperty ("setup", m_engine.setup ());
 	});*/
 
+    // Show experiment parameters
+    connect (&m_engine, &Engine::experimentChanged, [this] (Experiment* experiment) {
+	    auto obj = this->rootObject ()->findChild<QObject*> ("trialCount");
+	    if (obj)
+	      obj->setProperty ("value", experiment ? experiment->trialCount () : 0);
+	});
+    
     // Dynamically show action buttons
     connect (&m_engine, &Engine::runningChanged, [this] (bool running) {
 	    this->rootObject ()->setProperty ("running", running);
 	});
 
+    // Display error messages
+    connect (&m_engine, &Engine::error,
+	    [this] (const QString& title, const QString& description) {
+	        this->m_errorList.append (title);
+		qDebug () << title << description;
+		auto obj = rootObject ()->findChild<QObject*> ("errorList");
+		if (obj)
+		    obj->setProperty ("model", QVariant::fromValue (this->m_errorList));
+	    });;
+    obj = rootObject ()->findChild<QObject*> ("errorList");
+    if (obj)
+	obj->setProperty ("model", QVariant::fromValue (m_engine.errors ()));
 
     // Show trial number in the current session block
     connect (&m_engine, &Engine::currentTrialChanged, [this] (int trial) {
@@ -65,17 +84,15 @@ GUI::GUI (QWindow* parent)
 void
 GUI::loadExperiment (const QString& path)
 {
-    m_engine.load_experiment (path);
+    m_engine.loadExperiment (path);
    
     // Update the subject list
-    auto settings = m_engine.settings;
+    //auto settings = m_engine.settings;
     QStringList list;
-    settings->beginGroup (QString ("experiments/%1/subjects").arg (m_engine.xp_name));
-    for (auto name : settings->childKeys ()) {
-	list << name;
-	qDebug () << "adding" << name;
-    }
-    settings->endGroup ();
+    QJsonDocument json = m_engine.experimentDescription ();
+    auto subjects = json.object ()["Subjects"];
+    if (subjects.isObject ())
+	list = subjects.toObject ().keys ();
     auto obj = rootObject ()->findChild<QObject*> ("subjectList");
     if (obj)
 	obj->setProperty ("model", QVariant::fromValue (list));

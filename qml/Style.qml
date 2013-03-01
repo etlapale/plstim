@@ -10,6 +10,7 @@ QtObject {
     property color background : "#030d15"
 
     property color titleColor : "#3081bf"
+    property color errorColor : "#e96c3a"
     property color warningColor : "#ec835a"
 
     property color buttonForeground : "#a8b6c1"

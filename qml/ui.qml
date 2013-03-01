@@ -106,8 +106,8 @@ Rectangle {
 	}
 
 	IntInput {
+	    objectName : "trialCount"
 	    label : "Number of trials"
-	    value : 160
 	}
 
 	SectionText {
@@ -133,34 +133,48 @@ Rectangle {
 			onClicked : subjectList.visible = ! subjectList.visible
 		    }
 		}
+		Component {
+		    id : subjectDelegate
+		    Text {
+			text : modelData
+			color : theme.foreground
+			font.pointSize : theme.pointSize
+
+			MouseArea {
+			    anchors.fill : parent
+			    onClicked : {
+				subject = modelData
+				subjectList.visible = false
+				subjectSelected (modelData)
+			    }
+			}
+		    }
+		}
 		ListView {
 		    id : subjectList
 		    objectName : "subjectList"
 		    visible : false
 		    delegate : subjectDelegate
-		    width : 300
+		    width : parent.width
 		    height : 100
 		}
 	    }
 	}
 
-
 	Component {
-	    id : subjectDelegate
-	    Text {
-		text : modelData
-		color : theme.foreground
-		font.pointSize : theme.pointSize
-
-		MouseArea {
-		    anchors.fill : parent
-		    onClicked : {
-			subject = modelData
-			subjectList.visible = false
-			subjectSelected (modelData)
-		    }
-		}
+	    id : subjectParametersDelegate
+	    IntInput {
+		label : description
+		value : value
+		unit : unit
 	    }
+	}
+
+	ListView {
+	    objectName : "subjectParameters"
+	    delegate : subjectParametersDelegate
+	    width : parent.width
+	    height : 100
 	}
 
 	Item {
@@ -220,6 +234,23 @@ Rectangle {
 		color : theme.foreground
 		font.pointSize : theme.pointSize
 	    }
+	}
+
+	Component {
+	    id : errorDelegate
+	    Text {
+		text : modelData
+		color : theme.errorColor
+		font.bold : true
+		font.pointSize : theme.pointSize
+	    }
+	}
+
+	ListView {
+	    objectName : "errorList"
+	    delegate : errorDelegate
+	    width : parent.width
+	    height : 100
 	}
     }
 }

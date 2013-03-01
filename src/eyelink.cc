@@ -1,25 +1,25 @@
 #include <iostream>
 using namespace std;
 
+#include <QtWidgets>
+
 #include "elcalibration.h"
-#include "qexperiment.h"
+#include "engine.h"
 using namespace plstim;
 
 bool
-QExperiment::check_eyelink (INT16 errcode, const QString & func_name)
+Engine::check_eyelink (INT16 errcode, const QString & func_name)
 {
   if (errcode) {
-    error (QString ("EyeLink error on %1: %2")
-	   .arg (func_name)
-	   .arg (eyelink_get_error (errcode,
-				    func_name.toLocal8Bit ().data ())));
+    emit error (QString ("EyeLink error on %1").arg (func_name),
+	    eyelink_get_error (errcode, func_name.toLocal8Bit ().data ()));
     return false;
   }
   return true;
 }
 
 void
-QExperiment::load_eyelink ()
+Engine::load_eyelink ()
 {
   qDebug () << "opening EyeLink";
   if (! check_eyelink (open_eyelink_connection (eyelink_dummy),
@@ -53,7 +53,7 @@ el_image_title (void* userdata, char* title)
 static INT16 ELCALLBACK
 el_draw_image (void* userdata, INT16 width, INT16 height, byte* pixels)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
   if (calib != NULL) {
     QImage simg (pixels, width, height, QImage::Format_ARGB32);
@@ -73,7 +73,7 @@ el_draw_image (void* userdata, INT16 width, INT16 height, byte* pixels)
 static INT16 ELCALLBACK
 el_clear_cal_display (void* userdata)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
   if (calib != NULL)
     calib->clear ();
@@ -83,7 +83,7 @@ el_clear_cal_display (void* userdata)
 static INT16 ELCALLBACK
 el_erase_cal_target (void* userdata)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
   calib->erase_target ();
   return 0;
@@ -92,7 +92,7 @@ el_erase_cal_target (void* userdata)
 static INT16 ELCALLBACK
 el_draw_cal_target (void* userdata, float x, float y)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
   calib->add_target (x, y);
   return 0;
@@ -111,7 +111,7 @@ static bool key_up = true;
 static INT16 ELCALLBACK
 el_get_input_key (void* userdata, InputEvent* event)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
 
   // Process any event in the application
   QCoreApplication::instance ()->processEvents ();
@@ -131,7 +131,7 @@ el_get_input_key (void* userdata, InputEvent* event)
 static INT16 ELCALLBACK
 el_printf_hook (void* userdata, const char* msg)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   xp->error (msg);
   return 0;
 }
@@ -140,7 +140,7 @@ static INT16 ELCALLBACK
 el_setup_display (void* userdata)
 {
   qDebug () << "Setup EyeLink calibration display";
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
 
   xp->calibrator = new EyeLinkCalibrator ();
   xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
@@ -154,7 +154,7 @@ el_setup_display (void* userdata)
   // Remove mouse pointer on the calibrator
   xp->calibrator->setCursor (QCursor (Qt::BlankCursor));
   // Set the correct dimensions for the scene
-  xp->calibrator->sc.setSceneRect (0, 0, xp->res_x_edit->value (), xp->res_y_edit->value ());
+  xp->calibrator->sc.setSceneRect (0, 0, xp->setup ()->horizontalResolution (), xp->setup ()->verticalResolution ());
   // Set calibrator colours
   auto bg = QColor ("black");//xp->get_colour ("eyelink_background");
   if (! bg.spec () == QColor::Invalid)
@@ -166,7 +166,7 @@ el_setup_display (void* userdata)
 static INT16 ELCALLBACK
 el_exit_cal_display (void* userdata)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   if (xp->calibrator) {
     xp->calibrator->hide ();
     delete xp->calibrator;
@@ -178,13 +178,13 @@ el_exit_cal_display (void* userdata)
 static INT16 ELCALLBACK
 el_exit_image_display (void* userdata)
 {
-  auto xp = static_cast<QExperiment*> (userdata);
+  auto xp = static_cast<Engine*> (userdata);
   xp->calibrator->remove_camera ();
   return 0;
 }
 
 void
-QExperiment::calibrate_eyelink ()
+Engine::calibrate_eyelink ()
 {
   qDebug () << "Calibrating EyeLink";
 
@@ -195,7 +195,7 @@ QExperiment::calibrate_eyelink ()
   // Version of EyeLink hooks we use
   hooks.major = 1;
   hooks.minor = 0;
-  // Register the QExperiment instance
+  // Register the Engine instance
   hooks.userData = (void*) this;
   // Calibration display setup
   hooks.setup_cal_display_hook = el_setup_display;
