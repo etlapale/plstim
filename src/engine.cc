@@ -968,16 +968,35 @@ Engine::selectSubject (const QString& subjectName)
 	m_subjectName = subjectName;
 	qDebug () << "Subject data file loaded";
     }
-#if 0
     // Load subject parameters
-    auto& params = m_experiment->subjectParameters ();
-    QMapIterator<QString,QVariant> it (params);
-    while (it.hasNext ()) {
-	it.next ();
-	auto& paramName = it.key ();
-	qDebug () << "Trying to load subject parameter" << paramName;
+    if (subject.contains ("Parameters")) {
+	auto subjectParams = subject["Parameters"].toObject ();
+
+	auto& params = m_experiment->subjectParameters ();
+	QMapIterator<QString,QVariant> it (params);
+	while (it.hasNext ()) {
+	    it.next ();
+	    auto& paramName = it.key ();
+	    qDebug () << "Trying to load subject parameter" << paramName;
+	    if (! subjectParams.contains (paramName)) {
+		qDebug () << "WARNING: Missing subject parameter" << paramName;
+	    }
+	    else {
+		QVariant currentValue = m_experiment->property (paramName.toUtf8 ().data ());
+		if (! currentValue.isValid ()) {
+		    qDebug () << "WARNING: Trying to set subject property" << paramName << "which is not found in the experiment";
+		}
+		else {
+		    if (! subjectParams[paramName].isDouble ()) {
+			qDebug () << "WARNING: Subject parameter" << paramName << "is not a floating number";
+		    }
+		    else {
+			m_experiment->setProperty (paramName.toUtf8 ().data (), subjectParams[paramName].toDouble ());
+		    }
+		}
+	    }
+	}
     }
-#endif
     //emit subjectLoaded (subjectName);
 }
 
