@@ -407,11 +407,11 @@ StimWindow::showAnimatedFrames (const QString& name)
 	qDebug () << "??? unknown animated frame" << name;
     }
     else if (isExposed ()) {
-	m_context->makeCurrent (this);
 
 	auto& frames = m_animatedFrames[name];
 	for (auto frame : frames) {
 	    m_currentFrame = frame;
+	    m_context->makeCurrent (this);
 	    render ();
 	    m_context->swapBuffers (this);
 	}
