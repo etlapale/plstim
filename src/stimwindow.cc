@@ -215,15 +215,16 @@ StimWindow::renderNow ()
 	needInit = true;
     }
 
-    m_context->makeCurrent (this);
 
     if (needInit) {
 	initializeOpenGLFunctions ();
+	m_context->makeCurrent (this);
 	initialize ();
     }
 
     // Render the frame, and swap the buffers
     qDebug () << "rendering and swapping";
+    m_context->makeCurrent (this);
     render ();
     m_context->swapBuffers (this);
 }
