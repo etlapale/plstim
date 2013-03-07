@@ -217,8 +217,8 @@ StimWindow::renderNow ()
 
 
     if (needInit) {
-	initializeOpenGLFunctions ();
 	m_context->makeCurrent (this);
+	initializeOpenGLFunctions ();
 	initialize ();
     }
 
