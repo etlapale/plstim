@@ -174,12 +174,12 @@ public:
 	: QObject (parent), m_painter (painter)
     {}
 
-    Q_INVOKABLE void drawEllipse (int x, int y, int width, int height)
+    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawEllipse (int x, int y, int width, int height)
     {
 	m_painter.drawEllipse (x, y, width, height);
     }
 
-    Q_INVOKABLE void drawLine (int x1, int y1, int x2, int y2)
+    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawLine (int x1, int y1, int x2, int y2)
     {
 	m_painter.drawLine (x1, y1, x2, y2);
     }
