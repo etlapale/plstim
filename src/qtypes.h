@@ -387,7 +387,8 @@ public:
 	, m_setup (NULL)
     {
 	// Initialise the random number generator
-	m_twister.seed (time (NULL));
+	auto now = QDateTime::currentDateTime ();
+	m_twister.seed (now.toMSecsSinceEpoch ());
 	for (int i = 0; i < 10000; i++)
 	    (void) randint (1024);
     }
