@@ -211,7 +211,7 @@ PowerMateWatcher::watch ()
             case EV_MSC:
             if (ibuf[i].code == MSC_PULSELED) {
                 auto evt = new PowerMateEvent (PowerMateEvent::LED);
-                evt.luminance = ibuf[i].value & 0xff;
+                evt->luminance = ibuf[i].value & 0xff;
                 QCoreApplication::postEvent (obj, evt);
             }
             break;
@@ -219,7 +219,7 @@ PowerMateWatcher::watch ()
             if (ibuf[i].code == REL_DIAL) {
                 // Create and send a PowerMate event
                 auto evt = new PowerMateEvent (PowerMateEvent::Rotation);
-                evt.step = (int) ibuf[i].value;
+                evt->step = (int) ibuf[i].value;
                 // Emit the event
                 QCoreApplication::postEvent (obj, evt);
             }
