@@ -184,8 +184,7 @@ public:
 	m_painter.drawLine (x1, y1, x2, y2);
     }
 
-    //Q_INVOKABLE void drawPath (const PainterPath& path)
-    Q_INVOKABLE void drawPath (PainterPath* path)
+    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawPath (PainterPath* path)
     {
 	//if (path.canConvert<const PainterPath&> ())
 	//PainterPath& p = path.value<PainterPath&> ();
