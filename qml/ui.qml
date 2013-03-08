@@ -236,6 +236,11 @@ Rectangle {
 	    }
 	}
 
+	Item {
+	    width : 1
+	    height : 30
+	}
+
 	Component {
 	    id : errorDelegate
 	    Text {
