@@ -23,7 +23,7 @@ public:
     void initialize ();
     void render ();
     void setTextureSize (int twidth, int theight);
-    void showFullScreen (int x, int y);
+    void showFullScreen ();
     /// Delete everything created for this stimulus window
     void clear ();
 public slots:

@@ -189,13 +189,52 @@ StimWindow::exposeEvent (QExposeEvent* evt)
 void
 StimWindow::keyPressEvent (QKeyEvent* evt)
 {
+    if (evt->key () == Qt::Key_L
+            && (evt->modifiers () & Qt::ControlModifier)) {
+        qDebug () << "Ctrl-L catched, listing screens:";
+        QScreen* currentScreen = screen ();
+        for (auto s : currentScreen->virtualSiblings ()) {
+            qDebug () << " " << s->name () << s->virtualSize ()
+                      << "at" << s->refreshRate () << "Hz"
+                      << "availaible geometry:" << s->availableGeometry ()
+                      << "avl. virtual geom.:" << s->availableVirtualGeometry ();
+            if (s == currentScreen)
+                qDebug () << "   ^ is current screen";
+        }
+        return;
+    }
+    else if (evt->key () == Qt::Key_O
+            && (evt->modifiers () & Qt::ControlModifier)) {
+        qDebug () << "Ctrl-O catched, movint to next screen";
+        QScreen* currentScreen = screen ();
+        for (auto s : currentScreen->virtualSiblings ()) {
+            if (s != currentScreen) {
+                qDebug () << "   moving to" << s->name ();
+                setScreen (s);
+                QWindow::showFullScreen ();
+                return;
+            }
+        }
+        return;
+    }
     emit keyPressed (evt);
 }
 
 void
-StimWindow::showFullScreen (int offx, int offy)
+StimWindow::showFullScreen ()
 {
-    setX (offx); setY (offy);
+    // Search for a secondary screen
+    QScreen* scr = screen ();
+    for (auto s : scr->virtualSiblings ()) {
+        if (s->availableGeometry ().x () != 0
+                || s->availableGeometry ().y () != 0) {
+            scr = s;
+            break;
+        }
+    }
+    setScreen (scr);
+
+    // Show in full screen
     QWindow::showFullScreen ();
 }
 
