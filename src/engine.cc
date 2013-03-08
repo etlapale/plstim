@@ -93,6 +93,7 @@ Engine::run_trial ()
   }
 
   // Record trial parameters
+  memset (trial_record, 0, record_size);
   for (auto it : trial_offsets) {
     const QString& param_name = it.first;
     auto name = it.first.toUtf8 ();
@@ -100,17 +101,17 @@ Engine::run_trial ()
 
     QVariant prop = m_experiment->property (name);
     if (prop.canConvert<float> ()) {
-	float* pos = (float*) (((char*) trial_record)+offset);
-	*pos = prop.toFloat ();
-	qDebug () << "storing" << *pos << "for" << param_name;
+        float* pos = (float*) (((char*) trial_record)+offset);
+        *pos = prop.toFloat ();
+        qDebug () << "storing" << *pos << "for" << param_name;
     }
     else if (prop.canConvert<plstim::Vector*> ()) {
-	plstim::Vector* vec = prop.value<plstim::Vector*> ();
-	float* pos = (float*) (((char*) trial_record)+offset);
-	int len = vec->length ();
-	for (int i = 0; i <= len; i++)
-	    pos[i] = vec->at (i);
-	qDebug () << "storing" << "array" << "for" << param_name;
+        plstim::Vector* vec = prop.value<plstim::Vector*> ();
+        float* pos = (float*) (((char*) trial_record)+offset);
+        int len = vec->length ();
+        for (int i = 0; i <= len; i++)
+            pos[i] = vec->at (i);
+        qDebug () << "storing" << "array" << "for" << param_name;
     }
   }
 
@@ -132,29 +133,30 @@ Engine::show_page (int index)
     // Save page parameters
     auto it = record_offsets.find (page->name ());
     if (it != record_offsets.end ()) {
-	const std::map<QString,size_t>& params = it->second;
-	for (auto jt : params) {
-	    auto param_name = jt.first;
-	    size_t begin_offset = jt.second;
-	    if (param_name == "begin") {
-		qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
-		qint64 nsecs = timer.nsecsElapsed ();
-		*pos = nsecs;
-	    }
-	    else if (param_name == "key") {
-		// Key will be known at the end of the page
-	    }
+        const std::map<QString,size_t>& params = it->second;
+        for (auto jt : params) {
+            auto param_name = jt.first;
+            size_t begin_offset = jt.second;
+            if (param_name == "begin") {
+                qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+                qint64 nsecs = timer.nsecsElapsed ();
+                *pos = nsecs;
+                qDebug () << "Elapsed for" << page->name () << ":" << *pos;
+            }
+            else if (param_name == "key") {
+                // Key will be known at the end of the page
+            }
 #ifdef HAVE_POWERMATE
-	    else if (param_name == "rotation") {
-	    }
+            else if (param_name == "rotation") {
+            }
 #endif
-	    else {
-		/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
-		  double value = timer.nsecsElapsed ();
-		 *pos = nsecs;*/
-		qDebug () << "NYI page param";
-	    }
-	}
+            else {
+                /*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
+                  double value = timer.nsecsElapsed ();
+                 *pos = nsecs;*/
+                qDebug () << "NYI page param";
+            }
+        }
     }
 
     qDebug () << ">>> showing page" << page->name ();
@@ -242,57 +244,57 @@ Engine::nextPage ()
 #ifdef HAVE_EYELINK
     // Exit the inner fixation loop
     if (waiting_fixation) {
-	// TODO: record event
-	qDebug () << "aborting fixation";
-	waiting_fixation = false;
-	return;	// Will jump back here eventually
+        // TODO: record event
+        qDebug () << "aborting fixation";
+        waiting_fixation = false;
+        return;	// Will jump back here eventually
     }
 #endif // HAVE_EYELINK
 
     // Save the page record on HDF5
     if (hf != NULL) {
-	hsize_t one = 1;
-	DataSpace fspace = dset.getSpace ();
-	hsize_t hframe = m_currentTrial;
-	fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
-	DataSpace mspace (1, &one);
-	dset.write (trial_record, *record_type, mspace, fspace);
+        hsize_t one = 1;
+        DataSpace fspace = dset.getSpace ();
+        hsize_t hframe = m_currentTrial;
+        fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+        DataSpace mspace (1, &one);
+        dset.write (trial_record, *record_type, mspace, fspace);
 
-	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+        hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
     }
-  
+
     // End of trial
     auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
     if ((page && page->last ())
-	    || current_page + 1 == m_experiment->pageCount ()) {
-	qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
+            || current_page + 1 == m_experiment->pageCount ()) {
+        qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
 
-	// Next trial
-	if (m_currentTrial + 1 < m_experiment->trialCount ()) {
-	    setCurrentTrial (m_currentTrial + 1);
-	    run_trial ();
-	}
-	// End of session
-	else
-	    endSession ();
+        // Next trial
+        if (m_currentTrial + 1 < m_experiment->trialCount ()) {
+            setCurrentTrial (m_currentTrial + 1);
+            run_trial ();
+        }
+        // End of session
+        else
+            endSession ();
     }
     // There is a next page
     else {
-	// Check if there is a next page user defined
-	if (page) {
-	    QString next = page->nextPage ();
-	    if (! next.isEmpty ()) {
-		for (int i = 0; i < m_experiment->pageCount (); i++) {
-		    Page* p = m_experiment->page (i);
-		    if (p->name () == next) {
-			current_page = i - 1;
-			break;
-		    }
-		}
-	    }
-	}
-	
-	show_page (current_page + 1);
+        // Check if there is a next page user defined
+        if (page) {
+            QString next = page->nextPage ();
+            if (! next.isEmpty ()) {
+                for (int i = 0; i < m_experiment->pageCount (); i++) {
+                    Page* p = m_experiment->page (i);
+                    if (p->name () == next) {
+                        current_page = i - 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        show_page (current_page + 1);
     }
 }
 
@@ -303,13 +305,13 @@ Engine::savePageParameter (const QString& pageTitle,
 {
     auto it = record_offsets.find (pageTitle);
     if (it != record_offsets.end ()) {
-	const std::map<QString,size_t>& params = it->second;
-	auto jt = params.find (paramName);
-	if (jt != params.end ()) {
-	    size_t key_offset = jt->second;
-	    int* pos = (int*) (((char*) trial_record)+key_offset);
-	    *pos = paramValue;
-	}
+        const std::map<QString,size_t>& params = it->second;
+        auto jt = params.find (paramName);
+        if (jt != params.end ()) {
+            size_t key_offset = jt->second;
+            int* pos = (int*) (((char*) trial_record)+key_offset);
+            *pos = paramValue;
+        }
     }
 }
 
@@ -599,23 +601,23 @@ Engine::loadExperiment (const QString& path)
       for (int i = 0; i < m_experiment->pageCount (); i++) {
 	  plstim::Page* page = m_experiment->page (i);
 	  auto page_name = page->name ();
-	  for (auto param : record_offsets[page_name]) {
-	      auto param_name = param.first;
-	      auto offset = param.second;
-	      H5::DataType param_type;
-	      if (param_name == "begin")
-		  param_type = PredType::NATIVE_LONG;
-	      else if (param_name == "key")
-		  param_type = PredType::NATIVE_INT;
+      for (auto param : record_offsets[page_name]) {
+          auto param_name = param.first;
+          auto offset = param.second;
+          H5::DataType param_type;
+          if (param_name == "begin")
+              param_type = PredType::NATIVE_INT64;
+          else if (param_name == "key")
+              param_type = PredType::NATIVE_INT;
 #ifdef HAVE_POWERMATE
-	      else if (param_name == "rotation")
-		  param_type = PredType::NATIVE_INT;
+          else if (param_name == "rotation")
+              param_type = PredType::NATIVE_INT;
 #endif // HAVE_POWERMATE
-	      else
-		  param_type = PredType::NATIVE_DOUBLE;
-	      qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
-	      record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
-	  }
+          else
+              param_type = PredType::NATIVE_DOUBLE;
+          qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
+          record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
+      }
       }
       qDebug () << "Trial record size:" << record_size;
   }
