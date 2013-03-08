@@ -758,8 +758,7 @@ Engine::runSession ()
 #endif // HAVE_EYELINK
 
   // Launch a stimulus window
-  //stim->showFullScreen (off_x_edit->value (), off_y_edit->value ());
-  stim->showFullScreen (0, 0);
+  stim->showFullScreen ();
   setRunning (true);
   run_trial ();
 }
