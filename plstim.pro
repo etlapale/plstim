@@ -23,6 +23,10 @@ win32 {
     DEFINES += HAVE_WIN32
     INCLUDEPATH += C:/MinGW/msys/1.0/include
     LIBS += -L C:/MinGW/msys/1.0/lib -lz
+    eyelink {
+        INCLUDEPATH += "/c/Program Files/SR Research/EyeLink/Includes/eyelink"
+        LIBS += -L"/c/Program Files/SR Research/EyeLink/libs"
+    }
     powermate {
         INCLUDEPATH += C:/MinGW/msys/1.0/include/w32api
         LIBS += -L/MinGW/msys/1.0/lib/w32api -lhid -lsetupapi
