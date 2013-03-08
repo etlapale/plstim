@@ -7,19 +7,25 @@ QMAKE_CXXFLAGS += -std=c++0x -Woverloaded-virtual
 LIBS += -lhdf5_cpp -lhdf5
 
 eyelink {
-  DEFINES += HAVE_EYELINK
-  SOURCES += src/eyelink.cc
-  LIBS += -leyelink_core
+    DEFINES += HAVE_EYELINK
+    SOURCES += src/eyelink.cc
+    LIBS += -leyelink_core
 }
 
 powermate {
-  DEFINES += HAVE_POWERMATE
-  SOURCES += src/powermate.cc
-  HEADERS += src/powermate.h
+    DEFINES += HAVE_POWERMATE
+    SOURCES += src/powermate.cc
+    HEADERS += src/powermate.h
 }
 
 win32 {
-  INCLUDEPATH += C:/MinGW/msys/1.0/local/include
-  LIBS += -L C:/MinGW/msys/1.0/local/lib
-  RC_FILE += src/plstim.rc
+    CONFIG += console
+    DEFINES += HAVE_WIN32
+    INCLUDEPATH += C:/MinGW/msys/1.0/include
+    LIBS += -L C:/MinGW/msys/1.0/lib -lz
+    powermate {
+        INCLUDEPATH += C:/MinGW/msys/1.0/include/w32api
+        LIBS += -L/MinGW/msys/1.0/lib/w32api -lhid -lsetupapi
+    }
+    RC_FILE += src/plstim.rc
 }
