@@ -940,33 +940,41 @@ Engine::selectSubject (const QString& subjectName)
     // No subject list found
     auto subjects = m_json.object ()["Subjects"];
     if (! subjects.isObject ()) {
-	return;
+        return;
     }
 
     // Subject not found
     auto subject = subjects.toObject ()[subjectName].toObject ();
     if (! subject.contains ("Data")) {
-	return;
+        return;
     }
 
     auto datafile = subject["Data"].toString ();
-    QFileInfo fi (datafile);
+    QFile fi (datafile);
 
     // Make sure the datafile still exists
-    if (! fi.exists ())
-	error (tr ("Subject data file is missing"));
-    // Open the HDF5 datafile
-    else {
-	// TODO: handle HDF5 exceptions here
-	if (hf != NULL) {
-	    hf->close ();
-	    hf = NULL;
-	}
-	hf = new H5File (datafile.toLocal8Bit ().data (),
-		H5F_ACC_RDWR);
-	m_subjectName = subjectName;
-	qDebug () << "Subject data file loaded";
+    if (! fi.exists ()) {
+        // Try to create a data file
+        bool ok = fi.open (QIODevice::WriteOnly);
+        if (ok) {
+            qDebug () << "Subject data file created";
+            fi.close ();
+        }
+        else {
+            error (tr ("Could not create subject data file"));
+            return;
+        }
     }
+    // Open the HDF5 datafile
+    // TODO: handle HDF5 exceptions here
+    if (hf != NULL) {
+        hf->close ();
+        hf = NULL;
+    }
+    hf = new H5File (datafile.toLocal8Bit ().data (), H5F_ACC_RDWR);
+    m_subjectName = subjectName;
+    qDebug () << "Subject data file loaded";
+
     // Load subject parameters
     if (subject.contains ("Parameters")) {
 	auto subjectParams = subject["Parameters"].toObject ();
