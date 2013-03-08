@@ -251,23 +251,23 @@ Engine::nextPage ()
     }
 #endif // HAVE_EYELINK
 
-    // Save the page record on HDF5
-    if (hf != NULL) {
-        hsize_t one = 1;
-        DataSpace fspace = dset.getSpace ();
-        hsize_t hframe = m_currentTrial;
-        fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
-        DataSpace mspace (1, &one);
-        dset.write (trial_record, *record_type, mspace, fspace);
-
-        hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
-    }
-
     // End of trial
     auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
     if ((page && page->last ())
             || current_page + 1 == m_experiment->pageCount ()) {
         qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
+
+        // Save the page record on HDF5
+        if (hf != NULL && current_page >= 0) {
+            hsize_t one = 1;
+            DataSpace fspace = dset.getSpace ();
+            hsize_t hframe = m_currentTrial;
+            fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+            DataSpace mspace (1, &one);
+            dset.write (trial_record, *record_type, mspace, fspace);
+
+            hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+        }
 
         // Next trial
         if (m_currentTrial + 1 < m_experiment->trialCount ()) {
@@ -579,8 +579,8 @@ Engine::loadExperiment (const QString& path)
 #endif
 #ifdef HAVE_POWERMATE
       if (page->waitRotation ()) {
-	  record_offsets[page_title]["rotation"] = record_size;
-	  record_size += sizeof (int);	// PowerMate rotation
+          record_offsets[page_title]["rotation"] = record_size;
+          record_size += sizeof (int);	// PowerMate rotation
       }
 #endif // HAVE_POWERMATE
   }
