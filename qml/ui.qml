@@ -43,19 +43,6 @@ Rectangle {
 	}
 
 	IntInput {
-	    label : "Horizontal offset"
-	    value : setup.horizontalOffset
-	    unit : "px"
-
-	}
-
-	IntInput {
-	    label : "Vertical offset"
-	    value : setup.verticalOffset
-	    unit : "px"
-	}
-
-	IntInput {
 	    label : "Horizontal resolution"
 	    value : setup.horizontalResolution
 	    unit : "px"
@@ -243,17 +230,25 @@ Rectangle {
 
 	Component {
 	    id : errorDelegate
-	    Text {
-		text : modelData
-		color : theme.errorColor
-		font.bold : true
-		font.pointSize : theme.pointSize
+	    Column {
+		Text {
+		    text : modelData.title
+		    color : theme.errorColor
+		    font.bold : true
+		    font.pointSize : theme.pointSize
+		}
+		Text {
+		    text : modelData.description
+		    color : theme.foreground
+		    font.pointSize : theme.pointSize
+		}
 	    }
 	}
 
 	ListView {
 	    objectName : "errorList"
 	    delegate : errorDelegate
+	    model : errorsModel
 	    width : parent.width
 	    height : 100
 	}

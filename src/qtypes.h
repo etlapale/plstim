@@ -13,6 +13,35 @@
 
 namespace plstim
 {
+class Error : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY (QString title READ title NOTIFY titleChanged);
+    Q_PROPERTY (QString description READ description NOTIFY descriptionChanged);
+
+public:
+    Error (const QString& title="", const QString& description="",
+	    QObject* parent=NULL)
+	: QObject (parent)
+	, m_title (title)
+	, m_description (description)
+    {}
+
+    QString title () const
+    { return m_title; }
+
+    QString description () const
+    { return m_description; }
+
+protected:
+    QString m_title;
+    QString m_description;
+
+signals:
+    void titleChanged (const QString& title);
+    void descriptionChanged (const QString& description);
+};
+
 
 class Subject : public QObject
 {
@@ -174,17 +203,17 @@ public:
 	: QObject (parent), m_painter (painter)
     {}
 
-    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawEllipse (int x, int y, int width, int height)
+    Q_INVOKABLE STACK_ALIGNED void drawEllipse (int x, int y, int width, int height)
     {
 	m_painter.drawEllipse (x, y, width, height);
     }
 
-    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawLine (int x1, int y1, int x2, int y2)
+    Q_INVOKABLE STACK_ALIGNED void drawLine (int x1, int y1, int x2, int y2)
     {
 	m_painter.drawLine (x1, y1, x2, y2);
     }
 
-    Q_INVOKABLE __attribute__((force_align_arg_pointer)) void drawPath (PainterPath* path)
+    Q_INVOKABLE STACK_ALIGNED void drawPath (PainterPath* path)
     {
 	//if (path.canConvert<const PainterPath&> ())
 	//PainterPath& p = path.value<PainterPath&> ();

@@ -9,6 +9,8 @@ GUI::GUI (QWindow* parent)
     // Link setup to GUI
     rootContext ()->setContextProperty ("setup",
 	    (plstim::Setup*) m_engine.setup ());
+    rootContext ()->setContextProperty ("errorsModel",
+	    QVariant::fromValue (m_engine.errors ()));
 
     // Load the QtQuick interface
     setSource (QUrl::fromLocalFile ("qml/ui.qml"));
@@ -61,17 +63,10 @@ GUI::GUI (QWindow* parent)
 	});
 
     // Display error messages
-    connect (&m_engine, &Engine::error,
-	    [this] (const QString& title, const QString& description) {
-	        this->m_errorList.append (title);
-		qDebug () << title << description;
-		auto obj = rootObject ()->findChild<QObject*> ("errorList");
-		if (obj)
-		    obj->setProperty ("model", QVariant::fromValue (this->m_errorList));
-	    });;
-    obj = rootObject ()->findChild<QObject*> ("errorList");
-    if (obj)
-	obj->setProperty ("model", QVariant::fromValue (m_engine.errors ()));
+    connect (&m_engine, &Engine::errorsChanged,
+	    [this] () {
+		this->rootContext ()->setContextProperty ("errorsModel", QVariant::fromValue (m_engine.errors ()));
+	    });
 
     // Show trial number in the current session block
     connect (&m_engine, &Engine::currentTrialChanged, [this] (int trial) {

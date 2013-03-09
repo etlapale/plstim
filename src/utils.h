@@ -5,6 +5,14 @@
 
 #include <cmath>
 
+#ifndef STACK_ALIGNED
+#ifdef HAVE_WIN32
+#define STACK_ALIGNED __attribute__((force_align_arg_pointer))
+#else
+#define STACK_ALIGNED
+#endif // HAVE_WIN32
+#endif // STACK_ALIGNED
+
 namespace plstim
 {
   bool initialise ();

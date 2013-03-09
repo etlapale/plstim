@@ -18,6 +18,15 @@ using namespace plstim;
 using namespace H5;
 
 
+Error*
+Engine::error (const QString& title, const QString& description)
+{
+    auto err = new Error (title, description, this);
+    m_errors << err;
+    emit errorsChanged ();
+    return err;
+}
+
 void
 Engine::paintPage (Page* page, QImage& img, QPainter& painter)
 {

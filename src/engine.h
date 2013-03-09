@@ -53,7 +53,7 @@ protected:
     /// Experiment description
     QJsonDocument m_json;
 
-    QStringList m_errors;
+    QList<QObject*> m_errors;
 
     /// Current page in a trial
     int current_page;
@@ -86,7 +86,7 @@ protected:
 
     virtual ~Engine ();
 
-    QStringList& errors ()
+    QList<QObject*> errors ()
     { return m_errors; }
 
     bool loadExperiment (const QString& path);
@@ -100,6 +100,8 @@ protected:
     void endSession ();
 
     void nextPage ();
+
+    Error* error (const QString& msg, const QString& description="");
 
   public:
     void run_trial ();
@@ -246,7 +248,7 @@ protected:
 #endif // HAVE_EYELINK
 
 signals:
-    void error (const QString& msg, const QString& desc="");
+    void errorsChanged ();
     void runningChanged (bool running);
     void currentTrialChanged (int trial);
     void experimentChanged (Experiment* experiment);

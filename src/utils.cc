@@ -24,9 +24,12 @@ namespace plstim
     QCoreApplication::setOrganizationDomain ("tlapale.com");
     QCoreApplication::setApplicationName ("plstim");
 
-    // Register QML types for PlStim
+    // Register QML types for GUI
+    qmlRegisterType<plstim::Error> ("PlStim", 1, 0, "Error");
+
+    // Register QML types for experiments
     qmlRegisterType<plstim::Setup> ("PlStim", 1, 0, "Setup");
-    qmlRegisterType<plstim::Setup> ("PlStim", 1, 0, "Subject");
+    qmlRegisterType<plstim::Subject> ("PlStim", 1, 0, "Subject");
     qmlRegisterType<plstim::Vector> ("PlStim", 1, 0, "Vector");
     qmlRegisterType<plstim::Pen> ("PlStim", 1, 0, "Pen");
     qmlRegisterType<plstim::PainterPath> ("PlStim", 1, 0, "PainterPath");
