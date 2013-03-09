@@ -12,8 +12,6 @@ class Setup : public QObject
 {
     Q_OBJECT
     Q_PROPERTY (QString name READ name WRITE setName NOTIFY nameChanged)
-    Q_PROPERTY (int horizontalOffset READ horizontalOffset WRITE setHorizontalOffset NOTIFY horizontalOffsetChanged)
-    Q_PROPERTY (int verticalOffset READ verticalOffset WRITE setVerticalOffset NOTIFY verticalOffsetChanged NOTIFY verticalOffsetChanged)
     Q_PROPERTY (int horizontalResolution READ horizontalResolution WRITE setHorizontalResolution NOTIFY horizontalResolutionChanged)
     Q_PROPERTY (int verticalResolution READ verticalResolution WRITE setVerticalResolution NOTIFY verticalResolutionChanged)
     Q_PROPERTY (int distance READ distance WRITE setDistance NOTIFY distanceChanged)
@@ -23,8 +21,6 @@ class Setup : public QObject
 
 signals:
     void nameChanged (const QString& name);
-    void horizontalOffsetChanged (int offset);
-    void verticalOffsetChanged (int offset);
     void horizontalResolutionChanged (int resolution);
     void verticalResolutionChanged (int resolution);
     void distanceChanged (int distance);
@@ -35,7 +31,6 @@ signals:
 public:
     Setup (QObject* parent=NULL)
 	: QObject (parent)
-	, m_horizontalOffset (0), m_verticalOffset (0)
 	, m_horizontalResolution (0), m_verticalResolution (0)
 	, m_distance (0), m_refreshRate (0)
 	, m_physicalWidth (0), m_physicalHeight (0)
@@ -50,31 +45,13 @@ public:
 	emit nameChanged (name);
     }
 
-    int horizontalOffset () const
-    { return m_horizontalOffset; }
-
-    void setHorizontalOffset (int offset)
-    {
-	m_horizontalOffset = offset;
-	emit horizontalOffsetChanged (offset);
-    }
-
-    int verticalOffset () const
-    { return m_verticalOffset; }
-
-    void setVerticalOffset (int offset)
-    {
-	m_verticalOffset = offset;
-	emit verticalOffsetChanged (offset);
-    }
-
     int horizontalResolution () const
     { return m_horizontalResolution; }
 
     void setHorizontalResolution (int resolution)
     {
 	m_horizontalResolution = resolution;
-	emit horizontalOffsetChanged (resolution);
+	emit horizontalResolutionChanged (resolution);
     }
 
     int verticalResolution () const

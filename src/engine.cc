@@ -391,27 +391,27 @@ Engine::endSession ()
 {
     if (hf != NULL) {
 #if HAVE_EYELINK
-	// Stop recording
-	stop_recording ();
-	// Choose a name for the local EDF
-	auto subject_id = m_subjectName;
-	auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-	// Buggy Eyelink headers do not care about const
-	auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
-	switch (res) {
-	case 0:
-	    error ("EyeLink data file transfer cancelled");
-	    break;
-	case FILE_CANT_OPEN:
-	    error ("Cannot open EyeLink data file");
-	    break;
-	case FILE_XFER_ABORTED:
-	    error ("EyeLink data file transfer aborted");
-	    break;
-	}
-	check_eyelink (close_data_file (), "close_data_file");
+        // Stop recording
+        stop_recording ();
+        // Choose a name for the local EDF
+        auto subject_id = m_subjectName;
+        auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+        // Buggy Eyelink headers do not care about const
+        auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+        switch (res) {
+            case 0:
+                error ("EyeLink data file transfer cancelled");
+                break;
+            case FILE_CANT_OPEN:
+                error ("Cannot open EyeLink data file");
+                break;
+            case FILE_XFER_ABORTED:
+                error ("EyeLink data file transfer aborted");
+                break;
+        }
+        check_eyelink (close_data_file (), "close_data_file");
 #endif // HAVE_EYELINK
-	hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+        hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
     }
     current_page = -1;
     stim->hide ();
@@ -661,7 +661,14 @@ find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 void
 Engine::init_session ()
 {
-  setCurrentTrial (0);
+    setCurrentTrial (0);
+
+
+    // Disable screensaver
+#ifdef HAVE_WIN32
+    SystemParametersInfo (SPI_SETSCREENSAVEACTIVE, FALSE, NULL, 0);
+#else // HAVE_WIN32
+#endif // HAVE_WIN32
 
   // Check if a subject datafile is opened
   if (hf != NULL) {
@@ -1092,8 +1099,6 @@ Engine::loadSetup (const QString& setupName)
   m_setup.setName (setupName);
   m_setup.setPhysicalWidth (m_settings->value ("phy_w").toInt ());
   m_setup.setPhysicalHeight (m_settings->value ("phy_h").toInt ());
-  m_setup.setHorizontalOffset (m_settings->value ("off_x").toInt ());
-  m_setup.setVerticalOffset (m_settings->value ("off_y").toInt ());
   m_setup.setHorizontalResolution (m_settings->value ("res_x").toInt ());
   m_setup.setVerticalResolution (m_settings->value ("res_y").toInt ());
 
