@@ -778,6 +778,7 @@ Engine::runSession ()
 #endif // HAVE_EYELINK
 
   // Launch a stimulus window
+  stim->setScreen (displayScreen ());
   stim->showFullScreen ();
   setRunning (true);
   run_trial ();
@@ -1126,4 +1127,15 @@ float
 Engine::monitor_rate () const
 {
   return 85;
+}
+
+QScreen*
+Engine::displayScreen ()
+{
+  QScreen* scr = stim->screen ();
+  for (auto s : scr->virtualSiblings ())
+      if (s->availableGeometry ().x () != 0
+              || s->availableGeometry ().y () != 0)
+          return s;
+  return scr;
 }

@@ -221,24 +221,6 @@ StimWindow::keyPressEvent (QKeyEvent* evt)
 }
 
 void
-StimWindow::showFullScreen ()
-{
-    // Search for a secondary screen
-    QScreen* scr = screen ();
-    for (auto s : scr->virtualSiblings ()) {
-        if (s->availableGeometry ().x () != 0
-                || s->availableGeometry ().y () != 0) {
-            scr = s;
-            break;
-        }
-    }
-    setScreen (scr);
-
-    // Show in full screen
-    QWindow::showFullScreen ();
-}
-
-void
 StimWindow::renderNow ()
 {
     if (! isExposed ())

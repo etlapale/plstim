@@ -145,19 +145,9 @@ el_setup_display (void* userdata)
   xp->calibrator = new EyeLinkCalibrator ();
   xp->calibrator->setWindowFlags (Qt::Dialog|Qt::FramelessWindowHint);
 
-  // Search for a secondary screen
-  QScreen* scr = screen ();
-  for (auto s : scr->virtualSiblings ()) {
-      if (s->availableGeometry ().x () != 0
-              || s->availableGeometry ().y () != 0) {
-          scr = s;
-          break;
-      }
-  }
-  xp->calibrator->setScreen (scr);
-
   // Display the calibrator in full screen
-  xp->calibrator->showFullScreen ();
+  xp->calibrator->setScreen (xp->displayScreen ());
+  xp->calibrator->show ();
 
   // Focus the new widget
   xp->calibrator->setFocus (Qt::OtherFocusReason);
@@ -402,4 +392,13 @@ void
 EyeLinkCalibrator::clear ()
 {
   sc.clear ();
+}
+
+void
+EyeLinkCalibrator::setScreen (QScreen* scr)
+{
+    QRect geom = scr->geometry ();
+    qDebug () << "Showing calibrator at" << geom.x () << geom.y () << "with size" << geom.width () << "x" << geom.height ();
+    move (geom.x (), geom.y ());
+    resize (geom.width (), geom.height ());
 }

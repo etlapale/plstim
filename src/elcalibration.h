@@ -29,6 +29,7 @@ namespace plstim
     void erase_target ();
     void remove_camera ();
     void clear ();
+    void setScreen (QScreen* scr);
   };
 }
 
