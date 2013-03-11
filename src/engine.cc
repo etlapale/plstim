@@ -1081,9 +1081,9 @@ Engine::setup_updated ()
 	auto page = m_experiment->page (i);
 	if (page->animated ()) {
 	    // Make sure animated frames have updated number of frames
-	    int nframes = (int) round ((monitor_rate () / swap_interval)*page->duration ()/1000.0);
+	    int nframes = (int) round ((m_setup.refreshRate () / swap_interval)*page->duration ()/1000.0);
 	    qDebug () << "Displaying" << nframes << "frames for" << page->name ();
-	    qDebug () << "  " << monitor_rate () << "/" << swap_interval;
+	    qDebug () << "  " << m_setup.refreshRate () << "/" << swap_interval;
 	    page->setFrameCount (nframes);
 	}
 
@@ -1121,12 +1121,6 @@ Engine::loadSetup (const QString& setupName)
   m_settings->setValue ("lastSetup", setupName);
 
   setup_updated ();
-}
-
-float
-Engine::monitor_rate () const
-{
-  return 85;
 }
 
 QScreen*

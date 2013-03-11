@@ -32,7 +32,6 @@ namespace plstim
 class Engine : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY (float monitor_rate READ monitor_rate)
     Q_PROPERTY (bool sessionRunning READ running WRITE setRunning NOTIFY runningChanged)
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
 
@@ -108,10 +107,6 @@ protected:
 
     void show_page (int index);
 
-    float monitor_rate () const;
-
-    //void set_swap_interval (int swap_interval);
-    
     bool running () const
     { return m_running; }
 
