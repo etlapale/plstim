@@ -166,6 +166,7 @@ StimWindow::event (QEvent* evt)
 	    return true;
 	}
 	else if (evt->type () == PowerMateEvent::ButtonPress) {
+	    qDebug () << "powermate button press in stim window";
 	    emit powerMateButtonPressed (static_cast<PowerMateEvent*> (evt));
 	    return true;
 	}

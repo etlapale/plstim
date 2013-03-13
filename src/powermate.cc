@@ -169,14 +169,13 @@ PowerMateWatcher::watch ()
     struct input_event ibuf[IBUF_SZ];
 #endif
     for (;;) {
-        // Get the focused object
-        auto obj = QGuiApplication::focusObject ();
-        if (! obj)
-            continue;
 
 #if HAVE_WIN32
         res = ReadFile (fd, reportBuffer, 8, &nbytes, &overlap);
         if (WaitForSingleObject (hEvent, INFINITE) == WAIT_OBJECT_0) {
+	    // Get the focused object
+	    auto obj = QGuiApplication::focusObject ();
+	    if (! obj) continue;
             // Button pushed
             if (reportBuffer[1] == 1) {
                 auto evt = new PowerMateEvent (PowerMateEvent::ButtonPress);
@@ -200,11 +199,13 @@ PowerMateWatcher::watch ()
             qDebug () << "reading PowerMate events failed:" << strerror (errno);
             continue;
         }
+	// Get the focused object
+	auto obj = QGuiApplication::focusObject ();
+	if (! obj) continue;
 
         // Process each event
         int num_events = nb / sizeof (struct input_event);
         for (int i = 0; i < num_events; i++) {
-
             switch (ibuf[i].type) {
             case EV_SYN:
             break;
