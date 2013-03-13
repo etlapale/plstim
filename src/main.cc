@@ -1,14 +1,23 @@
 #include <QtGui>
+#ifdef HAVE_EYELINK
 #include <QtWidgets>
+#endif // HAVE_EYELINK
+
 #include "gui.h"
+#ifdef WITH_NETWORK
+#include "server.h"
+#endif // WITH_NETWORK
 
 
 int
 main (int argc, char* argv[])
 {
     // Qt application with a GUI
-    //QGuiApplication app (argc, argv);
+#ifdef HAVE_EYELINK
     QApplication app (argc, argv);
+#else
+    QGuiApplication app (argc, argv);
+#endif
 
     // Create a window for PlStim
     plstim::GUI gui;
@@ -23,11 +32,21 @@ main (int argc, char* argv[])
 #ifdef HAVE_POWERMATE
     // Watch for PowerMate events in a background thread
     PowerMateWatcher watcher;
-    QThread wthread;
-    QObject::connect (&wthread, SIGNAL (started ()), &watcher, SLOT (watch ()));
-    watcher.moveToThread (&wthread);
-    wthread.start ();
+    QThread powerMateThread;
+    QObject::connect (&powerMateThread, SIGNAL (started ()),
+	    &watcher, SLOT (watch ()));
+    watcher.moveToThread (&powerMateThread);
+    powerMateThread.start ();
 #endif // HAVE_POWERMATE
+
+#ifdef WITH_NETWORK
+    plstim::Server server (gui.engine ());
+    QThread serverThread;
+    QObject::connect (&serverThread, SIGNAL (started ()),
+	    &server, SLOT (start ()));
+    server.moveToThread (&serverThread);
+    serverThread.start ();
+#endif // WITH_NETWORK
 
     // Run the application
     return app.exec ();

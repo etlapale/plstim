@@ -39,6 +39,9 @@ public:
     const plstim::Setup* setup () const
     { return &m_setup; }
 
+    QSettings* settings ()
+    { return m_settings; }
+
 protected:
     /// Stimulus OpenGL window
     StimWindow* stim;
@@ -92,6 +95,9 @@ protected:
 
     QJsonDocument& experimentDescription ()
     { return m_json; }
+
+    /// Evaluate a JavaScript expression in the QML engine
+    QVariant evaluate (const QString& expression);
 
   public slots:
     void unloadExperiment ();
@@ -236,6 +242,7 @@ protected:
     bool eyelink_connected;
     bool eyelink_dummy;
     bool waiting_fixation;
+    bool m_eyelinkRecording;
   public:
     EyeLinkCalibrator* calibrator;
   public:

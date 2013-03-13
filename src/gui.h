@@ -12,6 +12,8 @@ class GUI : public QQuickView
 public:
     GUI (QWindow* parent=NULL);
     void loadExperiment (const QString& path);
+    plstim::Engine* engine ()
+    { return &m_engine; }
 protected:
     plstim::Engine m_engine;
 };

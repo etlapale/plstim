@@ -400,25 +400,28 @@ Engine::endSession ()
 {
     if (hf != NULL) {
 #if HAVE_EYELINK
-        // Stop recording
-        stop_recording ();
-        // Choose a name for the local EDF
-        auto subject_id = m_subjectName;
-        auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-        // Buggy Eyelink headers do not care about const
-        auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
-        switch (res) {
-            case 0:
-                error ("EyeLink data file transfer cancelled");
-                break;
-            case FILE_CANT_OPEN:
-                error ("Cannot open EyeLink data file");
-                break;
-            case FILE_XFER_ABORTED:
-                error ("EyeLink data file transfer aborted");
-                break;
-        }
-        check_eyelink (close_data_file (), "close_data_file");
+	if (m_eyelinkRecording) {
+	    // Stop recording
+	    stop_recording ();
+	    // Choose a name for the local EDF
+	    auto subject_id = m_subjectName;
+	    auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+	    // Buggy Eyelink headers do not care about const
+	    auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+	    switch (res) {
+	    case 0:
+		error ("EyeLink data file transfer cancelled");
+		break;
+	    case FILE_CANT_OPEN:
+		error ("Cannot open EyeLink data file");
+		break;
+	    case FILE_XFER_ABORTED:
+		error ("EyeLink data file transfer aborted");
+		break;
+	    }
+	    check_eyelink (close_data_file (), "close_data_file");
+	    m_eyelinkRecording = false;
+	}
 #endif // HAVE_EYELINK
         hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
     }
@@ -774,6 +777,7 @@ Engine::runSession ()
   // Run the calibration (no need to wait OpenGL full screen)
   calibrate_eyelink ();
   // Start recording eye movements
+  m_eyelinkRecording = true;
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
 
@@ -833,6 +837,7 @@ Engine::Engine ()
     m_running = false;
 
 #ifdef HAVE_EYELINK
+    m_eyelinkRecording = false;
     eyelink_connected = false;
     waiting_fixation = false;
 #ifdef DUMMY_EYELINK
@@ -904,6 +909,29 @@ Engine::Engine ()
     // Close event termination
     connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
 	    this, SLOT (about_to_quit ()));
+}
+
+QVariant
+Engine::evaluate (const QString& expression)
+{
+    /*QString expression ("2*3");
+    // No experiment loaded
+    if (m_component == NULL)
+	return QVariant ();
+
+    QQmlExpression expr (m_engine.rootContext (),
+	    m_experiment, expression);
+    qDebug () << "Evaluating" << expr.expression ()
+	      << "error:" << expr.hasError ();
+    return expr.evaluate ();*/
+
+    auto expr = expression.trimmed ();
+
+    if (expr == "currentTrial") {
+	qDebug () << "Returning current trial";
+	return QVariant::fromValue (currentTrial ());
+    }
+    return QVariant ();
 }
 
 #if 0

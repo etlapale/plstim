@@ -1,5 +1,5 @@
-CONFIG += qt -debug release eyelink powermate
-QT += core gui network qml quick widgets
+CONFIG += qt debug -release eyelink network powermate
+QT += core gui network qml quick
 SOURCES += src/engine.cc src/stimwindow.cc src/utils.cc src/gui.cc src/main.cc
 HEADERS += src/stimwindow.h src/plstim.h src/engine.h src/utils.h src/elcalibration.h src/qtypes.h src/gui.h src/setup.h
 TARGET = plstim
@@ -9,6 +9,7 @@ LIBS += -lhdf5_cpp -lhdf5
 eyelink {
     DEFINES += HAVE_EYELINK
     SOURCES += src/eyelink.cc
+    QT += widgets
     LIBS += -leyelink_core
 }
 
@@ -16,6 +17,11 @@ powermate {
     DEFINES += HAVE_POWERMATE
     SOURCES += src/powermate.cc
     HEADERS += src/powermate.h
+}
+
+network {
+    DEFINES += WITH_NETWORK
+    HEADERS += src/server.h
 }
 
 win32 {
