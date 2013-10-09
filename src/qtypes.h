@@ -482,12 +482,14 @@ public:
     {
 	if (! m_setup) return 0;
 	// Avoid division by zero on missing information
-	if (! m_setup->physicalWidth () || ! m_setup->physicalHeight ())
-	    return 0;
+	if (! m_setup->physicalWidth () || ! m_setup->physicalHeight ()) {
+          qDebug () << "No physical size for the setup!";
+          return 0;
+        }
 
 	int distance = m_setup->distance ();
-	float hres = m_setup->horizontalResolution () / m_setup->physicalWidth ();
-	float vres = m_setup->verticalResolution () / m_setup->physicalHeight ();
+	float hres = (float) m_setup->horizontalResolution () / m_setup->physicalWidth ();
+	float vres = (float) m_setup->verticalResolution () / m_setup->physicalHeight ();
 
 	return distance*tan (radians (dst)/2)*(hres+vres);
     }
