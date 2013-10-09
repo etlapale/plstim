@@ -14,6 +14,7 @@ GUI::GUI (QWindow* parent)
 
     // Load the QtQuick interface
     setSource (QUrl::fromLocalFile ("qml/ui.qml"));
+    setFlags (Qt::Dialog);
 
     // Display machine information
     auto obj = rootObject ()->findChild<QObject*> ("timerParam");
