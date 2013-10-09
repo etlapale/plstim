@@ -182,6 +182,7 @@ StimWindow::event (QEvent* evt)
 void
 StimWindow::exposeEvent (QExposeEvent* evt)
 {
+    qDebug () << "stimwindow::expose";
     Q_UNUSED (evt);
     if (isExposed ())
 	renderNow ();
@@ -224,6 +225,7 @@ StimWindow::keyPressEvent (QKeyEvent* evt)
 void
 StimWindow::renderNow ()
 {
+    qDebug () << "stimwindow::rendernow";
     if (! isExposed ())
 	return;
 
@@ -425,6 +427,7 @@ StimWindow::showFixedFrame (const QString& name)
 void
 StimWindow::showAnimatedFrames (const QString& name)
 {
+    qDebug () << "showing animated frames" << name;
     if (! m_animatedFrames.contains (name)
 	    && ! m_toabind.contains (name)) {
 	qDebug () << "??? unknown animated frame" << name;
@@ -434,7 +437,10 @@ StimWindow::showAnimatedFrames (const QString& name)
 	auto& frames = m_animatedFrames[name];
 	for (auto frame : frames) {
 	    m_currentFrame = frame;
-	    m_context->makeCurrent (this);
+	    if (! m_context->makeCurrent (this)) {
+		qDebug () << "Could not make" << this << "the current context";
+		return;
+	    }
 	    render ();
 	    m_context->swapBuffers (this);
 	}
