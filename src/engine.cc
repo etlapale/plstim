@@ -333,7 +333,7 @@ Engine::powerMateRotation (PowerMateEvent* evt)
 
     auto page = m_experiment->page (current_page);
     if (page->waitRotation ()) {
-	qDebug () << "RECORDING PowerMate event with step of" << evt->step;
+	//qDebug () << "RECORDING PowerMate event with step of" << evt->step;
 	savePageParameter (page->name (), "rotation", evt->step);
 
 	// Notify the page of a rotation
