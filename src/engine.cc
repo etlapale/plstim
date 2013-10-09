@@ -1,6 +1,5 @@
 // plstim/engine.cc – Base class for experimental stimuli
 
-
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -8,8 +7,6 @@ using namespace std;
 
 #include "engine.h"
 using namespace plstim;
-
-
 
 #include <QtCore>
 #include <QHostInfo>
@@ -892,10 +889,10 @@ Engine::Engine ()
 	// Update setup with screen geometry
         auto setupName = hostname + "_" + screen->name ();
         m_settings->beginGroup (QString ("setups/%1").arg (setupName));
-        m_settings->setValue ("phy_w", screen->geometry ().width ());
-        m_settings->setValue ("phy_h", screen->geometry ().height ());
-        m_settings->setValue ("res_x", screen->physicalSize ().width ());
-        m_settings->setValue ("res_y", screen->physicalSize ().height ());
+        m_settings->setValue ("res_x", screen->geometry ().width ());
+        m_settings->setValue ("res_y", screen->geometry ().height ());
+        m_settings->setValue ("phy_w", screen->physicalSize ().width ());
+        m_settings->setValue ("phy_h", screen->physicalSize ().height ());
         m_settings->setValue ("dst", 400);
         m_settings->setValue ("rate", screen->refreshRate ());
         m_settings->endGroup ();
@@ -1066,7 +1063,6 @@ Engine::selectSubject (const QString& subjectName)
 void
 Engine::setup_updated ()
 {
-  cout << "Setup updated" << endl;
   // Make sure converters are up to date
 
   if (m_experiment) {
