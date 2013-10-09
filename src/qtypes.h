@@ -415,10 +415,9 @@ public:
 	, m_setup (NULL)
     {
 	// Initialise the random number generator
-	auto now = QDateTime::currentDateTime ();
-	m_twister.seed (now.toMSecsSinceEpoch ());
+	m_twister.seed (QDateTime::currentMSecsSinceEpoch ());
 	for (int i = 0; i < 10000; i++)
-	    (void) randint (1024);
+	    (void) m_twister ();
     }
 
     int trialCount () const
