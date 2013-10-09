@@ -878,22 +878,29 @@ Engine::Engine ()
     if (groups.empty ()) {
 	auto hostname = QHostInfo::localHostName ();
 	qDebug () << "creating a new setup for" << hostname;
-#if 0
-	// Search for a secondary screen
-	int i;
-	for (i = 0; i < dsk.screenCount (); i++)
-	    if (i != dsk.primaryScreen ())
-		break;
+        
+        // Search for a secondary screen
+        auto primaryScreen = QGuiApplication::primaryScreen ();
+        auto screens = QGuiApplication::screens ();
+        QScreen* screen; int i;
+	for (i = 0; i < screens.size (); i++) {
+          screen = screens.at (i);
+          if (screen != primaryScreen)
+            break;
+        }
 
-	// Get screen geometry
-	auto geom = dsk.screenGeometry (i);
-	qDebug () << "screen geometry: " << geom.width () << "x"
-	    << geom.height () << "+" << geom.x () << "+" << geom.y ();
-	screen_sbox->setValue (i);
-	res_x_edit->setValue (geom.width ());
-	res_y_edit->setValue (geom.height ());
-	settings->endGroup ();
-#endif
+	// Update setup with screen geometry
+        auto setupName = hostname + "_" + screen->name ();
+        m_settings->beginGroup (QString ("setups/%1").arg (setupName));
+        m_settings->setValue ("phy_w", screen->geometry ().width ());
+        m_settings->setValue ("phy_h", screen->geometry ().height ());
+        m_settings->setValue ("res_x", screen->physicalSize ().width ());
+        m_settings->setValue ("res_y", screen->physicalSize ().height ());
+        m_settings->setValue ("dst", 400);
+        m_settings->setValue ("rate", screen->refreshRate ());
+        m_settings->endGroup ();
+        m_settings->sync ();
+        loadSetup (setupName);
     }
 
     // Use an existing setup
