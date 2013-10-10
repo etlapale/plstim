@@ -444,7 +444,7 @@ StimWindow::showAnimatedFrames (const QString& name)
 	    }
 	    render ();
 	    m_context->swapBuffers (this);
-            /*for (int i = 0; i < 10; i++) {
+            /*for (int i = 0; i < 8; i++) {
               render ();
               m_context->swapBuffers (this);
             }*/
