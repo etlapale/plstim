@@ -20,6 +20,7 @@ StimWindow::StimWindow (QWindow* prnt)
       m_texloc (0), m_currentFrame (0)
 {
     setSurfaceType (QWindow::OpenGLSurface);
+    setFlags (Qt::Dialog);
 
     QSurfaceFormat fmt;
     fmt.setSwapBehavior (QSurfaceFormat::DoubleBuffer);
@@ -443,6 +444,10 @@ StimWindow::showAnimatedFrames (const QString& name)
 	    }
 	    render ();
 	    m_context->swapBuffers (this);
+            /*for (int i = 0; i < 10; i++) {
+              render ();
+              m_context->swapBuffers (this);
+            }*/
 	}
     }
     else {
