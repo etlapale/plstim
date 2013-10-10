@@ -114,7 +114,7 @@ PowerMateWatcher::watch ()
 
 #else
     // Open the PowerMate device
-    int fd = open ("/dev/powermate", O_RDWR);
+    int fd = open ("/dev/input/powermate", O_RDWR);
     if (fd < 0) {
 	qDebug () << "unable to open powermate:" << strerror (errno);
 	return;
