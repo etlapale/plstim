@@ -8,10 +8,15 @@
 #include "server.h"
 #endif // WITH_NETWORK
 
+#include "PlStim_stub.h"
+
 
 int
 main (int argc, char* argv[])
 {
+    hs_init (&argc, &argv);
+    hello ();
+
     // Qt application with a GUI
 #ifdef HAVE_EYELINK
     QApplication app (argc, argv);
@@ -49,5 +54,9 @@ main (int argc, char* argv[])
 #endif // WITH_NETWORK
 
     // Run the application
-    return app.exec ();
+    auto res = app.exec ();
+
+    hs_exit ();
+
+    return res;
 }
