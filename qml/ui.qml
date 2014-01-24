@@ -1,5 +1,6 @@
 import QtQuick 2.0
-
+import QtQuick.Controls 1.1
+import QtQuick.Layouts 1.1
 
 Rectangle {
 
@@ -72,15 +73,15 @@ Rectangle {
 	    unit : "mm"
 	}
 
-	/*IntInput {
-	    label : "Minimum luminance"
-	    value : "15 cd/m²"
-	}
+	//IntInput {
+	    //label : "Minimum luminance"
+	    //value : "15 cd/m²"
+	//}
 
-	IntInput {
-	    label : "Maximum luminance"
-	    value : "150 cd/m²"
-	}*/
+	//IntInput {
+	    //label : "Maximum luminance"
+	    //value : "150 cd/m²"
+	//}
 
 	IntInput {
 	    label : "Refresh rate"

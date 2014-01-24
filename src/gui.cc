@@ -29,19 +29,19 @@ GUI::GUI (QWindow* parent)
     // Connect the QtQuick interface to the experiment
     obj = rootObject ()->findChild<QObject*> ("quitButton");
     if (obj)
-	QObject::connect (obj, SIGNAL (buttonClick ()),
+	QObject::connect (obj, SIGNAL (clicked ()),
 		&m_engine, SLOT (quit ()));
     obj = rootObject ()->findChild<QObject*> ("runButton");
     if (obj)
-	QObject::connect (obj, SIGNAL (buttonClick ()),
+	QObject::connect (obj, SIGNAL (clicked ()),
 		&m_engine, SLOT (runSession ()));
     obj = rootObject ()->findChild<QObject*> ("runInlineButton");
     if (obj)
-	QObject::connect (obj, SIGNAL (buttonClick ()),
+	QObject::connect (obj, SIGNAL (clicked ()),
 		&m_engine, SLOT (runSessionInline ()));
     obj = rootObject ()->findChild<QObject*> ("abortButton");
     if (obj)
-	QObject::connect (obj, SIGNAL (buttonClick ()),
+	QObject::connect (obj, SIGNAL (clicked ()),
 		&m_engine, SLOT (endSession ()));
     QObject::connect (rootObject (), SIGNAL (subjectSelected (const QString&)),
 	    &m_engine, SLOT (selectSubject (const QString&)));

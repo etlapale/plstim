@@ -1,20 +1,20 @@
 import QtQuick 2.0
+import QtQuick.Controls 1.1
 
 Row {
     property string label
     property string value
 
-    Text {
+    Label {
     width : 180
 	text : label
-	color : theme.foreground
-	font.pointSize : theme.pointSize
+        color : theme.foreground
+        font.pointSize : theme.pointSize
     }
-    Text {
+    Label {
 	width : 50
 	text : value
-	color : theme.foreground
-	font.pointSize : theme.pointSize
+        color : theme.foreground
+        font.pointSize : theme.pointSize
     }
 }
-
