@@ -63,6 +63,30 @@ protected:
     QString m_name;
 };
 
+class Parameter : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY (QString name READ name NOTIFY nameChanged)
+    Q_PROPERTY (double value READ value NOTIFY valueChanged)
+    Q_PROPERTY (QString unit READ unit NOTIFY unitChanged)
+public:
+    Parameter (const QString& name, double value, const QString& unit)
+        : m_name (name), m_value (value), m_unit (unit)
+    { }
+
+    QString name () const { return m_name; }
+    double value () const { return m_value; }
+    QString unit () const { return m_unit; }
+protected:
+    QString m_name;
+    double m_value;
+    QString m_unit;
+signals:
+    void nameChanged (const QString& name);
+    void valueChanged (double value);
+    void unitChanged (const QString& unit);
+};
+
 class Vector : public QObject
 {
     Q_OBJECT
@@ -395,12 +419,13 @@ signals:
 class Experiment : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY (int trialCount READ trialCount WRITE setTrialCount)
+    Q_PROPERTY (QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY (int trialCount READ trialCount WRITE setTrialCount NOTIFY trialCountChanged)
     Q_PROPERTY (float size READ size WRITE setSize)
     //Q_PROPERTY (int distance READ distance WRITE setDistance)
     //Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate)
     Q_PROPERTY (float swapInterval READ swapInterval WRITE setSwapInterval)
-    Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize)
+    Q_PROPERTY (int textureSize READ textureSize WRITE setTextureSize NOTIFY textureSizeChanged)
     Q_PROPERTY (QColor background READ background WRITE setBackground)
     Q_PROPERTY (QQmlListProperty<plstim::Page> pages READ pages)
     Q_PROPERTY (QVariantMap trialParameters READ trialParameters WRITE setTrialParameters)
@@ -521,10 +546,15 @@ public:
     void setSetup (Setup* setup)
     { m_setup = setup; }
 
+    QString name () const { return m_name; }
+
+    void setName (const QString& name) { m_name = name; }
+
 protected:
     /// Pseudo random number generator
     std::mt19937 m_twister;
 
+    QString m_name;
     int m_trialCount;
     float m_size;
     int m_textureSize;
@@ -539,6 +569,9 @@ protected:
 signals:
     void newTrial ();
     void setupUpdated ();
+    void nameChanged (const QString&);
+    void trialCountChanged (int);
+    void textureSizeChanged (int);
 };
 
 }

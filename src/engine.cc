@@ -18,7 +18,8 @@ using namespace H5;
 Error*
 Engine::error (const QString& title, const QString& description)
 {
-    auto err = new Error (title, description, this);
+    qWarning () << "Engine error: " << title << ": " << description;
+    auto err = new Error (title, description.trimmed (), this);
     m_errors << err;
     emit errorsChanged ();
     return err;
@@ -989,7 +990,6 @@ Engine::selectSubject (const QString& subjectName)
 {
     qDebug () << "Loading subject" << subjectName;
 
-
     // No subject list found
     auto subjects = m_json.object ()["Subjects"];
     if (! subjects.isObject ()) {
@@ -1037,18 +1037,18 @@ Engine::selectSubject (const QString& subjectName)
 	while (it.hasNext ()) {
 	    it.next ();
 	    auto& paramName = it.key ();
-	    qDebug () << "Trying to load subject parameter" << paramName;
+	    //qDebug () << "Trying to load subject parameter" << paramName;
 	    if (! subjectParams.contains (paramName)) {
-		qDebug () << "WARNING: Missing subject parameter" << paramName;
+		qWarning () << "WARNING: Missing subject parameter" << paramName;
 	    }
 	    else {
 		QVariant currentValue = m_experiment->property (paramName.toUtf8 ().data ());
 		if (! currentValue.isValid ()) {
-		    qDebug () << "WARNING: Trying to set subject property" << paramName << "which is not found in the experiment";
+		    qWarning () << "WARNING: Trying to set subject property" << paramName << "which is not found in the experiment";
 		}
 		else {
 		    if (! subjectParams[paramName].isDouble ()) {
-			qDebug () << "WARNING: Subject parameter" << paramName << "is not a floating number";
+			qWarning () << "WARNING: Subject parameter" << paramName << "is not a floating number";
 		    }
 		    else {
 			m_experiment->setProperty (paramName.toUtf8 ().data (), subjectParams[paramName].toDouble ());

@@ -10,6 +10,9 @@
 
 //#include "PlStim_stub.h"
 
+#include "qtypes.h"
+
+using namespace plstim;
 
 int
 main (int argc, char* argv[])
@@ -25,8 +28,7 @@ main (int argc, char* argv[])
 #endif
 
     // Create a window for PlStim
-    plstim::GUI gui;
-    gui.show ();
+    plstim::GUI gui ("qml/ui.qml");
 
     // Load an experiment if given as command line argument
     auto args = app.arguments ();

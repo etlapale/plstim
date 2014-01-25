@@ -21,3 +21,10 @@ Makefile.Release
 moc_*.cpp
 *.edf
 *.asc
+*_automoc.cpp
+moc_*.cpp_parameters
+*.hi
+#*#
+Session.vim
+data
+scripts

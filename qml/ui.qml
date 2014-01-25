@@ -1,257 +1,193 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Window 2.1
 
-Rectangle {
 
-    Style { id : theme }
+ApplicationWindow {
 
     width : 400
     height : 800
-    color : theme.background
 
     property bool running : false
 
-    property var subjects
-    property string subject
+    toolBar : ToolBar {
+        id : toolbar
+        RowLayout {
+            ToolButton {
+                objectName : "runButton"
+                text : "Run"
+                visible : !running
+            }
+            ToolButton {
+                objectName : "runInlineButton"
+                text : "Run inline"
+                visible : !running
+            }
+            ToolButton {
+                objectName : "abortButton"
+                text : "Abort"
+                visible : running
+            }
+            ToolButton {
+                objectName : "quitButton"
+                text : "Quit"
+            }
+        }
+    }
 
-    signal subjectSelected (string subjectName)
+    ColumnLayout {
 
-    Column {
-	width : parent.width
+        anchors.fill : parent
+        anchors.margins : 8
 
-	SectionText {
-	    text : "Machine"
-	}
+        GroupBox {
+            title : "Machine"
+            Layout.fillWidth : true
 
-	TextParam {
-	    objectName : "hostParam"
-	    label : "Host name"
-	}
+            GridLayout {
+                columns : 2
 
-	TextParam {
-	    objectName : "timerParam"
-	    label : "Timer"
-	}
+                Label { text : "Hostname" }
+                Label { objectName : "hostParam" }
 
-	SectionText {
-	    text : "Setup"
-	}
+                Label { text : "Timer" }
+                Label { objectName : "timerParam" }
+            }
+        }
 
-	TextParam {
-	    label : "Name"
-	    value : setup.name
-	}
+        GroupBox {
+            title : "Setup"
+            Layout.fillWidth : true
 
-	IntInput {
-	    label : "Horizontal resolution"
-	    value : setup.horizontalResolution
-	    unit : "px"
-	}
+            GridLayout {
+                columns : 2
 
-	IntInput {
-	    label : "Vertical resolution"
-	    value : setup.verticalResolution
-	    unit : "px"
-	}
+                Label { text : "Name" }
+                Label { text : setup.name }
 
-	IntInput {
-	    label : "Physical width"
-	    value : setup.physicalWidth
-	    unit : "mm"
-	}
+                Label { text : "Horizontal resolution" }
+                Label { text : setup.horizontalResolution + " px"}
 
-	IntInput {
-	    label : "Physical height"
-	    value : setup.physicalHeight
-	    unit : "mm"
-	}
+                Label { text : "Vertical resolution" }
+                Label { text : setup.verticalResolution + " px"}
 
-	IntInput {
-	    label : "Distance"
-	    value : setup.distance
-	    unit : "mm"
-	}
+                Label { text : "Physical width" }
+                Label { text : setup.physicalWidth + " mm"}
 
-	//IntInput {
-	    //label : "Minimum luminance"
-	    //value : "15 cd/m²"
-	//}
+                Label { text : "Physical height" }
+                Label { text : setup.physicalHeight + " mm"}
 
-	//IntInput {
-	    //label : "Maximum luminance"
-	    //value : "150 cd/m²"
-	//}
+                Label { text : "Distance" }
+                Label { text : setup.distance + " mm"}
 
-	IntInput {
-	    label : "Refresh rate"
-	    value : setup.refreshRate
-	    unit : "Hz"
-	}
+                // TODO: Luminance
 
-	SectionText {
-	    text : "Experiment"
-	}
+                Label { text : "Refresh rate" }
+                Label { text : setup.refreshRate + " Hz" }
+            }
+        }
 
-	IntInput {
-	    objectName : "trialCount"
-	    label : "Number of trials"
-	}
+        GroupBox {
+            title : "Experiment"
+            Layout.fillWidth : true
 
-	SectionText {
-	    text : "Subject"
-	}
+            GridLayout {
+                columns : 2
 
-	Row {
-	    Text {
-		text : "ID"
-		width : 180
-		color : theme.foreground
-		font.pointSize : theme.pointSize
-	    }
-	    Column {
-		Text {
-		    text : subject ? subject : "No subject loaded"
-		    font.bold : ! subject
-		    color : subject ? theme.foreground :  theme.warningColor
-		    font.pointSize : theme.pointSize
+                Label { text : "Name" }
+                Label { text : xp ? xp.name : "" }
 
-		    MouseArea {
-			anchors.fill : parent
-			onClicked : subjectList.visible = ! subjectList.visible
-		    }
-		}
-		Component {
-		    id : subjectDelegate
-		    Text {
-			text : modelData
-			color : theme.foreground
-			font.pointSize : theme.pointSize
+                Label { text : "Number of trials" }
+                Label { text : xp ? xp.trialCount : "" }
 
-			MouseArea {
-			    anchors.fill : parent
-			    onClicked : {
-				subject = modelData
-				subjectList.visible = false
-				subjectSelected (modelData)
-			    }
-			}
-		    }
-		}
-		ListView {
-		    id : subjectList
+                Label { text : "Texture size" }
+                Label { text : xp ? xp.textureSize + "×" + xp.textureSize + " px" : "" }
+            }
+        }
+
+        GroupBox {
+            title : "Subject"
+            Layout.fillWidth : true
+
+            GridLayout {
+                columns : 2
+                width : parent.width
+
+                Label { text : "ID" }
+                ComboBox {
+                    id : subjectList
 		    objectName : "subjectList"
-		    visible : false
-		    delegate : subjectDelegate
-		    width : parent.width
-		    height : 100
-		}
-	    }
-	}
+                }
 
-	Component {
-	    id : subjectParametersDelegate
-	    IntInput {
-		label : description
-		value : value
-		unit : unit
-	    }
-	}
-
-	ListView {
-	    objectName : "subjectParameters"
-	    delegate : subjectParametersDelegate
-	    width : parent.width
-	    height : 100
-	}
-
-	Item {
-	    width : 1
-	    height : 30
-	}
-
-	Row {
-	    spacing : 20
-	    anchors.horizontalCenter: parent.horizontalCenter
-
-	    Button {
-		objectName : "runButton"
-		text : "Run"
-		visible : ! running
-	    }
-	    Button {
-		objectName : "runInlineButton"
-		text : "Run inline"
-		visible : ! running
-	    }
-
-	    Button {
-		objectName : "abortButton"
-		text : "Abort"
-		visible : running
-	    }
-
-	    Button {
-		objectName : "quitButton"
-		text : "Quit"
-	    }
-	}
-
-	Item {
-	    width : 1
-	    height : 50
-	}
-
-	SectionText {
-	    text : "Session"
-	    visible : running
-	}
-
-	Row {
-	    width : parent.width
-	    visible : running
-	    Text {
-		text : "Trial"
-		width : 180
-		color : theme.foreground
-		font.pointSize : theme.pointSize
-	    }
-	    Text {
-		objectName : "trialText"
-		width : 50
-		color : theme.foreground
-		font.pointSize : theme.pointSize
-	    }
-	}
-
-	Item {
-	    width : 1
-	    height : 30
-	}
-
-	Component {
-	    id : errorDelegate
-	    Column {
-		Text {
-		    text : modelData.title
-		    color : theme.errorColor
+                Label {
+                    visible : subjectList.currentIndex == 0
+		    text : "No subject loaded"
+                    color : "#df004f"
+                    font.pointSize : 12
 		    font.bold : true
-		    font.pointSize : theme.pointSize
-		}
-		Text {
-		    text : modelData.description
-		    color : theme.foreground
-		    font.pointSize : theme.pointSize
-		}
-	    }
-	}
+                    Layout.columnSpan : 2
+                }
 
-	ListView {
-	    objectName : "errorList"
-	    delegate : errorDelegate
-	    model : errorsModel
-	    width : parent.width
-	    height : 100
-	}
+                TableView {
+                    TableViewColumn {
+                        role : "name"
+                        title : "Name"
+                        width : 120
+                    }
+                    TableViewColumn {
+                        role : "value"
+                        title : "Value"
+                        width : 60
+                    }
+                    TableViewColumn {
+                        role : "unit"
+                        title : "Unit"
+                        width : 40
+                    }
+
+                    objectName : "subjectParams"
+                    width : parent.width
+                    Layout.columnSpan : 2
+                    visible : subjectList.currentIndex != 0
+                }
+            }
+        }
+
+	GroupBox {
+	    title : "Session"
+	    visible : running
+            Layout.fillWidth : true
+
+            GridLayout {
+                Text {
+                    text : "Trial"
+                }
+                Text {
+                    objectName : "trialValue"
+                }
+            }
+        }
+
+        GroupBox {
+            title : "Messages"
+            Layout.fillWidth : true
+
+            TableView {
+                TableViewColumn {
+                    role : "title"
+                    title : "Title"
+                    width : 220
+                }
+                TableViewColumn {
+                    role : "description"
+                    title : "Description"
+                    width : 800
+                }
+
+                model : errorsModel
+                width : parent.width
+            }
+        }
     }
 }

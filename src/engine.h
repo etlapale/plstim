@@ -169,6 +169,7 @@ protected:
     void powerMateButtonPressed (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
 
+  public:
     void selectSubject (const QString& subjectName);
 
   protected:
@@ -190,6 +191,8 @@ protected:
   public:
     /// Currently loaded experiment
     plstim::Experiment* m_experiment;
+
+    plstim::Experiment* experiment () const { return m_experiment; }
   protected:
 
     /// Last opened directory in file dialog
