@@ -46,6 +46,8 @@ protected:
     /// Stimulus OpenGL window
     StimWindow* stim;
 
+    QMetaObject::Connection m_exposed_conn;
+
     /// Application settings
     QSettings* m_settings;
 

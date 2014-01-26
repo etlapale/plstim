@@ -796,9 +796,17 @@ Engine::runSessionInline ()
   int tex_size = m_experiment->textureSize ();
   stim->resize (tex_size, tex_size);
   stim->show ();
+
+  m_exposed_conn = connect (stim, &StimWindow::exposed, [this] () {
+          qDebug () << "Stim window exposed";
+          this->setRunning (true);
+          this->run_trial ();
+          disconnect (m_exposed_conn);
+      });
+
   //glwidget->setFocus (Qt::OtherFocusReason);
-  setRunning (true);
-  run_trial ();
+  //setRunning (true);
+  //run_trial ();
 }
 
 void

@@ -246,6 +246,11 @@ public:
 	m_painter.drawPath (*(path->path ()));
     }
 
+    Q_INVOKABLE STACK_ALIGNED void fillRect (int x, int y, int width, int height, const QColor& color)
+    {
+      m_painter.fillRect (x, y, width, height, color);
+    }
+
     Q_INVOKABLE void setBrush (const QColor& color)
     {
 	m_painter.setBrush (color);
