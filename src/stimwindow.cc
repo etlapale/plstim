@@ -6,6 +6,11 @@ using namespace std;
 #include "stimwindow.h"
 using namespace plstim;
 
+#ifdef WIN32
+#include <windows.h>
+#include "GL/wglext.h"
+#endif
+
 static const char *fshader_txt = 
     "varying vec2 tex_coord;\n"
     "uniform sampler2D texture;\n"
@@ -76,6 +81,15 @@ StimWindow::setupOpenGL ()
         qCritical () << "error: could not use the OpenGL context";
     if (! initializeOpenGLFunctions ())
         qCritical () << "error: could not initialise the OpenGL functions";
+
+    // Enables V-Sync
+#ifdef WIN32
+    auto wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) wglGetProcAddress ("wglSwapIntervalEXT");
+    if (wglSwapIntervalEXT == NULL)
+        qCritical () << "error: could not get swap interval extension";
+    else
+        wglSwapIntervalEXT (1);
+#endif
 
     // Create a shader program
     m_program = new QOpenGLShaderProgram (this);
@@ -438,6 +452,9 @@ StimWindow::showAnimatedFrames (const QString& name)
         }
 
 	auto& frames = m_animatedFrames[name];
+
+        QElapsedTimer timer;
+        timer.start ();
 	for (auto frame : frames) {
 	    m_currentFrame = frame;
 	    render ();
@@ -447,6 +464,8 @@ StimWindow::showAnimatedFrames (const QString& name)
               m_context->swapBuffers (this);
             }*/
 	}
+        qint64 nsecs = timer.nsecsElapsed ();
+        qDebug () << "animated frames shown in" << (nsecs/1000000) << "ms";
 
         m_context->doneCurrent ();
     }
