@@ -13,7 +13,10 @@ find_package (OpenGL REQUIRED)
 include_directories (${OPENGL_INCLUDE_DIR})
 
 # Search for HDF5
-find_package (HDF5 REQUIRED COMPONENTS CXX)
+if (MINGW)
+else ()
+    find_package (HDF5 REQUIRED COMPONENTS CXX)
+endif ()
 include_directories (${HDF5_INCLUDE_DIRS})
 
 # Haskell stub headers
