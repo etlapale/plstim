@@ -133,7 +133,7 @@ protected:
 	emit currentTrialChanged (trial);
     }
 
-    QScreen* displayScreen ();
+    static QScreen* displayScreen ();
 
   public slots:
 

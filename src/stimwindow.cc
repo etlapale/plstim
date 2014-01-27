@@ -19,8 +19,8 @@ static const char *fshader_txt =
     "}\n";
 
 
-StimWindow::StimWindow (QWindow* prnt)
-    : QWindow (prnt), m_context (NULL), m_vshader (NULL),
+StimWindow::StimWindow (QScreen* scr)
+    : QWindow (scr), m_context (NULL), m_vshader (NULL),
       tex_width (0), tex_height (0),
       m_texloc (0), m_currentFrame (NULL)
 {

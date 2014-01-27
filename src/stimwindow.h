@@ -14,7 +14,7 @@ class StimWindow : public QWindow, protected QOpenGLFunctions_3_0
 {
     Q_OBJECT
 public:
-    explicit StimWindow (QWindow* parent = NULL);
+    explicit StimWindow (QScreen* scr=NULL);
     ~StimWindow ();
     void addFixedFrame (const QString& name, const QImage& img);
     void showFixedFrame (const QString& name);

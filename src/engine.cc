@@ -780,7 +780,6 @@ Engine::runSession ()
 #endif // HAVE_EYELINK
 
   // Launch a stimulus window
-  stim->setScreen (displayScreen ());
   stim->showFullScreen ();
   setRunning (true);
   run_trial ();
@@ -863,8 +862,11 @@ Engine::Engine ()
     nextPageKeys << Qt::Key_Return
 	<< Qt::Key_Enter
 	<< Qt::Key_Space;
+        
+    // Search for a display screen
+    auto screen = Engine::displayScreen ();
 
-    stim = new StimWindow;
+    stim = new StimWindow (screen);
     connect (stim, &StimWindow::keyPressed,
 	    this, &Engine::stimKeyPressed);
 #ifdef HAVE_POWERMATE
@@ -884,16 +886,6 @@ Engine::Engine ()
     if (groups.empty ()) {
 	auto hostname = QHostInfo::localHostName ();
 	qDebug () << "creating a new setup for" << hostname;
-        
-        // Search for a secondary screen
-        auto primaryScreen = QGuiApplication::primaryScreen ();
-        auto screens = QGuiApplication::screens ();
-        QScreen* screen; int i;
-	for (i = 0; i < screens.size (); i++) {
-          screen = screens.at (i);
-          if (screen != primaryScreen)
-            break;
-        }
 
 	// Update setup with screen geometry
         auto setupName = hostname + "_" + screen->name ();
@@ -1165,10 +1157,16 @@ Engine::loadSetup (const QString& setupName)
 QScreen*
 Engine::displayScreen ()
 {
-  QScreen* scr = stim->screen ();
-  for (auto s : scr->virtualSiblings ())
-      if (s->availableGeometry ().x () != 0
-              || s->availableGeometry ().y () != 0)
-          return s;
-  return scr;
+    auto primaryScreen = QGuiApplication::primaryScreen ();
+
+    // Search for a second screen
+    auto screens = QGuiApplication::screens ();
+    for (int i = 0; i < screens.size (); i++) {
+      auto screen = screens.at (i);
+      if (screen != primaryScreen)
+        return screen;
+    }
+
+    // No other screen found
+    return primaryScreen;
 }
