@@ -2,7 +2,6 @@ cmake_minimum_required (VERSION 2.8.9)
 
 project (plstim)
 
-set (CMAKE_AUTOMOC ON)
 
 # General build setup
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -76,9 +75,10 @@ include_directories (${HDF5_INCLUDE_DIRS})
 
 find_package (Qt5Core)
 
+set (CMAKE_AUTOMOC ON)
+
 # Main program
-set (plstim_src src/engine.cc src/stimwindow.cc src/utils.cc src/gui.cc src/main.cc)
-qt5_wrap_cpp (plstim_moc src/qtypes.h src/setup.h)
+set (plstim_src src/engine.cc src/stimwindow.cc src/utils.cc src/gui.cc src/qtypes.cc src/setup.cc src/main.cc)
 add_executable (plstim ${plstim_src} ${plstim_moc})
 #add_dependencies(plstim hcode)
 #add_dependencies(plstim hcode)
