@@ -22,7 +22,7 @@ static const char *fshader_txt =
 StimWindow::StimWindow (QWindow* prnt)
     : QWindow (prnt), m_context (NULL), m_vshader (NULL),
       tex_width (0), tex_height (0),
-      m_texloc (0), m_currentFrame (0)
+      m_texloc (0), m_currentFrame (NULL)
 {
     // Create a floatting window surface
     setFlags (Qt::Dialog);
@@ -115,24 +115,15 @@ StimWindow::setupOpenGL ()
     m_context->doneCurrent ();
 }
 
-static GLuint
+static QOpenGLTexture*
 bindTexture (const QImage& img)
 {
     // Convert pixel data from Qt to OpenGL format
-    QImage glimg = img.rgbSwapped ().mirrored ();
-
-    GLuint texid;
-
-    glGenTextures (1, &texid);
-    glBindTexture (GL_TEXTURE_2D, texid);
-
-    glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA,
-	    glimg.width (), glimg.height (), 0, GL_RGBA,
-	    GL_UNSIGNED_BYTE, glimg.bits ());
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    return texid;
+    auto tex = new QOpenGLTexture (img.mirrored ());
+    tex->setMinificationFilter (QOpenGLTexture::Linear);
+    tex->setMagnificationFilter (QOpenGLTexture::Linear);
+    tex->bind ();
+    return tex;
 }
 
 void
@@ -140,22 +131,18 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 {
     qDebug () << "StimWindow::addFixedFrame ()" << name;
 
-    GLuint texid;
-
     if (! m_context->makeCurrent (this))
         qCritical () << "error: cannot use OpenGL context";
 
     // Delete existing texture
     if (m_fixedFrames.contains (name)) {
         qDebug () << "deleting existing homonymous texture";
-        texid = m_fixedFrames[name];
-        glDeleteTextures (1, &texid);
+        auto tex = m_fixedFrames[name];
+        delete tex;
     }
 
     // Bind the freame to a texture
-    texid = bindTexture (img);
-    m_fixedFrames[name] = texid;
-    qDebug () << "  new texture bound to" << texid;
+    m_fixedFrames[name] = bindTexture (img);
 
     m_context->doneCurrent ();
 }
@@ -171,8 +158,7 @@ StimWindow::addAnimatedFrame (const QString& name, const QImage& img)
 
     //img.save (QString("%1-%2.png").arg(name).arg(frames.size ()));
 
-    GLuint texid = bindTexture (img);
-    frames.append (texid);
+    frames.append (bindTexture (img));
 
     m_context->doneCurrent ();
 }
@@ -184,8 +170,8 @@ StimWindow::deleteAnimatedFrames (const QString& name)
 	m_context->makeCurrent (this);
 
 	auto& frames = m_animatedFrames[name];
-	for (auto texid : frames)
-	    glDeleteTextures (1, &texid);
+	for (auto tex : frames)
+            delete tex;
 
 	frames.clear ();
 	m_animatedFrames.remove (name);
@@ -204,24 +190,22 @@ StimWindow::clear ()
     // Unset current frame
     m_currentFrame = 0;
 
-    GLuint texid;
-
     // Destroy fixed frame textures
-    QMapIterator<QString,GLuint> it (m_fixedFrames);
+    QMapIterator<QString,QOpenGLTexture*> it (m_fixedFrames);
     while (it.hasNext ()) {
 	it.next ();
-	texid = it.value ();
-	glDeleteTextures (1, &texid);
+	auto tex = it.value ();
+        delete tex;
     }
     m_fixedFrames.clear ();
 
     // Destroy animated frame textures
-    QMapIterator<QString,QVector<GLuint>> jt (m_animatedFrames);
+    QMapIterator<QString,QVector<QOpenGLTexture*>> jt (m_animatedFrames);
     while (jt.hasNext ()) {
 	jt.next ();
-	const QVector<GLuint>& vec = jt.value ();
-	for (GLuint t : vec)
-	    glDeleteTextures (1, &t);
+	const QVector<QOpenGLTexture*>& vec = jt.value ();
+	for (QOpenGLTexture* t : vec)
+            delete t;
     }
     m_animatedFrames.clear ();
 
@@ -478,14 +462,15 @@ StimWindow::render ()
     glClear (GL_COLOR_BUFFER_BIT);
     qDebug () << "glClear errors:" << glGetError ();
 
-    if (m_currentFrame == 0) {
+    if (m_currentFrame == NULL) {
 	qDebug () << "render() with no effect (no frame)";
 	return;
     }
 
-    qDebug () << "    current frame: " << m_currentFrame << ", texloc: " << m_texloc;
-    glBindTexture (GL_TEXTURE_2D, m_currentFrame);
-    qDebug () << "BindTexture errors:" << glGetError ();
+    m_currentFrame->bind ();
+    //qDebug () << "    current frame: " << m_currentFrame << ", texloc: " << m_texloc;
+    //glBindTexture (GL_TEXTURE_2D, m_currentFrame);
+    //qDebug () << "BindTexture errors:" << glGetError ();
     glUniform1i (m_texloc, 0);
     qDebug () << "uniform1i errors: " << glGetError ();
     glDrawArrays (GL_TRIANGLES, 0, 6);

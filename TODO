@@ -4,6 +4,7 @@
 
 [OpenGL]
 
+- Control swap interval on non-wgl platforms.
 - We have some shift problems displaying on window (.5 issue?).
 
 [Real time]
@@ -13,6 +14,7 @@
 
 [EyeLink]
 
+- Move to Qt5 QML.
 - Change colours.
 - Help menu.
 - Move mouse on calibration.

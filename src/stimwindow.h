@@ -45,15 +45,15 @@ protected:
     void setupOpenGL ();
 private:
     QOpenGLContext* m_context;
-    QMap<QString,GLuint> m_fixedFrames;
-    QMap<QString,QVector<GLuint>> m_animatedFrames;
+    QMap<QString,QOpenGLTexture*> m_fixedFrames;
+    QMap<QString,QVector<QOpenGLTexture*>> m_animatedFrames;
     QOpenGLShaderProgram* m_program;
     QOpenGLShader* m_vshader;
     int tex_width;
     int tex_height;
     GLfloat vertices[12];
     int m_texloc;
-    int m_currentFrame;
+    QOpenGLTexture* m_currentFrame;
     GLuint m_vao;
     GLuint m_vbo;
 };
