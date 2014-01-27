@@ -271,6 +271,7 @@ protected:
 };
 
 
+QString keyToString (int k);
 
 class Page : public QObject
 {
@@ -284,6 +285,7 @@ class Page : public QObject
     Q_PROPERTY (bool animated READ animated WRITE setAnimated)
     Q_PROPERTY (PaintTime paintTime READ paintTime WRITE setPaintTime)
     Q_PROPERTY (bool waitKey READ waitKey WRITE setWaitKey)
+    Q_PROPERTY (QStringList acceptedKeys READ acceptedKeys WRITE setAcceptedKeys)
 #ifdef HAVE_EYELINK
     Q_PROPERTY (int fixation READ fixation WRITE setFixation)
 #endif
@@ -386,6 +388,36 @@ public:
 	return m_acceptedKeys.contains (key);
     }
 
+    QStringList
+    acceptedKeys () const
+    {
+      QStringList l;
+      for (auto k : m_acceptedKeys)
+        l << keyToString (k);
+      return l;
+    }
+
+    void setAcceptedKeys (const QStringList& keyList)
+    {
+      qDebug () << "Trying to set accepted keys from" << keyList;
+      m_acceptedKeys.clear ();
+
+      for (auto k : keyList) {
+        if (k == "Left")
+          m_acceptedKeys << Qt::Key_Left;
+        else if (k == "Right")
+          m_acceptedKeys << Qt::Key_Right;
+        else if (k == "Up")
+          m_acceptedKeys << Qt::Key_Up;
+        else if (k == "Down")
+          m_acceptedKeys << Qt::Key_Down;
+        else
+          qCritical () << "unknown accepted key:" << k;
+      }
+      qDebug () << " accepted keys are now: " << m_acceptedKeys;
+      //m_acceptedKeys = keyList;
+    }
+
 #ifdef HAVE_POWERMATE
     bool waitRotation () const
     { return m_waitRotation; }
@@ -416,6 +448,7 @@ protected:
 
 signals:
     void paint (plstim::Painter* painter, int frameNumber);
+    void keyPress (const QString& key);
 #ifdef HAVE_POWERMATE
     void rotation (int step);
 #endif // HAVE_POWERMATE

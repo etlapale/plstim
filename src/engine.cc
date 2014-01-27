@@ -386,6 +386,9 @@ Engine::stimKeyPressed (QKeyEvent* evt)
 	  savePageParameter (page->title, "key", evt->key ());
 #endif
 
+      // Notify the page of key press
+      emit page->keyPress (keyToString (evt->key ()));
+
       // Move to the next page
       qDebug () << "stim key → next page";
       nextPage ();
@@ -792,7 +795,6 @@ Engine::runSession ()
 
   // Launch a stimulus window
   stim->setWindowState (Qt::WindowMaximized);
-  qDebug () << "Engine display screen is: " << Engine::displayScreen ();
   auto screen = Engine::displayScreen ();
 #if MINGW
 #else
