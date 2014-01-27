@@ -110,7 +110,7 @@ StimWindow::setupOpenGL ()
     // TODO: update shaders on stimwindow move?
 
     // Black as default background colour
-    glClearColor (1, 0, 0, 0);
+    glClearColor (0, 0, 0, 0);
 
     m_context->doneCurrent ();
 }
@@ -245,7 +245,7 @@ StimWindow::exposeEvent (QExposeEvent* evt)
     Q_UNUSED (evt);
     emit exposed ();
 
-    qDebug () << "stimwindow::expose";
+    //qDebug () << "stimwindow::expose";
     if (isExposed ())
 	renderNow ();
 }
@@ -347,7 +347,7 @@ StimWindow::updateShaders ()
        << "}" << endl;
     auto vshader_str = ss.str();
     const char* vshader_txt = vshader_str.c_str();
-    qDebug () << vshader_txt;
+    //qDebug () << vshader_txt;
     
     // Remove previous vertex shader
     if (m_vshader != NULL) {

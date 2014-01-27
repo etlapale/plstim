@@ -765,6 +765,17 @@ Engine::init_session ()
 }
 
 void
+Engine::connectStimWindowExposed ()
+{
+  m_exposed_conn = connect (stim, &StimWindow::exposed, [this] () {
+          qDebug () << "Stim window exposed";
+          this->setRunning (true);
+          this->run_trial ();
+          disconnect (m_exposed_conn);
+      });
+}
+
+void
 Engine::runSession ()
 {
   // No experiment loaded
@@ -780,9 +791,16 @@ Engine::runSession ()
 #endif // HAVE_EYELINK
 
   // Launch a stimulus window
+  stim->setWindowState (Qt::WindowMaximized);
+  qDebug () << "Engine display screen is: " << Engine::displayScreen ();
+  auto screen = Engine::displayScreen ();
+#if MINGW
+#else
+  stim->resize (m_setup.horizontalResolution (),
+                m_setup.verticalResolution ());
+#endif
   stim->showFullScreen ();
-  setRunning (true);
-  run_trial ();
+  connectStimWindowExposed ();
 }
 
 void
@@ -794,18 +812,9 @@ Engine::runSessionInline ()
   init_session ();
   int tex_size = m_experiment->textureSize ();
   stim->resize (tex_size, tex_size);
+
   stim->show ();
-
-  m_exposed_conn = connect (stim, &StimWindow::exposed, [this] () {
-          qDebug () << "Stim window exposed";
-          this->setRunning (true);
-          this->run_trial ();
-          disconnect (m_exposed_conn);
-      });
-
-  //glwidget->setFocus (Qt::OtherFocusReason);
-  //setRunning (true);
-  //run_trial ();
+  connectStimWindowExposed ();
 }
 
 void

@@ -154,7 +154,7 @@ protected:
 
     void paintPage (Page* page, QImage& img, QPainter& painter);
 
-    bool check_lua (int retcode);
+    void connectStimWindowExposed ();
 
     void savePageParameter (const QString& pageTitle,
 	                    const QString& paramName,
