@@ -18,6 +18,7 @@ ApplicationWindow {
                 objectName : "runButton"
                 text : "Run"
                 visible : !running
+                enabled : advanced || subjectList.currentIndex != 0
             }
             ToolButton {
                 objectName : "runInlineButton"
