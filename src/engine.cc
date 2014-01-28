@@ -84,6 +84,7 @@ Engine::paintPage (Page* page, QImage& img, QPainter& painter)
 void
 Engine::run_trial ()
 {
+  qint64 now = QDateTime::currentMSecsSinceEpoch ();
   timer.start ();
 
   // Emit the newTrial () signal
@@ -105,6 +106,13 @@ Engine::run_trial ()
     const QString& param_name = it.first;
     auto name = it.first.toUtf8 ();
     size_t offset = it.second;
+
+    // Special case: trial start time
+    if (param_name == "trialStart") {
+      qint64* pos = (qint64*) (((char*) trial_record)+offset);
+      *pos = now;
+      continue;
+    }
 
     QVariant prop = m_experiment->property (name);
     if (prop.canConvert<float> ()) {
@@ -528,6 +536,11 @@ Engine::loadExperiment (const QString& path)
   }
   m_experiment = qobject_cast<Experiment*> (xp);
   m_experiment->setSetup (&m_setup);
+
+  // Add start time to the record
+  trial_types["trialStart"] = PredType::NATIVE_UINT64;
+  trial_offsets["trialStart"] = record_size;
+  record_size += sizeof (qint64);
 
   // Add trial parameters to the record
   const QVariantMap& trialParameters = m_experiment->trialParameters ();
