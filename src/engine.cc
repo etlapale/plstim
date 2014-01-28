@@ -185,6 +185,13 @@ Engine::show_page (int index)
 
   current_page = index;
 
+  // Wait for showPage signals
+  m_showPageCon = QObject::connect (page, &Page::showPage,
+          [this] (Page* p) {
+            QObject::disconnect (m_showPageCon);
+            this->nextPage (p);
+          });
+
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
   if (page->fixation ()) {
@@ -249,7 +256,7 @@ Engine::show_page (int index)
 }
 
 void
-Engine::nextPage ()
+Engine::nextPage (Page* wantedPage)
 {
 #ifdef HAVE_EYELINK
     // Exit the inner fixation loop
@@ -291,17 +298,15 @@ Engine::nextPage ()
     // There is a next page
     else {
         // Check if there is a next page user defined
-        if (page) {
-            QString next = page->nextPage ();
-            if (! next.isEmpty ()) {
-                for (int i = 0; i < m_experiment->pageCount (); i++) {
-                    Page* p = m_experiment->page (i);
-                    if (p->name () == next) {
-                        current_page = i - 1;
-                        break;
-                    }
+        if (wantedPage) {
+            for (int i = 0; i < m_experiment->pageCount (); i++) {
+                Page* p = m_experiment->page (i);
+                if (p == wantedPage) {
+                    current_page = i - 1;
+                    break;
                 }
             }
+            qCritical () << "error: unlisted wanted page:" << wantedPage->name ();
         }
 
         show_page (current_page + 1);
@@ -390,9 +395,13 @@ Engine::stimKeyPressed (QKeyEvent* evt)
       // Notify the page of key press
       emit page->keyPress (keyToString (evt->key ()));
 
+      // TODO !!! Possible BUG !!! we should « wait » for 
+
       // Move to the next page
-      qDebug () << "stim key → next page";
-      nextPage ();
+      if (page->acceptAnyKey () && nextPageKeys.contains (evt->key ())) {
+        qDebug () << "stim key → next page";
+        nextPage ();
+      }
     }
   }
 }
@@ -660,7 +669,7 @@ Engine::set_trial_count (int num_trials)
 
 static const QRegExp session_name_re ("session_[0-9]+");
 
-herr_t
+static herr_t
 find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 {
   (void) group_id;	// Unused

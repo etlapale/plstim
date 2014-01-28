@@ -38,9 +38,7 @@ ApplicationWindow {
 
     statusBar : ToolBar {
         RowLayout {
-            Rectangle {
-                Layout.fillWidth : true
-            }
+            Layout.fillWidth : true
             ToolButton {
                 text : "Advanced mode"
                 tooltip : "Display advanced options"

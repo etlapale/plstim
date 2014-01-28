@@ -280,7 +280,6 @@ class Page : public QObject
     Q_ENUMS (PaintTime)
     Q_PROPERTY (QString name READ name WRITE setName)
     Q_PROPERTY (bool last READ last WRITE setLast)
-    Q_PROPERTY (QString nextPage READ nextPage WRITE setNextPage)
     Q_PROPERTY (int duration READ duration WRITE setDuration)
     Q_PROPERTY (int frameCount READ frameCount WRITE setFrameCount)
     Q_PROPERTY (bool animated READ animated WRITE setAnimated)
@@ -344,12 +343,6 @@ public:
     void setFixation (int fix)
     { m_fixation = fix; }
 #endif
-
-    const QString& nextPage () const
-    { return m_nextPage; }
-
-    void setNextPage (const QString& page)
-    { m_nextPage = page; }
 
     int frameCount () const
     { return m_frameCount; }
@@ -423,7 +416,6 @@ public:
 protected:
     QString m_name;
     bool m_last;
-    QString m_nextPage;
     int m_duration;
     int m_frameCount;
     bool m_animated;
@@ -438,6 +430,7 @@ protected:
 #endif // HAVE_POWERMATE
 
 signals:
+    void showPage (Page* page);
     void paint (plstim::Painter* painter, int frameNumber);
     void keyPress (const QString& key);
 #ifdef HAVE_POWERMATE

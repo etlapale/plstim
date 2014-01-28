@@ -106,7 +106,7 @@ protected:
 
     void endSession ();
 
-    void nextPage ();
+    void nextPage (Page* wantedPage=NULL);
 
     Error* error (const QString& msg, const QString& description="");
 
@@ -179,6 +179,8 @@ protected:
     int m_currentTrial;
     bool save_setup;
     QString m_subjectName;
+
+    QMetaObject::Connection m_showPageCon;
 
   public:
     QString xp_name;

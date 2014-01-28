@@ -458,9 +458,9 @@ StimWindow::showAnimatedFrames (const QString& name)
 void
 StimWindow::render ()
 {
-    qDebug () << "StimWindow::render ()";
+    //qDebug () << "StimWindow::render ()";
     glClear (GL_COLOR_BUFFER_BIT);
-    qDebug () << "glClear errors:" << glGetError ();
+    //qDebug () << "glClear errors:" << glGetError ();
 
     if (m_currentFrame == NULL) {
 	qDebug () << "render() with no effect (no frame)";
@@ -472,12 +472,12 @@ StimWindow::render ()
     //glBindTexture (GL_TEXTURE_2D, m_currentFrame);
     //qDebug () << "BindTexture errors:" << glGetError ();
     glUniform1i (m_texloc, 0);
-    qDebug () << "uniform1i errors: " << glGetError ();
+    //qDebug () << "uniform1i errors: " << glGetError ();
     glDrawArrays (GL_TRIANGLES, 0, 6);
 
     //glDrawElements (GL_TRIANGLES, 6, 
 
-    qDebug () << glGetError ();
+    //qDebug () << glGetError ();
 }
 
 void
