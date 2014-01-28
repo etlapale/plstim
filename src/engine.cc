@@ -818,14 +818,12 @@ Engine::runSession ()
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
 
-  // Launch a stimulus window
-  stim->setWindowState (Qt::WindowMaximized);
-  auto screen = Engine::displayScreen ();
-#if MINGW
-#else
-  stim->resize (m_setup.horizontalResolution (),
-                m_setup.verticalResolution ());
-#endif
+  // Put at the right position
+  auto screen = stim->screen ();
+  auto geom = screen->geometry ();
+  stim->setPosition (geom.x (), geom.y ());
+  stim->resize (geom.width (), geom.height ());
+  // Show in full screen
   stim->showFullScreen ();
   connectStimWindowExposed ();
 }
