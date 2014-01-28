@@ -43,6 +43,8 @@ ApplicationWindow {
             }
             ToolButton {
                 text : "Advanced mode"
+                tooltip : "Display advanced options"
+                iconSource : "qrc:/images/emblem-system.png"
                 checkable : true
                 onClicked : advanced = !advanced
             }

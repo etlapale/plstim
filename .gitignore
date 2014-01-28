@@ -1,4 +1,3 @@
-*.png
 *.swp
 gmon.out
 lorenceau-experiment
@@ -28,3 +27,6 @@ moc_*.cpp_parameters
 Session.vim
 data
 scripts
+qrc_*.cpp
+*.zip
+*.qrc.depends

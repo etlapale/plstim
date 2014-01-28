@@ -91,7 +91,8 @@ set (CMAKE_AUTOMOC ON)
 
 # Main program
 set (plstim_src src/engine.cc src/stimwindow.cc src/utils.cc src/gui.cc src/qtypes.cc src/setup.cc src/main.cc ${eyelink_src})
-add_executable (plstim ${plstim_src} ${plstim_moc})
+qt5_add_resources (plstim_qrc plstim.qrc)
+add_executable (plstim ${plstim_src} ${plstim_qrc})
 #add_dependencies(plstim hcode)
 #add_dependencies(plstim hcode)
 qt5_use_modules (plstim Core Gui Network Qml Quick ${eyelink_qt_modules})
