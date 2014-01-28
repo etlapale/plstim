@@ -483,14 +483,14 @@ StimWindow::render ()
 void
 StimWindow::renderNow ()
 {
-    qDebug () << "stimwindow::rendernow";
+    //qDebug () << "stimwindow::rendernow";
     //if (! isExposed ())
 	//return;
 
     // Render the frame, and swap the buffers
-    qDebug () << "rendering and swapping";
+    //qDebug () << "rendering and swapping";
     m_context->makeCurrent (this);
-    qDebug () << "make current errors:" << glGetError ();
+    //qDebug () << "make current errors:" << glGetError ();
     render ();
     m_context->swapBuffers (this);
     m_context->doneCurrent ();

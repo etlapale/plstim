@@ -169,6 +169,14 @@ Engine::show_page (int index)
         }
     }
 
+    // TODO: ugly hack!
+    if (page->name () == "preBreakPage") {
+      int tex_size = m_experiment->textureSize ();
+      QPainter painter;
+      QImage img (tex_size, tex_size, QImage::Format_RGB32);
+      paintPage (page, img, painter);
+    }
+
     qDebug () << ">>> showing page" << page->name ();
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
@@ -303,7 +311,8 @@ Engine::nextPage (Page* wantedPage)
                 Page* p = m_experiment->page (i);
                 if (p == wantedPage) {
                     current_page = i - 1;
-                    break;
+                    show_page (current_page + 1);
+                    return;
                 }
             }
             qCritical () << "error: unlisted wanted page:" << wantedPage->name ();
