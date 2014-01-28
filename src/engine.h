@@ -213,8 +213,6 @@ protected:
     /// Uniform double distribution in [0,1]
     std::uniform_real_distribution<double> real_dist;
 
-    std::map<QString,int> key_mapping;
-
   public:
 
     /// Memory for the trial record
@@ -233,7 +231,7 @@ protected:
     std::map<QString,H5::DataType> trial_types;
 
     // List of key accepted across the experiment
-    std::set<QString> xp_keys;
+    QSet<QString> xp_keys;
 
     H5::CompType* record_type;
 

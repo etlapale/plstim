@@ -18,4 +18,20 @@ keyToString (int k)
         return "";
 }
 
+
+int
+stringToKey (const QString& s)
+{
+  if (s == "Left")
+      return Qt::Key_Left;
+  else if (s == "Right")
+      return Qt::Key_Right;
+  else if (s == "Up")
+      return Qt::Key_Up;
+  else if (s == "Down")
+      return Qt::Key_Down;
+  else
+      return 0;
+}
+
 }

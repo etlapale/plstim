@@ -388,11 +388,9 @@ Engine::stimKeyPressed (QKeyEvent* evt)
     // Check if the key is accepted
     if ((page->acceptAnyKey () && nextPageKeys.contains (evt->key ()))
 	    || page->acceptKey (evt->key ())) {
-#if 0
       // Save pressed key
-      if (! page->accepted_keys.empty ())
-	  savePageParameter (page->title, "key", evt->key ());
-#endif
+      if (! page->acceptAnyKey ())
+	  savePageParameter (page->name (), "key", evt->key ());
 
       // Notify the page of key press
       emit page->keyPress (keyToString (evt->key ()));
@@ -597,12 +595,13 @@ Engine::loadExperiment (const QString& path)
       // Compute required memory for the page
       record_offsets[page_title]["begin"] = record_size;
       record_size += sizeof (qint64);	// Start page presentation
-#if 0
-      if (! accepted_keys.empty ()) {
+      if (! page->acceptAnyKey ()) {
 	  record_offsets[page_title]["key"] = record_size;
 	  record_size += sizeof (int);	// Pressed key
+          // Add the accepted keys mapping
+          for (auto k : page->acceptedKeys ())
+            xp_keys << k;
       }
-#endif
 #ifdef HAVE_POWERMATE
       if (page->waitRotation ()) {
           record_offsets[page_title]["rotation"] = record_size;
@@ -742,7 +741,7 @@ Engine::init_session ()
           int* code = (int*) (km+rowsize*i);
           char** name = (char**) (km+rowsize*i+sizeof (int));
 
-          *code = key_mapping[k];
+          *code = stringToKey (k);
           *name = new char[utf_key.size ()+1];
           strcpy (*name, utf_key.data ());
           i++;
@@ -875,12 +874,6 @@ Engine::Engine ()
     eyelink_dummy = false;
 #endif
 #endif
-
-    // Mapping of key names to keys for Lua
-    key_mapping["down"] = Qt::Key_Down;
-    key_mapping["left"] = Qt::Key_Left;
-    key_mapping["right"] = Qt::Key_Right;
-    key_mapping["up"] = Qt::Key_Up;
 
     // Accepted keys for next page presentation
     nextPageKeys << Qt::Key_Return

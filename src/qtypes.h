@@ -272,6 +272,7 @@ protected:
 
 
 QString keyToString (int k);
+int stringToKey (const QString& s);
 
 class Page : public QObject
 {
@@ -402,18 +403,8 @@ public:
       qDebug () << "Trying to set accepted keys from" << keyList;
       m_acceptedKeys.clear ();
 
-      for (auto k : keyList) {
-        if (k == "Left")
-          m_acceptedKeys << Qt::Key_Left;
-        else if (k == "Right")
-          m_acceptedKeys << Qt::Key_Right;
-        else if (k == "Up")
-          m_acceptedKeys << Qt::Key_Up;
-        else if (k == "Down")
-          m_acceptedKeys << Qt::Key_Down;
-        else
-          qCritical () << "unknown accepted key:" << k;
-      }
+      for (auto k : keyList)
+        m_acceptedKeys << stringToKey (k);
       qDebug () << " accepted keys are now: " << m_acceptedKeys;
       //m_acceptedKeys = keyList;
     }
