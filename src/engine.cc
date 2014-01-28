@@ -69,12 +69,7 @@ Engine::paintPage (Page* page, QImage& img, QPainter& painter)
 	    emit page->paint (&wrappedPainter, i);
 
 	    painter.end ();
-#if 0
-	    QString filename;
-	    filename.sprintf ("page-%s-%04d.png", qPrintable (page->name ()), i);
-	    img.save (filename);
-#endif
-	    //glwidget->add_animated_frame (page->title, img);
+
 	    stim->addAnimatedFrame (page->name (), img);
 	}
 	//qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
@@ -1083,23 +1078,6 @@ Engine::setup_updated ()
   // Make sure converters are up to date
 
   if (m_experiment) {
-    // Compute the best swap interval
-#if 0
-    lua_getglobal (lstate, "refresh");
-    swap_interval = 1;
-    if (lua_isnumber (lstate, -1)) {
-      double wanted_freq = lua_tonumber (lstate, -1);
-      double mon_rate = monitor_rate ();
-      double coef = round (mon_rate / wanted_freq);
-      if ((mon_rate/coef - wanted_freq)/wanted_freq> 0.01)
-	qDebug () << "error: cannot set monitor frequency to 1% of desired frequency";
-      qDebug () << "Swap interval:" << coef;
-      //set_swap_interval (coef);
-      swap_interval = coef;
-    }
-    lua_pop (lstate, 1);
-#endif
-
     // Compute the minimal texture size
     float size_degs = m_experiment->size ();
     double size_px = ceil (m_experiment->degreesToPixels (size_degs));
