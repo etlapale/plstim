@@ -137,8 +137,6 @@ ApplicationWindow {
                 Label {
                     visible : subjectList.currentIndex == 0
 		    text : "No subject loaded"
-                    color : "#df004f"
-                    font.pointSize : 12
 		    font.bold : true
                     Layout.columnSpan : 2
                 }

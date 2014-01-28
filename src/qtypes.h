@@ -237,6 +237,16 @@ public:
 	m_painter.drawLine (x1, y1, x2, y2);
     }
 
+    Q_INVOKABLE STACK_ALIGNED void drawText (int x, int y, const QString& text)
+    {
+	m_painter.drawText (x, y, text);
+    }
+
+    Q_INVOKABLE STACK_ALIGNED void drawText (int x, int y, int w, int h, int flags, const QString& text)
+    {
+	m_painter.drawText (x, y, w, h, flags, text);
+    }
+
     Q_INVOKABLE STACK_ALIGNED void drawPath (PainterPath* path)
     {
 	//if (path.canConvert<const PainterPath&> ())
@@ -261,9 +271,14 @@ public:
 	m_painter.setPen (Qt::NoPen);
     }
 
-    Q_INVOKABLE void setPen (Pen* pen)
+    Q_INVOKABLE void setPen (const QColor& color)
     {
-	m_painter.setPen (*(pen->pen ()));
+	m_painter.setPen (color);
+    }
+
+    Q_INVOKABLE void setPen (const QPen& pen)
+    {
+	m_painter.setPen (pen);
     }
 
 protected:
