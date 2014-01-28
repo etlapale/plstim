@@ -9,10 +9,10 @@ ApplicationWindow {
     width : 400
     height : 800
 
+    property bool advanced : false
     property bool running : false
 
     toolBar : ToolBar {
-        id : toolbar
         RowLayout {
             ToolButton {
                 objectName : "runButton"
@@ -22,7 +22,7 @@ ApplicationWindow {
             ToolButton {
                 objectName : "runInlineButton"
                 text : "Run inline"
-                visible : !running
+                visible : advanced && !running
             }
             ToolButton {
                 objectName : "abortButton"
@@ -32,6 +32,19 @@ ApplicationWindow {
             ToolButton {
                 objectName : "quitButton"
                 text : "Quit"
+            }
+        }
+    }
+
+    statusBar : ToolBar {
+        RowLayout {
+            Rectangle {
+                Layout.fillWidth : true
+            }
+            ToolButton {
+                text : "Advanced mode"
+                checkable : true
+                onClicked : advanced = !advanced
             }
         }
     }
