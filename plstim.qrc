@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
+    <file>qml/ui.qml</file>
     <file>images/emblem-system.png</file>
 </qresource>
 </RCC>

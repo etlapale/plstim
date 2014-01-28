@@ -28,7 +28,7 @@ main (int argc, char* argv[])
 #endif
 
     // Create a window for PlStim
-    plstim::GUI gui ("qml/ui.qml");
+    plstim::GUI gui (QUrl("qrc:/qml/ui.qml"));
 
     // Load an experiment if given as command line argument
     auto args = app.arguments ();

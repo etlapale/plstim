@@ -11,7 +11,7 @@ class GUI : public QObject //: public QQuickView
 {
     Q_OBJECT
 public:
-    GUI (const QString& uipath);//QWindow* parent=NULL);
+    GUI (const QUrl& uipath);//QWindow* parent=NULL);
     void loadExperiment (const QString& path);
 
     plstim::Engine* engine ()

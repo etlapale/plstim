@@ -3,7 +3,7 @@
 using namespace plstim;
 
 
-GUI::GUI (const QString& uipath)
+GUI::GUI (const QUrl& uiUrl)
 {
     // Load the QtQuick interface
     m_ui_engine.rootContext ()->setContextProperty ("xp",
@@ -12,7 +12,7 @@ GUI::GUI (const QString& uipath)
             (plstim::Setup*) m_engine.setup ());
     m_ui_engine.rootContext ()->setContextProperty ("errorsModel",
             QVariant::fromValue (m_engine.errors ()));
-    m_ui_engine.load (uipath);
+    m_ui_engine.load (uiUrl);
     QObject* topLevel = m_ui_engine.rootObjects ().value (0);
     QQuickWindow* win = qobject_cast<QQuickWindow*> (topLevel);
     if (! win) {
