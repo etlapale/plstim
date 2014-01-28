@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 2.8.9)
 
 project (plstim)
 
+# Remove warning on Windows
+cmake_policy (SET CMP0020 NEW)
 
 # General build setup
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-literal-suffix")
