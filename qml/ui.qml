@@ -186,7 +186,7 @@ ApplicationWindow {
                     }
                     Text {
                         objectName : "trialValue"
-                        text : xp ? (engine.currentTrial+1) + "/" + xp.trialCount + " (" + (100*Math.round((engine.currentTrial+1)/xp.trialCount)) + "%)" : ""
+                        text : xp ? (engine.currentTrial+1) + "/" + xp.trialCount + " (" + (Math.round(100*(engine.currentTrial+1)/xp.trialCount)) + "%)" : ""
                     }
                 }
                 Label { text : "Est. rem. time" }
