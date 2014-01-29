@@ -177,7 +177,7 @@ Engine::show_page (int index)
     }
 
     // TODO: ugly hack!
-    if (page->name () == "preBreakPage") {
+    if (page->paintTime () == Page::ON_SHOW) {
       int tex_size = m_experiment->textureSize ();
       QPainter painter;
       QImage img (tex_size, tex_size, QImage::Format_RGB32);

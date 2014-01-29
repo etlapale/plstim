@@ -313,6 +313,7 @@ public:
     {
 	EXPERIMENT,
 	TRIAL,
+        ON_SHOW,
 	MANUAL
     };
 

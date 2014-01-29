@@ -8,8 +8,6 @@
 #include "server.h"
 #endif // WITH_NETWORK
 
-//#include "PlStim_stub.h"
-
 #include "qtypes.h"
 
 using namespace plstim;
@@ -17,9 +15,6 @@ using namespace plstim;
 int
 main (int argc, char* argv[])
 {
-    //hs_init (&argc, &argv);
-    //hello ();
-
     // Qt application with a GUI
 #ifdef HAVE_EYELINK
     QApplication app (argc, argv);
@@ -57,8 +52,6 @@ main (int argc, char* argv[])
 
     // Run the application
     auto res = app.exec ();
-
-    //hs_exit ();
 
     return res;
 }
