@@ -131,6 +131,13 @@ Engine::run_trial ()
     eyemsg_printf ("trial %d", m_currentTrial+1);
 #endif // HAVE_EYELINK
 
+  // Update estimated remaining time
+  auto duration = (now - m_sessionStart) / 1000.0;
+  float completed = (float) m_currentTrial / m_experiment->trialCount ();
+  int estTotal = (int) (duration / completed);
+  setEta (estTotal - duration);
+
+  // Display the first page
   current_page = -1;
   nextPage ();
 }
@@ -708,6 +715,10 @@ Engine::init_session ()
 #else // HAVE_WIN32
 #endif // HAVE_WIN32
 
+  // Save the starting date
+  qint64 now = QDateTime::currentMSecsSinceEpoch ();
+  m_sessionStart = now;
+
   // Check if a subject datafile is opened
   if (hf != NULL) {
     // Parse the HDF5 datasets to get a block number
@@ -739,7 +750,6 @@ Engine::init_session ()
       .write (sysname_type, hostname.data ());
 
     // Save current date and time
-    qint64 now = QDateTime::currentMSecsSinceEpoch ();
     dset.createAttribute ("datetime", PredType::STD_U64LE, scalar_space)
       .write (PredType::NATIVE_UINT64, &now);
 
@@ -874,6 +884,7 @@ Engine::Engine ()
     record_type = NULL;
 
     m_running = false;
+    m_eta = 0;
 
 #ifdef HAVE_EYELINK
     m_eyelinkRecording = false;

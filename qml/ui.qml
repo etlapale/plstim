@@ -169,14 +169,29 @@ ApplicationWindow {
 	GroupBox {
 	    title : "Session"
 	    visible : running
-            Layout.fillWidth : true
+            width : parent.width
 
             GridLayout {
-                Text {
+                columns : 2
+                width : parent.width
+
+                Label {
                     text : "Trial"
                 }
-                Text {
-                    objectName : "trialValue"
+                RowLayout {
+                    ProgressBar {
+                        value : engine.currentTrial
+                        minimumValue : 0
+                        maximumValue : xp ? xp.trialCount : 0
+                    }
+                    Text {
+                        objectName : "trialValue"
+                        text : xp ? (engine.currentTrial+1) + "/" + xp.trialCount + " (" + (100*Math.round((engine.currentTrial+1)/xp.trialCount)) + "%)" : ""
+                    }
+                }
+                Label { text : "Est. rem. time" }
+                Label {
+                    text : engine.eta > 60 ? Math.floor (engine.eta / 60) + " min " + (engine.eta % 60) + " s" : engine.eta + " s"
                 }
             }
         }

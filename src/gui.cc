@@ -8,6 +8,8 @@ GUI::GUI (const QUrl& uiUrl)
     // Load the QtQuick interface
     m_ui_engine.rootContext ()->setContextProperty ("xp",
         QVariant::fromValue ((QObject*) NULL));
+    m_ui_engine.rootContext ()->setContextProperty ("engine",
+        QVariant::fromValue ((QObject*) &m_engine));
     m_ui_engine.rootContext ()->setContextProperty ("setup",
             (plstim::Setup*) m_engine.setup ());
     m_ui_engine.rootContext ()->setContextProperty ("errorsModel",

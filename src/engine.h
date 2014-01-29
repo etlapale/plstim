@@ -34,6 +34,7 @@ class Engine : public QObject
     Q_OBJECT
     Q_PROPERTY (bool sessionRunning READ running WRITE setRunning NOTIFY runningChanged)
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
+    Q_PROPERTY (int eta READ eta WRITE setEta NOTIFY etaChanged)
 
 public:
     const plstim::Setup* setup () const
@@ -133,6 +134,10 @@ protected:
 	emit currentTrialChanged (trial);
     }
 
+    int eta () const { return m_eta; }
+
+    void setEta (int eta) { m_eta = eta; emit etaChanged (eta); }
+
     static QScreen* displayScreen ();
 
   public slots:
@@ -179,6 +184,12 @@ protected:
     int m_currentTrial;
     bool save_setup;
     QString m_subjectName;
+
+    /// Time at which the session started in ms since epoch
+    qint64 m_sessionStart;
+
+    /// Estimated remaining time for the session (in seconds)
+    int m_eta;
 
     QMetaObject::Connection m_showPageCon;
 
@@ -260,6 +271,7 @@ signals:
     void errorsChanged ();
     void runningChanged (bool running);
     void currentTrialChanged (int trial);
+    void etaChanged (int eta);
     void experimentChanged (Experiment* experiment);
 };
 }
