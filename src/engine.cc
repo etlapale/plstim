@@ -879,6 +879,9 @@ Engine::Engine ()
 {
     plstim::initialise ();
 
+    m_engine.rootContext ()->setContextProperty ("engine",
+        QVariant::fromValue ((QObject*) this));
+
     m_component = NULL;
     m_experiment = NULL;
     record_type = NULL;
@@ -1064,7 +1067,8 @@ Engine::selectSubject (const QString& subjectName)
         hf = NULL;
     }
     hf = new H5File (datafile.toLocal8Bit ().data (), H5F_ACC_RDWR);
-    m_subjectName = subjectName;
+    //m_subjectName = subjectName;
+    setSubjectName (subjectName);
     qDebug () << "Subject data file loaded";
 
     // Load subject parameters

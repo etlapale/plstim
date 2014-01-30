@@ -35,6 +35,7 @@ class Engine : public QObject
     Q_PROPERTY (bool sessionRunning READ running WRITE setRunning NOTIFY runningChanged)
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
     Q_PROPERTY (int eta READ eta WRITE setEta NOTIFY etaChanged)
+    Q_PROPERTY (QString subjectName READ subjectName WRITE setSubjectName NOTIFY subjectChanged)
 
 public:
     const plstim::Setup* setup () const
@@ -137,6 +138,13 @@ protected:
     int eta () const { return m_eta; }
 
     void setEta (int eta) { m_eta = eta; emit etaChanged (eta); }
+
+    const QString& subjectName () const { return m_subjectName; }
+
+    void setSubjectName (const QString& name) {
+      m_subjectName = name;
+      emit subjectChanged (name);
+    }
 
     static QScreen* displayScreen ();
 
@@ -272,6 +280,7 @@ signals:
     void runningChanged (bool running);
     void currentTrialChanged (int trial);
     void etaChanged (int eta);
+    void subjectChanged (const QString& subject);
     void experimentChanged (Experiment* experiment);
 };
 }
