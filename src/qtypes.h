@@ -119,6 +119,22 @@ public:
 	    m_data[index] = value;
     }
 
+    Q_INVOKABLE void set (const QList<QVariant>& values)
+    {
+        if (values.size () != m_length) {
+            qCritical () << "error: source array size not matching target vector length";
+            return;
+        }
+
+        for (int i = 0; i < m_length; i++) {
+            bool ok;
+            float val = values.at (i).toFloat (&ok);
+            if (! ok)
+                qCritical () << "error: invalid source array type";
+            m_data[i] = val;
+        }
+    }
+
     Q_INVOKABLE void linear (float from=0, float step=1)
     {
 	for (int i = 0; i < m_length; i++) {
