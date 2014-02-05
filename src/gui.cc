@@ -119,6 +119,10 @@ GUI::loadExperiment (const QString& path)
     auto subjects = json.object ()["Subjects"];
     if (subjects.isObject ())
 	m_subjectList << subjects.toObject ().keys ();
+    else if (subjects.isArray ()) {
+      for (auto s : subjects.toArray ())
+        m_subjectList << s.toString ();
+    }
     this->m_ui_engine.rootContext ()->setContextProperty ("errorsModel", QVariant::fromValue (m_engine.errors ()));
     auto obj = topLevel->findChild<QObject*> ("subjectList");
     if (obj)

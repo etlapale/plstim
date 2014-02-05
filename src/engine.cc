@@ -1070,12 +1070,16 @@ Engine::selectSubject (const QString& subjectName)
 
     // No subject list found
     auto subjects = m_json.object ()["Subjects"];
-    if (! subjects.isObject ()) {
+    if (! subjects.isObject () && ! subjects.isArray ()) {
+        error ("Invalid Subjects definition",
+               "Subjects JSON field should be an object or array");
         return;
     }
 
     // Get subject data file path
-    auto subject = subjects.toObject ()[subjectName].toObject ();
+    QJsonObject subject;
+    if (subjects.isObject ())
+      subject = subjects.toObject ()[subjectName].toObject ();
     QFileInfo dataFile;
     if (subject.contains ("Data")) {
         qDebug () << "subject has a Data";
