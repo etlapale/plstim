@@ -918,6 +918,12 @@ Engine::Engine ()
 	    this, &Engine::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
+    qDebug () << "Desktop location:" << QStandardPaths::writableLocation (QStandardPaths::DesktopLocation);
+    qDebug () << "Documents location:" << QStandardPaths::writableLocation (QStandardPaths::DocumentsLocation);
+    qDebug () << "Home location:" << QStandardPaths::writableLocation (QStandardPaths::HomeLocation);
+    qDebug () << "Data location:" << QStandardPaths::writableLocation (QStandardPaths::DataLocation);
+    qDebug () << "Generic data location:" << QStandardPaths::writableLocation (QStandardPaths::GenericDataLocation);
+
     // Try to fetch back setup
     m_settings = new QSettings;
     m_settings->beginGroup ("setups");
@@ -1038,17 +1044,34 @@ Engine::selectSubject (const QString& subjectName)
         return;
     }
 
-    // Subject not found
+    // Get subject data file path
     auto subject = subjects.toObject ()[subjectName].toObject ();
-    if (! subject.contains ("Data")) {
-        return;
+    QFileInfo dataFile;
+    if (subject.contains ("Data")) {
+        qDebug () << "subject has a Data";
+        dataFile.setFile (subject["Data"].toString ());
+    }
+    else {
+        qDebug () << "subject has no Data, setting its path to:" << (xp_name + "-" + subjectName + ".h5");
+        dataFile.setFile (xp_name + "-" + subjectName + ".h5");
+        qDebug () << "Path is now:" << dataFile.path () << "-" << dataFile.filePath ();
     }
 
-    auto datafile = subject["Data"].toString ();
-    QFile fi (datafile);
+    // Make relative paths relative to dataDir
+    if (! dataFile.isAbsolute ()) {
+        qDebug () << "File is not absolute: " << dataFile.filePath ();
+        dataFile.setFile (m_setup.dataDir () + QDir::separator () + xp_name + QDir::separator () + dataFile.filePath ());
+    }
+    qDebug () << "Subject data file set to: " << dataFile.filePath ();
+
+    QFile fi (dataFile.filePath ());
 
     // Make sure the datafile still exists
     if (! fi.exists ()) {
+        // Create the directory
+        auto dir = dataFile.dir ();
+        if (! dir.exists () && ! dir.mkpath (dir.path ()))
+            error (tr ("Could not create the data directory"));
         // Try to create a data file
         bool ok = fi.open (QIODevice::WriteOnly);
         if (ok) {
@@ -1066,7 +1089,7 @@ Engine::selectSubject (const QString& subjectName)
         hf->close ();
         hf = NULL;
     }
-    hf = new H5File (datafile.toLocal8Bit ().data (), H5F_ACC_RDWR);
+    hf = new H5File (dataFile.filePath ().toLocal8Bit ().data (), H5F_ACC_RDWR);
     //m_subjectName = subjectName;
     setSubjectName (subjectName);
     qDebug () << "Subject data file loaded";
@@ -1171,6 +1194,10 @@ Engine::loadSetup (const QString& setupName)
 
   m_setup.setDistance (m_settings->value ("dst").toInt ());
   m_setup.setRefreshRate (m_settings->value ("rate").toFloat ());
+
+  // Make sure the data directory exists
+  auto dataDir = m_settings->value ("dataDir").toString ();
+  if (! dataDir.isEmpty ()) m_setup.setDataDir (dataDir);
 
   m_settings->endGroup ();
 

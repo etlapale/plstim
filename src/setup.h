@@ -3,7 +3,7 @@
 #ifndef __PLSTIM_SETUP_H
 #define __PLSTIM_SETUP_H
 
-#include <QObject>
+#include <QtCore>
 
 
 namespace plstim
@@ -18,6 +18,8 @@ class Setup : public QObject
     Q_PROPERTY (float refreshRate READ refreshRate WRITE setRefreshRate NOTIFY refreshRateChanged)
     Q_PROPERTY (int physicalWidth READ physicalWidth WRITE setPhysicalWidth NOTIFY physicalWidthChanged)
     Q_PROPERTY (int physicalHeight READ physicalHeight WRITE setPhysicalHeight NOTIFY physicalHeightChanged)
+    // File system information
+    Q_PROPERTY (QString dataDir READ dataDir WRITE setDataDir NOTIFY dataDirChanged)
 
 signals:
     void nameChanged (const QString& name);
@@ -27,6 +29,7 @@ signals:
     void refreshRateChanged (float rate);
     void physicalWidthChanged (int width);
     void physicalHeightChanged (int height);
+    void dataDirChanged (const QString& dataDir);
 
 public:
     Setup (QObject* parent=NULL)
@@ -34,7 +37,10 @@ public:
 	, m_horizontalResolution (0), m_verticalResolution (0)
 	, m_distance (0), m_refreshRate (0)
 	, m_physicalWidth (0), m_physicalHeight (0)
-    {}
+    {
+      // By default, put the experiment datafiles in ‘My Documents’
+      m_dataDir = QStandardPaths::writableLocation (QStandardPaths::DocumentsLocation) + QDir::separator () + "plstim-data";
+    }
 
     QString name () const
     { return m_name; }
@@ -99,6 +105,15 @@ public:
 	emit physicalHeightChanged (height);
     }
 
+    const QString& dataDir () const
+    { return m_dataDir; }
+
+    void setDataDir (const QString& dataDir)
+    {
+      m_dataDir = dataDir;
+      emit dataDirChanged (dataDir);
+    }
+
 protected:
     QString m_name;
     int m_horizontalOffset;
@@ -109,6 +124,7 @@ protected:
     float m_refreshRate;
     int m_physicalWidth;
     int m_physicalHeight;
+    QString m_dataDir;
 
 #if 0
     /// Convert a pixel distance to degrees

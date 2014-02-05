@@ -99,6 +99,9 @@ ApplicationWindow {
 
                 Label { text : "Refresh rate" }
                 Label { text : setup.refreshRate + " Hz" }
+
+                Label { text : "Data directory" }
+                Label { text : setup.dataDir }
             }
         }
 
