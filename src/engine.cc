@@ -534,6 +534,26 @@ Engine::loadExperiment (const QString& path)
       return false;
   }
   QJsonObject jroot = m_json.object ();
+
+  // Optionally run a command before loading
+  QString runBefore (jroot["RunBefore"].toString ());
+  if (! runBefore.isEmpty ()) {
+    qDebug () << "Running command" << runBefore;
+    QProcess proc;
+    proc.setWorkingDirectory (fileinfo.path ());
+    proc.start (runBefore);
+    proc.waitForFinished ();
+    if (proc.exitStatus () == QProcess::CrashExit) {
+      error ("Failed RunBefore", "Process crashed");
+      return false;
+    }
+    if (proc.exitCode () > 0) {
+      error ("Failed RunBefore",
+             QString ("Process exited with error code %1").arg (proc.exitCode ()));
+      return false;
+    }
+  }
+
   QFileInfo qmlPathInfo (jroot["Source"].toString ());
 
   // Allow relative QML path definitions
