@@ -534,9 +534,19 @@ Engine::loadExperiment (const QString& path)
       return false;
   }
   QJsonObject jroot = m_json.object ();
-  QString qmlPath = jroot["Source"].toString ();
+  QFileInfo qmlPathInfo (jroot["Source"].toString ());
 
-  m_component = new QQmlComponent (&m_engine, qmlPath);
+  // Allow relative QML path definitions
+  if (! qmlPathInfo.isAbsolute ()) {
+    qmlPathInfo.setFile (fileinfo.path () + QDir::separator () + qmlPathInfo.filePath ());
+    }
+  if (! qmlPathInfo.exists ()) {
+    error ("Experiment QML definition not found",
+             qmlPathInfo.filePath () + " not found");
+    return false;
+  }
+
+  m_component = new QQmlComponent (&m_engine, qmlPathInfo.filePath ());
   if (m_component->isError ()) {
       QString errDesc;
       for (auto& err : m_component->errors ())
