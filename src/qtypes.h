@@ -339,7 +339,7 @@ public:
 	, m_duration (0), m_frameCount (0)
 	, m_animated (false), m_paintTime (EXPERIMENT)
 	, m_waitKey (true)
-#if HAVE_EYELINK
+#ifdef HAVE_EYELINK
 	, m_fixation (0)
 #endif
 #ifdef HAVE_POWERMATE
@@ -547,7 +547,7 @@ public:
     Q_INVOKABLE bool randbool ()
     {
 	std::uniform_int_distribution<int> distrib (0, 1);
-	return (bool) distrib (m_twister);
+	return distrib (m_twister);
     }
 
     Q_INVOKABLE float random ()
@@ -567,8 +567,8 @@ public:
         }
 
 	int distance = m_setup->distance ();
-	float hres = (float) m_setup->horizontalResolution () / m_setup->physicalWidth ();
-	float vres = (float) m_setup->verticalResolution () / m_setup->physicalHeight ();
+	float hres = static_cast<float> (m_setup->horizontalResolution ()) / m_setup->physicalWidth ();
+	float vres = static_cast<float> (m_setup->verticalResolution ()) / m_setup->physicalHeight ();
 
 	return distance*tan (radians (dst)/2)*(hres+vres);
     }

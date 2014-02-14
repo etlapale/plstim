@@ -32,13 +32,13 @@ namespace plstim
 class Engine : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY (bool sessionRunning READ running WRITE setRunning NOTIFY runningChanged)
+    Q_PROPERTY (bool sessionRunning READ isRunning WRITE setRunning NOTIFY runningChanged)
     Q_PROPERTY (int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
     Q_PROPERTY (int eta READ eta WRITE setEta NOTIFY etaChanged)
     Q_PROPERTY (QString subjectName READ subjectName WRITE setSubjectName NOTIFY subjectChanged)
 
 public:
-    const plstim::Setup* setup () const
+    plstim::Setup* setup ()
     { return &m_setup; }
 
     QSettings* settings ()
@@ -117,7 +117,7 @@ protected:
 
     void show_page (int index);
 
-    bool running () const
+    bool isRunning () const
     { return m_running; }
 
     void setRunning (bool running)

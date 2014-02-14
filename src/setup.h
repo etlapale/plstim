@@ -32,8 +32,8 @@ signals:
     void dataDirChanged (const QString& dataDir);
 
 public:
-    Setup (QObject* parent=NULL)
-	: QObject (parent)
+    Setup (QObject* parentObject=NULL)
+	: QObject (parentObject)
 	, m_horizontalResolution (0), m_verticalResolution (0)
 	, m_distance (0), m_refreshRate (0)
 	, m_physicalWidth (0), m_physicalHeight (0)
@@ -45,10 +45,10 @@ public:
     QString name () const
     { return m_name; }
 
-    void setName (const QString& name)
+    void setName (const QString& newName)
     {
-	m_name = name;
-	emit nameChanged (name);
+	m_name = newName;
+	emit nameChanged (newName);
     }
 
     int horizontalResolution () const
@@ -72,10 +72,10 @@ public:
     int distance () const
     { return m_distance; }
 
-    void setDistance (int distance)
+    void setDistance (int newDistance)
     {
-	m_distance = distance;
-	emit distanceChanged (distance);
+	m_distance = newDistance;
+	emit distanceChanged (newDistance);
     }
 
     float refreshRate () const

@@ -104,20 +104,20 @@ Engine::run_trial ()
 
     // Special case: trial start time
     if (param_name == "trialStart") {
-      qint64* pos = (qint64*) (((char*) trial_record)+offset);
+      qint64* pos = reinterpret_cast<qint64*> (reinterpret_cast<char*> (trial_record)+offset);
       *pos = now;
       continue;
     }
 
     QVariant prop = m_experiment->property (name);
     if (prop.canConvert<float> ()) {
-        float* pos = (float*) (((char*) trial_record)+offset);
+        float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
         *pos = prop.toFloat ();
         qDebug () << "storing" << *pos << "for" << param_name;
     }
     else if (prop.canConvert<plstim::Vector*> ()) {
         plstim::Vector* vec = prop.value<plstim::Vector*> ();
-        float* pos = (float*) (((char*) trial_record)+offset);
+        float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
         int len = vec->length ();
         for (int i = 0; i <= len; i++)
             pos[i] = vec->at (i);
@@ -133,8 +133,8 @@ Engine::run_trial ()
 
   // Update estimated remaining time
   auto duration = (now - m_sessionStart) / 1000.0;
-  float completed = (float) m_currentTrial / m_experiment->trialCount ();
-  int estTotal = (int) (duration / completed);
+  float completed = static_cast<float> (m_currentTrial) / m_experiment->trialCount ();
+  int estTotal = static_cast<int> (duration / completed);
   setEta (estTotal - duration);
 
   // Display the first page
@@ -155,7 +155,7 @@ Engine::show_page (int index)
             auto param_name = jt.first;
             size_t begin_offset = jt.second;
             if (param_name == "begin") {
-                qint64* pos = (qint64*) (((char*) trial_record)+begin_offset);
+                qint64* pos = reinterpret_cast<qint64*> (reinterpret_cast<char*> (trial_record)+begin_offset);
                 qint64 nsecs = timer.nsecsElapsed ();
                 *pos = nsecs;
                 qDebug () << "Elapsed for" << page->name () << ":" << *pos;
@@ -340,7 +340,7 @@ Engine::savePageParameter (const QString& pageTitle,
         auto jt = params.find (paramName);
         if (jt != params.end ()) {
             size_t key_offset = jt->second;
-            int* pos = (int*) (((char*) trial_record)+key_offset);
+            int* pos = reinterpret_cast<int*> (reinterpret_cast<char*> (trial_record)+key_offset);
             *pos = paramValue;
         }
     }
@@ -426,7 +426,7 @@ void
 Engine::endSession ()
 {
     if (hf != NULL) {
-#if HAVE_EYELINK
+#ifdef HAVE_EYELINK
 	if (m_eyelinkRecording) {
 	    // Stop recording
 	    stop_recording ();
@@ -708,8 +708,9 @@ Engine::loadExperiment (const QString& path)
 }
 
 void
-Engine::set_trial_count (int num_trials)
+Engine::set_trial_count (int numTrials)
 {
+  Q_UNUSED (numTrials);
   //ntrials_spin->setValue (num_trials);
 }
 
@@ -718,13 +719,13 @@ static const QRegExp session_name_re ("session_[0-9]+");
 static herr_t
 find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 {
-  (void) group_id;	// Unused
+  Q_UNUSED (group_id);
 
   QString dset (dset_name);
 
   // Check if the dataset is a session
   if (session_name_re.exactMatch (dset)) {
-    int* maxi = (int*) data;
+    int* maxi = reinterpret_cast<int*> (data);
     int num = dset.right (dset.size () - 8).toInt ();
     if (num > *maxi)
       *maxi = num;
@@ -791,8 +792,8 @@ Engine::init_session ()
         for (auto k : xp_keys) {
           auto utf_key = k.toUtf8 ();
 
-          int* code = (int*) (km+rowsize*i);
-          char** name = (char**) (km+rowsize*i+sizeof (int));
+          int* code = reinterpret_cast<int*> (km+rowsize*i);
+          char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
 
           *code = stringToKey (k);
           *name = new char[utf_key.size ()+1];
@@ -812,7 +813,7 @@ Engine::init_session ()
 
         hf->flush (H5F_SCOPE_GLOBAL);
         for (i = 0; i < nkeys; i++) {
-          char** name = (char**) (km+rowsize*i+sizeof (int));
+          char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
           //free (*name);
           delete [] (*name);
         }
@@ -910,7 +911,7 @@ Engine::Engine ()
     plstim::initialise ();
 
     m_engine.rootContext ()->setContextProperty ("engine",
-        QVariant::fromValue ((QObject*) this));
+        QVariant::fromValue (static_cast<QObject*> (this)));
 
     m_component = NULL;
     m_experiment = NULL;
@@ -1171,7 +1172,7 @@ Engine::setup_updated ()
     double size_px = ceil (m_experiment->degreesToPixels (size_degs));
 
     // Minimal base-2 texture size
-    int tex_size = 1 << (int) floor (log2 (size_px));
+    int tex_size = 1 << static_cast<int> (floor (log2 (size_px)));
     if (tex_size < size_px)
 	tex_size <<= 1;
 
@@ -1195,7 +1196,7 @@ Engine::setup_updated ()
 	auto page = m_experiment->page (i);
 	if (page->animated ()) {
 	    // Make sure animated frames have updated number of frames
-	    int nframes = (int) round ((m_setup.refreshRate () / swap_interval)*page->duration ()/1000.0);
+	    int nframes = static_cast<int> (round ((m_setup.refreshRate () / swap_interval)*page->duration ()/1000.0));
 	    qDebug () << "Displaying" << nframes << "frames for" << page->name ();
 	    qDebug () << "  " << m_setup.refreshRate () << "/" << swap_interval;
 	    page->setFrameCount (nframes);

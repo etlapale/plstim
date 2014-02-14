@@ -7,11 +7,11 @@ GUI::GUI (const QUrl& uiUrl)
 {
     // Load the QtQuick interface
     m_ui_engine.rootContext ()->setContextProperty ("xp",
-        QVariant::fromValue ((QObject*) NULL));
+        QVariant::fromValue (static_cast<QObject*> (NULL)));
     m_ui_engine.rootContext ()->setContextProperty ("engine",
-        QVariant::fromValue ((QObject*) &m_engine));
+        QVariant::fromValue (static_cast<QObject*> (&m_engine)));
     m_ui_engine.rootContext ()->setContextProperty ("setup",
-            (plstim::Setup*) m_engine.setup ());
+            static_cast<plstim::Setup*> (m_engine.setup ()));
     m_ui_engine.rootContext ()->setContextProperty ("errorsModel",
             QVariant::fromValue (m_engine.errors ()));
     m_ui_engine.load (uiUrl);

@@ -320,16 +320,19 @@ StimWindow::updateShaders ()
     glViewport (0, 0, gl_width, gl_height);
 
     // Compute the offset to center the stimulus
-    GLfloat ofx = tex_width > gl_width ? 0.0f : 1.0f - (GLfloat) tex_width / gl_width;
-    GLfloat ofy = tex_height > gl_height ? 0.0f : 1.0f - (GLfloat) tex_height / gl_height;
+    GLfloat txw = static_cast<GLfloat> (tex_width) / gl_width;
+    GLfloat txh = static_cast<GLfloat> (tex_height) / gl_height;
+
+    GLfloat ofx = tex_width > gl_width ? 0.0f : 1.0f - txw;
+    GLfloat ofy = tex_height > gl_height ? 0.0f : 1.0f - txh;
 
     GLfloat txm = ofx;
-    GLfloat txM = ofx + 2.0f * (GLfloat) tex_width/gl_width;
+    GLfloat txM = ofx + 2.0f * txw;
     GLfloat tym = ofy;
-    GLfloat tyM = ofy + 2.0f * (GLfloat) tex_height/gl_height;
+    GLfloat tyM = ofy + 2.0f * txh;
 
-    GLfloat tgw2_ratio = 2.0f * (GLfloat) tex_width/gl_width;
-    GLfloat tgh2_ratio = 2.0f * (GLfloat) tex_height/gl_height;
+    GLfloat tgw2_ratio = 2.0f * txw;
+    GLfloat tgh2_ratio = 2.0f * txh;
 
     stringstream ss;
     ss << fixed << setprecision(12)

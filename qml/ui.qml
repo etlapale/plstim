@@ -194,7 +194,7 @@ ApplicationWindow {
                 }
                 Label { text : "Est. rem. time" }
                 Label {
-                    text : engine.eta > 60 ? Math.floor (engine.eta / 60) + " min " + (engine.eta % 60) + " s" : engine.eta + " s"
+                    text : engine.eta == 0 ? "" : (engine.eta > 60 ? Math.floor (engine.eta / 60) + " min " + (engine.eta % 60) + " s" : engine.eta + " s")
                 }
             }
         }
