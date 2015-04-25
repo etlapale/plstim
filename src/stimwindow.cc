@@ -46,7 +46,6 @@ StimWindow::StimWindow (QScreen* scr)
 
     // Create the window, allocating resources for it
     create ();
-    show();
     qDebug () << "StimWindow screen currently on: " << screen ()->name ();
     setupOpenGL ();
 
@@ -69,11 +68,6 @@ StimWindow::setupOpenGL ()
     if (m_context != NULL) {
         qDebug () << "Deleting previous OpenGL context";
         delete m_context;
-    }
-
-    if (! isExposed()) {
-      qDebug() << "StimWindow not yet exposed, delaying OpenGL init";
-      return;
     }
 
     qDebug () << "Creating a new OpenGL context";
@@ -153,7 +147,8 @@ void
 StimWindow::addFixedFrame (const QString& name, const QImage& img)
 {
     qDebug () << "StimWindow::addFixedFrame ()" << name;
-
+    qDebug() << "gl ctx: " << m_context << m_opengl_initialized;
+    
     if (! m_context->makeCurrent (this))
         qCritical () << "error: cannot use OpenGL context";
 
