@@ -38,8 +38,10 @@ StimWindow::StimWindow (QScreen* scr)
     // Activate double-buffering
     fmt.setSwapBehavior (QSurfaceFormat::DoubleBuffer);
     // We need at least OpenGL 3.0
+    // TODO: investigate why we cannot get less than 3.2
     fmt.setMajorVersion (3);
-    fmt.setMinorVersion (0);
+    fmt.setMinorVersion (2);
+    fmt.setProfile(QSurfaceFormat::CoreProfile);
     setFormat (fmt);
 
     // Create the window, allocating resources for it
@@ -77,18 +79,27 @@ StimWindow::setupOpenGL ()
     qDebug () << "Creating a new OpenGL context";
     m_context = new QOpenGLContext (this);
     m_context->setScreen (screen ());
-    m_context->setFormat (requestedFormat ());  // TODO: why not format()
+    m_context->setFormat (format ());  // TODO: why not format()
 
-    if (! m_context->create ())
-      qCritical () << "error: could not create the OpenGL context";
+    if (! m_context->create ()) {
+      qCritical() << "error: could not create the OpenGL context";
+      return;
+    }
+    if (! m_context->isValid ()) {
+      qCritical() << "error: created OpenGL context is invalid";
+      return;
+    }
+
+    auto fmt = m_context->format();
+    qDebug() << "created context for OpenGL " << fmt.majorVersion() << "." << fmt.minorVersion() << "-" << fmt.profile();
 
     // Initialize the new OpenGL context
     if (! m_context->makeCurrent (this)) {
-        qCritical () << "error: could not use the OpenGL context";
+        qCritical() << "error: could not use the OpenGL context";
 	return;
     }
     if (! initializeOpenGLFunctions ()) {
-        qCritical () << "error: could not initialise the OpenGL functions";
+        qCritical() << "error: could not initialise the OpenGL functions";
 	return;
     }
 

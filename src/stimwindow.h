@@ -2,7 +2,7 @@
 #define __PLSTIM_STIMWINDOW_H
 
 #include <QtGui>
-#include <QOpenGLFunctions_3_0>
+#include <QOpenGLFunctions_3_2_Core>
 
 #ifdef HAVE_POWERMATE
 #include "powermate.h"
@@ -10,7 +10,7 @@
 
 namespace plstim
 {
-class StimWindow : public QWindow, protected QOpenGLFunctions_3_0
+class StimWindow : public QWindow, protected QOpenGLFunctions_3_2_Core
 {
     Q_OBJECT
 public:
