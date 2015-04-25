@@ -287,4 +287,8 @@ signals:
 
 #endif
 
+// Local Variables:
+// mode: c++
+// End:
+
 // vim:filetype=cpp:

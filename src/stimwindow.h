@@ -38,7 +38,7 @@ signals:
 #endif // HAVE_POWERMATE
 protected:
     virtual bool event (QEvent* evt);
-    virtual void exposeEvent (QExposeEvent* evt);
+    virtual void exposeEvent (QExposeEvent* evt) override;
     virtual void resizeEvent (QResizeEvent* evt);
     virtual void keyPressEvent (QKeyEvent* evt);
 
@@ -60,3 +60,7 @@ private:
 }
 
 #endif // __PLSTIM_STIMWINDOW_H
+
+// Local Variables:
+// mode: c++
+// End:

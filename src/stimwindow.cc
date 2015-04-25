@@ -68,13 +68,18 @@ StimWindow::setupOpenGL ()
         delete m_context;
     }
 
+    if (! isExposed()) {
+      qDebug() << "StimWindow not yet exposed, delaying OpenGL init";
+      return;
+    }
+
     qDebug () << "Creating a new OpenGL context";
     m_context = new QOpenGLContext (this);
     m_context->setScreen (screen ());
     m_context->setFormat (requestedFormat ());  // TODO: why not format()
 
     if (! m_context->create ())
-        qCritical () << "error: could not create the OpenGL context";
+      qCritical () << "error: could not create the OpenGL context";
 
     // Initialize the new OpenGL context
     if (! m_context->makeCurrent (this))
