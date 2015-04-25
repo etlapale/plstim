@@ -503,8 +503,8 @@ bool
 Engine::loadExperiment (const QString& path)
 {
   // Cleanup any existing experiment
-  unloadExperiment ();
-
+  if (! xp_name.isEmpty())
+    unloadExperiment();
 
   // Canonicalise the experiment description path
   QFileInfo fileinfo (path);
