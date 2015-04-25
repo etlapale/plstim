@@ -37,5 +37,3 @@ namespace plstim
     return dst / 60;
   }
 } // namespace plstim
-
-#endif	// __PLSTIM_UTILS_H
