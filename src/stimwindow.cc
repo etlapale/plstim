@@ -147,7 +147,6 @@ void
 StimWindow::addFixedFrame (const QString& name, const QImage& img)
 {
     qDebug () << "StimWindow::addFixedFrame ()" << name;
-    qDebug() << "gl ctx: " << m_context << m_opengl_initialized;
     
     if (! m_context->makeCurrent (this))
         qCritical () << "error: cannot use OpenGL context";
@@ -168,7 +167,6 @@ StimWindow::addFixedFrame (const QString& name, const QImage& img)
 void
 StimWindow::addAnimatedFrame (const QString& name, const QImage& img)
 {
-    //qDebug () << "adding animated frame" << name;
     if (! m_context->makeCurrent (this))
         qCritical () << "error: cannot use OpenGL context";
 
