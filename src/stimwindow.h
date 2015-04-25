@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_STIMWINDOW_H
-#define __PLSTIM_STIMWINDOW_H
+// src/stimwindow.h – Visual stimulus displayer
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+ >
+#pragma once
 
 #include <QtGui>
 #include <QOpenGLFunctions_3_2_Core>
@@ -58,9 +62,7 @@ private:
     GLuint m_vbo;
   bool m_opengl_initialized = false;
 };
-}
-
-#endif // __PLSTIM_STIMWINDOW_H
+} // namespace plstim
 
 // Local Variables:
 // mode: c++

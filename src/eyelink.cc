@@ -1,3 +1,8 @@
+// src/eyelink.cc – Interface to the EyeLink library
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
 #include <iostream>
 using namespace std;
 
@@ -35,9 +40,8 @@ Engine::load_eyelink ()
 }
 
 static INT16 ELCALLBACK
-el_setup_image_display (void* userdata, INT16 width, INT16 height)
+el_setup_image_display (void*, INT16 width, INT16 height)
 {
-    Q_UNUSED (userdata);
     qDebug () << "EyeLink camera image resolution:" << width << "×" << height;
     return 0;
 }

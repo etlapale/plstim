@@ -1,3 +1,8 @@
+// src/stimwindow.cc – Visual stimulus displayer
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
 #include <iomanip>
 #include <sstream>
 

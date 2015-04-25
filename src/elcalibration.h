@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_ELCALIBRATION_H
-#define __PLSTIM_ELCALIBRATION_H
+// src/elcalibration.h – QtGui EyeLink calibrator
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QQueue>
 #include <QGraphicsView>
@@ -32,5 +36,3 @@ namespace plstim
     void setScreen (QScreen* scr);
   };
 }
-
-#endif // __PLSTIM_ELCALIBRATION_H

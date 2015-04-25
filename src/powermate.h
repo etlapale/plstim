@@ -1,5 +1,9 @@
-#ifndef __POWERMATE_WATCHER_H
-#define __POWERMATE_WATCHER_H
+// src/powermate.h – Handle events from PowerMate devices
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QtCore>
 
@@ -24,4 +28,3 @@ public slots:
   void watch ();
 };
 
-#endif // __POWERMATE_WATCHER_H

@@ -1,7 +1,9 @@
-// plstim/engine.h – Manage a real experiment
+// src/engine.h – Experiment engine
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
 
-#ifndef __PLSTIM_ENGINE_H
-#define __PLSTIM_ENGINE_H
+#pragma once
 
 #include <random>
 #include <set>
@@ -283,9 +285,8 @@ signals:
     void subjectChanged (const QString& subject);
     void experimentChanged (Experiment* experiment);
 };
-}
 
-#endif
+} // namespace plstim
 
 // Local Variables:
 // mode: c++

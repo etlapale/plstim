@@ -1,3 +1,8 @@
+// src/powermate.cc – Handle events from PowerMate devices
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
 #ifdef HAVE_WIN32
 #include <windows.h>
 #include <setupapi.h>

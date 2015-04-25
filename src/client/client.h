@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_CLIENT_H
-#define __PLSTIM_CLIENT_H
+// src/client/client.cc – Client controller
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QtNetwork>
 
@@ -32,6 +36,5 @@ public slots:
 protected:
     QSslSocket m_socket;
 };
-}
+} // namespace plstim
 
-#endif // __PLSTIM_CLIENT_H

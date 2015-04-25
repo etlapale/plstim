@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_QTYPES_H
-#define __PLSTIM_QTYPES_H
+// src/qtypes.h – Define custom QML types
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QObject>
 #include <QtQml>
@@ -628,6 +632,5 @@ signals:
     void textureSizeChanged (int);
 };
 
-}
+} // namespace plstim
 
-#endif // __PLSTIM_QTYPES_H

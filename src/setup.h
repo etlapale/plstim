@@ -1,7 +1,9 @@
-// plstim/setup.h – Manage hardware setup configurations
+// src/setup.h – Manage hardware setup configurations
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
 
-#ifndef __PLSTIM_SETUP_H
-#define __PLSTIM_SETUP_H
+#pragma once
 
 #include <QtCore>
 
@@ -155,8 +157,6 @@ protected:
     }
 #endif
 };
-}
-
-#endif
+} // namespace plstim
 
 // vim:filetype=cpp:

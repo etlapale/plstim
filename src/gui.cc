@@ -1,3 +1,8 @@
+// src/gui.cc – Controller GUI
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
 #include "gui.h"
 
 using namespace plstim;

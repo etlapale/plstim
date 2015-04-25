@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_SERVER_H
-#define __PLSTIM_SERVER_H
+// src/server.h – Server for detached controllers
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QtNetwork>
 
@@ -63,6 +67,4 @@ public slots:
 	}
     }
 };
-}
-
-#endif // __PLSTIM_SERVER_H
+} // namespace plstim

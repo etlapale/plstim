@@ -1,5 +1,9 @@
-#ifndef __PLSTIM_GUI_H
-#define __PLSTIM_GUI_H
+// src/gui.h – Controller GUI
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
+#pragma once
 
 #include <QtQuick>
 #include "engine.h"
@@ -7,11 +11,11 @@
 
 namespace plstim
 {
-class GUI : public QObject //: public QQuickView
+class GUI : public QObject
 {
     Q_OBJECT
 public:
-    GUI (const QUrl& uipath);//QWindow* parent=NULL);
+    GUI (const QUrl& uipath);
     void loadExperiment (const QString& path);
 
     plstim::Engine* engine ()
@@ -24,5 +28,3 @@ protected slots:
     void subjectSelected (int index);
 };
 }
-
-#endif // __PLSTIM_GUI_H

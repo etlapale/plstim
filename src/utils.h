@@ -1,7 +1,9 @@
-// plstim/utils.h – General stimulus utilities
+// src/utils.h – Mathematical utilities
+//
+// Copyright © 2012–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
 
-#ifndef __PLSTIM_UTILS_H
-#define __PLSTIM_UTILS_H
+#pragma once
 
 #include <cmath>
 
@@ -34,8 +36,6 @@ namespace plstim
   {
     return dst / 60;
   }
-}
+} // namespace plstim
 
 #endif	// __PLSTIM_UTILS_H
-
-// vim:filetype=cpp:
