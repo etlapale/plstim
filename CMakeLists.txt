@@ -6,7 +6,7 @@ project (plstim)
 cmake_policy (SET CMP0020 NEW)
 
 # General build setup
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wold-style-cast -Woverloaded-virtual -Wundef -g")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wold-style-cast -Woverloaded-virtual -Wundef -g -pedantic")
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2 -g")
 
 # Search for OpenGL (required by Windows)

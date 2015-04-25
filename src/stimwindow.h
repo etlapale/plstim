@@ -41,10 +41,10 @@ signals:
     void powerMateButtonReleased (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
 protected:
-    virtual bool event (QEvent* evt);
+    virtual bool event (QEvent* evt) override;
     virtual void exposeEvent (QExposeEvent* evt) override;
-    virtual void resizeEvent (QResizeEvent* evt);
-    virtual void keyPressEvent (QKeyEvent* evt);
+    virtual void resizeEvent (QResizeEvent* evt) override;
+    virtual void keyPressEvent (QKeyEvent* evt) override;
 
     void setupOpenGL ();
 private:

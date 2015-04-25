@@ -110,7 +110,7 @@ protected:
 
     void endSession ();
 
-    void nextPage (Page* wantedPage=NULL);
+    void nextPage (Page* wantedPage=nullptr);
 
     Error* error (const QString& msg, const QString& description="");
 

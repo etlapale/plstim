@@ -25,9 +25,9 @@ static const char *fshader_txt =
 
 
 StimWindow::StimWindow (QScreen* scr)
-    : QWindow (scr), m_context (NULL), m_vshader (NULL),
+    : QWindow (scr), m_context (nullptr), m_vshader (nullptr),
       tex_width (0), tex_height (0),
-      m_texloc (0), m_currentFrame (NULL)
+      m_texloc (0), m_currentFrame (nullptr)
 {
     // Create a floatting window surface
     setFlags (Qt::Dialog);

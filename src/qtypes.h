@@ -20,8 +20,8 @@ namespace plstim
 class Error : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY (QString title READ title NOTIFY titleChanged);
-    Q_PROPERTY (QString description READ description NOTIFY descriptionChanged);
+    Q_PROPERTY (QString title READ title NOTIFY titleChanged)
+    Q_PROPERTY (QString description READ description NOTIFY descriptionChanged)
 
 public:
     Error (const QString& title="", const QString& description="",

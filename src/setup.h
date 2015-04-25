@@ -34,7 +34,7 @@ signals:
     void dataDirChanged (const QString& dataDir);
 
 public:
-    Setup (QObject* parentObject=NULL)
+    Setup (QObject* parentObject=nullptr)
 	: QObject (parentObject)
 	, m_horizontalResolution (0), m_verticalResolution (0)
 	, m_distance (0), m_refreshRate (0)
