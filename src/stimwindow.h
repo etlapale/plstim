@@ -56,6 +56,7 @@ private:
     QOpenGLTexture* m_currentFrame;
     GLuint m_vao;
     GLuint m_vbo;
+  bool m_opengl_initialized = false;
 };
 }
 

@@ -44,6 +44,7 @@ StimWindow::StimWindow (QScreen* scr)
 
     // Create the window, allocating resources for it
     create ();
+    show();
     qDebug () << "StimWindow screen currently on: " << screen ()->name ();
     setupOpenGL ();
 
@@ -82,10 +83,14 @@ StimWindow::setupOpenGL ()
       qCritical () << "error: could not create the OpenGL context";
 
     // Initialize the new OpenGL context
-    if (! m_context->makeCurrent (this))
+    if (! m_context->makeCurrent (this)) {
         qCritical () << "error: could not use the OpenGL context";
-    if (! initializeOpenGLFunctions ())
+	return;
+    }
+    if (! initializeOpenGLFunctions ()) {
         qCritical () << "error: could not initialise the OpenGL functions";
+	return;
+    }
 
     // Enables V-Sync
 #ifdef WIN32
@@ -118,6 +123,8 @@ StimWindow::setupOpenGL ()
     glClearColor (0, 0, 0, 0);
 
     m_context->doneCurrent ();
+
+    m_opengl_initialized = true;
 }
 
 static QOpenGLTexture*
@@ -499,6 +506,8 @@ StimWindow::render ()
 void
 StimWindow::renderNow ()
 {
+  if (! m_opengl_initialized)
+    return;
     //qDebug () << "stimwindow::rendernow";
     //if (! isExposed ())
 	//return;
