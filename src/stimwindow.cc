@@ -244,15 +244,18 @@ StimWindow::event (QEvent* evt)
     }
 }
 
-void
-StimWindow::exposeEvent (QExposeEvent* evt)
+void StimWindow::exposeEvent(QExposeEvent*)
 {
-    Q_UNUSED (evt);
-    emit exposed ();
-
-    //qDebug () << "stimwindow::expose";
-    if (isExposed ())
-	renderNow ();
+  qDebug() << "exposing the StimWindow" << endl;
+  if (m_context == nullptr) {
+    this->setupOpenGL();
+  }
+        
+  emit exposed();
+  
+  //qDebug () << "stimwindow::expose";
+  if (isExposed())
+    renderNow();
 }
 
 void
