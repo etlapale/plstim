@@ -190,6 +190,11 @@ StimWindow::clear ()
 {
     qDebug () << "StimWindow::clear ()";
 
+    if (m_context == nullptr) {
+      qDebug() << "skipping clearing of uninitialized StimWindow";
+      return;
+    }
+
     m_context->makeCurrent (this);
     
     // Unset current frame
