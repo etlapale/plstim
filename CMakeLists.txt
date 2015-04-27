@@ -36,6 +36,20 @@ endif ()
 
 find_package (Qt5Core)
 
+# Downloaded external dependencies
+set (ext_deps
+     "images/emblem-system.png http://emilien.tlapale.com/data/icons/tango-icon-theme-0.8.90/32x32/emblems/emblem-system.png")
+foreach (dep IN LISTS ext_deps)
+  separate_arguments (dep)
+  list (GET dep 0 filename)
+  list (GET dep 1 url)
+  if (NOT EXISTS ${filename})
+    message ("-- Downloading ${url}")
+    file (DOWNLOAD ${url} ${filename})
+  endif ()
+endforeach ()
+
+
 set (CMAKE_AUTOMOC ON)
 
 # Main program
