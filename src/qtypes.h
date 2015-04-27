@@ -12,6 +12,7 @@
 
 #include <algorithm>
 
+#include "random.h"
 #include "setup.h"
 #include "utils.h"
 
@@ -498,9 +499,8 @@ class Experiment : public QObject
     , m_setup (NULL)
   {
     // Initialise the random number generator
-    m_twister.seed (QDateTime::currentMSecsSinceEpoch ());
-    for (int i = 0; i < 10000; i++)
-      (void) m_twister ();
+    RandomDevSeedSequence rdss;
+    m_twister.seed(rdss);
   }
 
   int trialCount () const
