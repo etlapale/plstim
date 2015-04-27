@@ -1,3 +1,8 @@
+// src/main.cc – Main GUI entry point
+//
+// Copyright © 2014–2015 University of California, Irvine
+// Licensed under the Simplified BSD License.
+
 #include <QtGui>
 #ifdef HAVE_EYELINK
 #include <QtWidgets>
@@ -12,46 +17,43 @@
 
 using namespace plstim;
 
-int
-main (int argc, char* argv[])
+int main(int argc, char* argv[])
 {
-    // Qt application with a GUI
+  // Qt application with a GUI
 #ifdef HAVE_EYELINK
-    QApplication app (argc, argv);
+  // EyeLink calibrator does not yet support Qt5
+  QApplication app(argc, argv);
 #else
-    QGuiApplication app (argc, argv);
+  QGuiApplication app(argc, argv);
 #endif
-
-    // Create a window for PlStim
-    plstim::GUI gui (QUrl("qrc:/qml/ui.qml"));
-
-    // Load an experiment if given as command line argument
-    auto args = app.arguments ();
-    if (args.size () == 2) {
-	gui.loadExperiment (args.at (1));
-    }
-
+  
+  // Create a window for PlStim
+  plstim::GUI gui(QUrl("qrc:/qml/ui.qml"));
+  
+  // Load an experiment if given as command line argument
+  auto args = app.arguments();
+  if (args.size () == 2)
+    gui.loadExperiment(args.at(1));
+  
 #ifdef HAVE_POWERMATE
-    // Watch for PowerMate events in a background thread
-    PowerMateWatcher watcher;
-    QThread powerMateThread;
-    QObject::connect (&powerMateThread, SIGNAL (started ()),
-	    &watcher, SLOT (watch ()));
-    watcher.moveToThread (&powerMateThread);
-    powerMateThread.start ();
+  // Watch for PowerMate events in a background thread
+  PowerMateWatcher watcher;
+  QThread powerMateThread;
+  QObject::connect(&powerMateThread, &QThread::started,
+		   &watcher, &QThread::watch);
+  watcher.moveToThread(&powerMateThread);
+  powerMateThread.start();
 #endif // HAVE_POWERMATE
-
+  
 #ifdef WITH_NETWORK
-    plstim::Server server (gui.engine ());
-    QThread serverThread;
-    QObject::connect (&serverThread, SIGNAL (started ()),
-	    &server, SLOT (start ()));
-    server.moveToThread (&serverThread);
-    serverThread.start ();
+  plstim::Server server(gui.engine());
+  QThread serverThread;
+  QObject::connect(&serverThread, &QThread::started,
+		   &server, &Server::start);
+  server.moveToThread(&serverThread);
+  serverThread.start();
 #endif // WITH_NETWORK
-
-    // Run the application
-    auto res = app.exec ();
-
-    return res;
+  
+  // Run the application
+  return app.exec ();
 }
