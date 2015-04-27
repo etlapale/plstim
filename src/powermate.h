@@ -7,6 +7,7 @@
 
 #include <QtCore>
 
+namespace plstim {
 
 class PowerMateEvent : public QEvent
 {
@@ -18,13 +19,18 @@ public:
 public:
   int step;
   int luminance;
-  PowerMateEvent (QEvent::Type eventType);
+  PowerMateEvent(QEvent::Type eventType);
 };
 
 class PowerMateWatcher : public QObject
 {
   Q_OBJECT
 public slots:
-  void watch ();
+  void watch();
 };
 
+// namespace plstim
+
+// Local Variables:
+// mode: c++
+// End:
