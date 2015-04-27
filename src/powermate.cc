@@ -22,6 +22,7 @@
 
 #include "powermate.h"
 
+namespace plstim {
 
 static bool powermate_event_type_registered = false;
 QEvent::Type PowerMateEvent::Rotation = (QEvent::Type) 0x3473;
@@ -247,3 +248,5 @@ PowerMateWatcher::watch ()
 #endif
     }
 }
+
+} // namespace plstim
