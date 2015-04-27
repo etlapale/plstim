@@ -19,64 +19,64 @@ using namespace H5;
 
 
 Error*
-Engine::error (const QString& title, const QString& description)
+Engine::error(const QString& title, const QString& description)
 {
-    qWarning () << "Engine error: " << title << ": " << description;
-    auto err = new Error (title, description.trimmed (), this);
-    m_errors << err;
-    emit errorsChanged ();
-    return err;
+  qWarning () << "Engine error: " << title << ": " << description;
+  auto err = new Error (title, description.trimmed (), this);
+  m_errors << err;
+  emit errorsChanged ();
+  return err;
 }
 
 void
-Engine::paintPage (Page* page, QImage& img, QPainter& painter)
+Engine::paintPage(Page* page, QImage& img, QPainter& painter)
 {
-    QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
+  QPainter::RenderHints render_hints = QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::HighQualityAntialiasing;
 
-    // Wraps the QPainter for QML
-    Painter wrappedPainter (painter);
+  // Wraps the QPainter for QML
+  Painter wrappedPainter (painter);
 
-    // Single frames
-    if (! page->animated ()) {
-	painter.begin (&img);
-	// Reset QImage/QPainter states
-	img.fill (0); painter.setPen (Qt::NoPen);
+  // Single frames
+  if (! page->animated ()) {
+    painter.begin (&img);
+    // Reset QImage/QPainter states
+    img.fill (0); painter.setPen (Qt::NoPen);
+    
+    painter.setRenderHints (render_hints);
+    
+    emit page->paint (&wrappedPainter, 0);
+    
+    painter.end ();
+    
+    //img.save (QString ("page-") + page->name () + ".png");
+    stim->addFixedFrame (page->name (), img);
+  }
 
-	painter.setRenderHints (render_hints);
+  // Multiple frames
+  else {
+    //timer.start ();
+    stim->deleteAnimatedFrames (page->name ());
+    //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
+    //timer.start ();
 
-	emit page->paint (&wrappedPainter, 0);
+    qDebug () << "number of frames to be painted:"
+	      << page->frameCount ();
+    for (int i = 0; i < page->frameCount (); i++) {
 
-	painter.end ();
+      painter.begin (&img);
+      // Reset QImage/QPainter states
+      img.fill (0); painter.setPen (Qt::NoPen);
 
-	//img.save (QString ("page-") + page->name () + ".png");
-	stim->addFixedFrame (page->name (), img);
+      painter.setRenderHints (render_hints);
+
+      emit page->paint (&wrappedPainter, i);
+
+      painter.end ();
+
+      stim->addAnimatedFrame (page->name (), img);
     }
-
-    // Multiple frames
-    else {
-	//timer.start ();
-	stim->deleteAnimatedFrames (page->name ());
-	//qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
-	//timer.start ();
-
-	qDebug () << "number of frames to be painted:"
-		  << page->frameCount ();
-	for (int i = 0; i < page->frameCount (); i++) {
-
-	    painter.begin (&img);
-	    // Reset QImage/QPainter states
-	    img.fill (0); painter.setPen (Qt::NoPen);
-
-	    painter.setRenderHints (render_hints);
-
-	    emit page->paint (&wrappedPainter, i);
-
-	    painter.end ();
-
-	    stim->addAnimatedFrame (page->name (), img);
-	}
-	//qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
-    }
+    //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
+  }
 }
 
 void
@@ -93,9 +93,9 @@ Engine::run_trial ()
   QImage img (tex_size, tex_size, QImage::Format_RGB32);
   QPainter painter;
   for (int i = 0; i < m_experiment->pageCount (); i++) {
-      auto page = m_experiment->page (i);
-      if (page->paintTime () == Page::TRIAL)
-	  paintPage (page, img, painter);
+    auto page = m_experiment->page (i);
+    if (page->paintTime () == Page::TRIAL)
+      paintPage (page, img, painter);
   }
 
   // Record trial parameters
@@ -114,17 +114,17 @@ Engine::run_trial ()
 
     QVariant prop = m_experiment->property (name);
     if (prop.canConvert<float> ()) {
-        float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
-        *pos = prop.toFloat ();
-        qDebug () << "storing" << *pos << "for" << param_name;
+      float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
+      *pos = prop.toFloat ();
+      qDebug () << "storing" << *pos << "for" << param_name;
     }
     else if (prop.canConvert<plstim::Vector*> ()) {
-        plstim::Vector* vec = prop.value<plstim::Vector*> ();
-        float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
-        int len = vec->length ();
-        for (int i = 0; i <= len; i++)
-            pos[i] = vec->at (i);
-        qDebug () << "storing" << "array" << "for" << param_name;
+      plstim::Vector* vec = prop.value<plstim::Vector*> ();
+      float* pos = reinterpret_cast<float*> (reinterpret_cast<char*> (trial_record)+offset);
+      int len = vec->length ();
+      for (int i = 0; i <= len; i++)
+	pos[i] = vec->at (i);
+      qDebug () << "storing" << "array" << "for" << param_name;
     }
   }
 
@@ -148,46 +148,46 @@ Engine::run_trial ()
 void
 Engine::show_page (int index)
 {
-    auto page = m_experiment->page (index);
+  auto page = m_experiment->page (index);
 
-    // Save page parameters
-    auto it = record_offsets.find (page->name ());
-    if (it != record_offsets.end ()) {
-        const std::map<QString,size_t>& params = it->second;
-        for (auto jt : params) {
-            auto param_name = jt.first;
-            size_t begin_offset = jt.second;
-            if (param_name == "begin") {
-                qint64* pos = reinterpret_cast<qint64*> (reinterpret_cast<char*> (trial_record)+begin_offset);
-                qint64 nsecs = timer.nsecsElapsed ();
-                *pos = nsecs;
-                qDebug () << "Elapsed for" << page->name () << ":" << *pos;
-            }
-            else if (param_name == "key") {
-                // Key will be known at the end of the page
-            }
+  // Save page parameters
+  auto it = record_offsets.find (page->name ());
+  if (it != record_offsets.end ()) {
+    const std::map<QString,size_t>& params = it->second;
+    for (auto jt : params) {
+      auto param_name = jt.first;
+      size_t begin_offset = jt.second;
+      if (param_name == "begin") {
+	qint64* pos = reinterpret_cast<qint64*> (reinterpret_cast<char*> (trial_record)+begin_offset);
+	qint64 nsecs = timer.nsecsElapsed ();
+	*pos = nsecs;
+	qDebug () << "Elapsed for" << page->name () << ":" << *pos;
+      }
+      else if (param_name == "key") {
+	// Key will be known at the end of the page
+      }
 #ifdef HAVE_POWERMATE
-            else if (param_name == "rotation") {
-            }
+      else if (param_name == "rotation") {
+      }
 #endif
-            else {
-                /*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
-                  double value = timer.nsecsElapsed ();
-                 *pos = nsecs;*/
-                qDebug () << "NYI page param";
-            }
-        }
+      else {
+	/*double* pos = (qint64*) (((char*) trial_record)+begin_offset);
+	  double value = timer.nsecsElapsed ();
+	  *pos = nsecs;*/
+	qDebug () << "NYI page param";
+      }
     }
+  }
 
-    // TODO: ugly hack!
-    if (page->paintTime () == Page::ON_SHOW) {
-      int tex_size = m_experiment->textureSize ();
-      QPainter painter;
-      QImage img (tex_size, tex_size, QImage::Format_RGB32);
-      paintPage (page, img, painter);
-    }
+  // TODO: ugly hack!
+  if (page->paintTime () == Page::ON_SHOW) {
+    int tex_size = m_experiment->textureSize ();
+    QPainter painter;
+    QImage img (tex_size, tex_size, QImage::Format_RGB32);
+    paintPage (page, img, painter);
+  }
 
-    qDebug () << ">>> showing page" << page->name ();
+  qDebug () << ">>> showing page" << page->name ();
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
   if (hf != NULL)
@@ -195,20 +195,20 @@ Engine::show_page (int index)
 #endif // HAVE_EYELINK
 
   if (page->animated ()) {
-      stim->showAnimatedFrames (page->name ());
+    stim->showAnimatedFrames (page->name ());
   }
   else {
-      stim->showFixedFrame (page->name ());
+    stim->showFixedFrame (page->name ());
   }
 
   current_page = index;
 
   // Wait for showPage signals
   m_showPageCon = QObject::connect (page, &Page::showPage,
-          [this] (Page* p) {
-            QObject::disconnect (m_showPageCon);
-            this->nextPage (p);
-          });
+				    [this] (Page* p) {
+				      QObject::disconnect (m_showPageCon);
+				      this->nextPage (p);
+				    });
 
 #ifdef HAVE_EYELINK
   // Check for maintained fixation
@@ -247,7 +247,7 @@ Engine::show_page (int index)
       }
       // Allow calibration and forced skip
       else {
-	  QCoreApplication::instance ()->processEvents ();
+	QCoreApplication::instance ()->processEvents ();
       }
     }
 
@@ -256,132 +256,132 @@ Engine::show_page (int index)
   }
 #endif // HAVE_EYELINK
 
-    // Fixed frame of defined duration
-    if (page->duration () && ! page->animated ()) {
-	qDebug () << "fixed frame for" << page->duration () << "ms";
-	QTimer::singleShot (page->duration (), this, SLOT (nextPage ()));
-    }
+  // Fixed frame of defined duration
+  if (page->duration () && ! page->animated ()) {
+    qDebug () << "fixed frame for" << page->duration () << "ms";
+    QTimer::singleShot (page->duration (), this, SLOT (nextPage ()));
+  }
 
-    // If no keyboard event expected, go to the next page
-    else if (! page->waitKey ()
+  // If no keyboard event expected, go to the next page
+  else if (! page->waitKey ()
 #ifdef HAVE_POWERMATE
-	    && ! page->waitRotation ()
+	   && ! page->waitRotation ()
 #endif // HAVE_POWERMATE
-       ) {
-	qDebug () << "nothing to wait, going to next page";
-	nextPage ();
-    }
+	   ) {
+    qDebug () << "nothing to wait, going to next page";
+    nextPage ();
+  }
 }
 
 void
 Engine::nextPage (Page* wantedPage)
 {
 #ifdef HAVE_EYELINK
-    // Exit the inner fixation loop
-    if (waiting_fixation) {
-        // TODO: record event
-        qDebug () << "aborting fixation";
-        waiting_fixation = false;
-        return;	// Will jump back here eventually
-    }
+  // Exit the inner fixation loop
+  if (waiting_fixation) {
+    // TODO: record event
+    qDebug () << "aborting fixation";
+    waiting_fixation = false;
+    return;	// Will jump back here eventually
+  }
 #endif // HAVE_EYELINK
 
-    // End of trial
-    auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
-    if ((page && page->last ())
-            || current_page + 1 == m_experiment->pageCount ()) {
-        qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
+  // End of trial
+  auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
+  if ((page && page->last ())
+      || current_page + 1 == m_experiment->pageCount ()) {
+    qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
 
-        // Save the page record on HDF5
-        if (hf != NULL && current_page >= 0) {
-            hsize_t one = 1;
-            DataSpace fspace = dset.getSpace ();
-            hsize_t hframe = m_currentTrial;
-            fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
-            DataSpace mspace (1, &one);
-            dset.write (trial_record, *record_type, mspace, fspace);
+    // Save the page record on HDF5
+    if (hf != NULL && current_page >= 0) {
+      hsize_t one = 1;
+      DataSpace fspace = dset.getSpace ();
+      hsize_t hframe = m_currentTrial;
+      fspace.selectHyperslab (H5S_SELECT_SET, &one, &hframe);
+      DataSpace mspace (1, &one);
+      dset.write (trial_record, *record_type, mspace, fspace);
 
-            hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
-        }
-
-        // Next trial
-        if (m_currentTrial + 1 < m_experiment->trialCount ()) {
-            setCurrentTrial (m_currentTrial + 1);
-            run_trial ();
-        }
-        // End of session
-        else
-            endSession ();
+      hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
     }
-    // There is a next page
-    else {
-        // Check if there is a next page user defined
-        if (wantedPage) {
-            for (int i = 0; i < m_experiment->pageCount (); i++) {
-                Page* p = m_experiment->page (i);
-                if (p == wantedPage) {
-                    current_page = i - 1;
-                    show_page (current_page + 1);
-                    return;
-                }
-            }
-            qCritical () << "error: unlisted wanted page:" << wantedPage->name ();
-        }
 
-        show_page (current_page + 1);
+    // Next trial
+    if (m_currentTrial + 1 < m_experiment->trialCount ()) {
+      setCurrentTrial (m_currentTrial + 1);
+      run_trial ();
     }
+    // End of session
+    else
+      endSession ();
+  }
+  // There is a next page
+  else {
+    // Check if there is a next page user defined
+    if (wantedPage) {
+      for (int i = 0; i < m_experiment->pageCount (); i++) {
+	Page* p = m_experiment->page (i);
+	if (p == wantedPage) {
+	  current_page = i - 1;
+	  show_page (current_page + 1);
+	  return;
+	}
+      }
+      qCritical () << "error: unlisted wanted page:" << wantedPage->name ();
+    }
+
+    show_page (current_page + 1);
+  }
 }
 
 void
 Engine::savePageParameter (const QString& pageTitle,
-				const QString& paramName,
-				int paramValue)
+			   const QString& paramName,
+			   int paramValue)
 {
-    auto it = record_offsets.find (pageTitle);
-    if (it != record_offsets.end ()) {
-        const std::map<QString,size_t>& params = it->second;
-        auto jt = params.find (paramName);
-        if (jt != params.end ()) {
-            size_t key_offset = jt->second;
-            int* pos = reinterpret_cast<int*> (reinterpret_cast<char*> (trial_record)+key_offset);
-            *pos = paramValue;
-        }
+  auto it = record_offsets.find (pageTitle);
+  if (it != record_offsets.end ()) {
+    const std::map<QString,size_t>& params = it->second;
+    auto jt = params.find (paramName);
+    if (jt != params.end ()) {
+      size_t key_offset = jt->second;
+      int* pos = reinterpret_cast<int*> (reinterpret_cast<char*> (trial_record)+key_offset);
+      *pos = paramValue;
     }
+  }
 }
 
 #ifdef HAVE_POWERMATE
 void
 Engine::powerMateRotation (PowerMateEvent* evt)
 {
-    if (! m_running)
-	return;
+  if (! m_running)
+    return;
 
-    auto page = m_experiment->page (current_page);
-    if (page->waitRotation ()) {
-	//qDebug () << "RECORDING PowerMate event with step of" << evt->step;
-	savePageParameter (page->name (), "rotation", evt->step);
+  auto page = m_experiment->page (current_page);
+  if (page->waitRotation ()) {
+    //qDebug () << "RECORDING PowerMate event with step of" << evt->step;
+    savePageParameter (page->name (), "rotation", evt->step);
 
-	// Notify the page of a rotation
-	emit page->rotation (evt->step);
+    // Notify the page of a rotation
+    emit page->rotation (evt->step);
 
-	nextPage ();
-    }
+    nextPage ();
+  }
 }
 
 void
 Engine::powerMateButtonPressed (PowerMateEvent* evt)
 {
-    Q_UNUSED (evt);
-    //qDebug () << "PowerMate button pressed!";
+  Q_UNUSED (evt);
+  //qDebug () << "PowerMate button pressed!";
 
-    if (! m_running)
-	return;
+  if (! m_running)
+    return;
 
-    auto page = m_experiment->page (current_page);
-    if (page->waitKey () && page->acceptAnyKey ()) {
-	qDebug () << "powermate button → next page";
-	nextPage ();
-    }
+  auto page = m_experiment->page (current_page);
+  if (page->waitKey () && page->acceptAnyKey ()) {
+    qDebug () << "powermate button → next page";
+    nextPage ();
+  }
 }
 #endif // HAVE_POWERMATE
 
@@ -406,10 +406,10 @@ Engine::stimKeyPressed (QKeyEvent* evt)
 #endif // HAVE_EYELINK
     // Check if the key is accepted
     if ((page->acceptAnyKey () && nextPageKeys.contains (evt->key ()))
-	    || page->acceptKey (evt->key ())) {
+	|| page->acceptKey (evt->key ())) {
       // Save pressed key
       if (! page->acceptAnyKey ())
-	  savePageParameter (page->name (), "key", evt->key ());
+	savePageParameter (page->name (), "key", evt->key ());
 
       // Notify the page of key press
       emit page->keyPress (keyToString (evt->key ()));
@@ -428,36 +428,36 @@ Engine::stimKeyPressed (QKeyEvent* evt)
 void
 Engine::endSession ()
 {
-    if (hf != NULL) {
+  if (hf != NULL) {
 #ifdef HAVE_EYELINK
-	if (m_eyelinkRecording) {
-	    // Stop recording
-	    stop_recording ();
-	    // Choose a name for the local EDF
-	    auto subject_id = m_subjectName;
-	    auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
-	    // Buggy Eyelink headers do not care about const
-	    auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
-	    switch (res) {
-	    case 0:
-		error ("EyeLink data file transfer cancelled");
-		break;
-	    case FILE_CANT_OPEN:
-		error ("Cannot open EyeLink data file");
-		break;
-	    case FILE_XFER_ABORTED:
-		error ("EyeLink data file transfer aborted");
-		break;
-	    }
-	    check_eyelink (close_data_file (), "close_data_file");
-	    m_eyelinkRecording = false;
-	}
-#endif // HAVE_EYELINK
-        hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+    if (m_eyelinkRecording) {
+      // Stop recording
+      stop_recording ();
+      // Choose a name for the local EDF
+      auto subject_id = m_subjectName;
+      auto edf_name = QString ("%1-%2-%3.edf").arg (xp_name).arg (subject_id).arg (session_number);
+      // Buggy Eyelink headers do not care about const
+      auto res = receive_data_file ((char*) "", edf_name.toLocal8Bit ().data (), 0);
+      switch (res) {
+      case 0:
+	error ("EyeLink data file transfer cancelled");
+	break;
+      case FILE_CANT_OPEN:
+	error ("Cannot open EyeLink data file");
+	break;
+      case FILE_XFER_ABORTED:
+	error ("EyeLink data file transfer aborted");
+	break;
+      }
+      check_eyelink (close_data_file (), "close_data_file");
+      m_eyelinkRecording = false;
     }
-    current_page = -1;
-    stim->hide ();
-    setRunning (false);
+#endif // HAVE_EYELINK
+    hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
+  }
+  current_page = -1;
+  stim->hide ();
+  setRunning (false);
 }
 
 void
@@ -471,8 +471,8 @@ Engine::unloadExperiment ()
   // Erase all components from QML engine memroy
   m_engine.clearComponentCache ();
   if (m_component) {
-      delete m_component;
-      m_component = NULL;
+    delete m_component;
+    m_component = NULL;
   }
 
 #ifdef HAVE_EYELINK
@@ -525,16 +525,16 @@ Engine::loadExperiment (const QString& path)
   QJsonParseError jerr;
   m_json = QJsonDocument::fromJson (ba, &jerr);
   if (jerr.error != QJsonParseError::NoError) {
-      error ("Could not parse the JSON description",
-	      jerr.errorString ());
-      unloadExperiment ();
-      return false;
+    error ("Could not parse the JSON description",
+	   jerr.errorString ());
+    unloadExperiment ();
+    return false;
   }
   if (! m_json.isObject ()) {
-      error ("Invalid JSON description",
-	      "JSON root is not an object");
-      unloadExperiment ();
-      return false;
+    error ("Invalid JSON description",
+	   "JSON root is not an object");
+    unloadExperiment ();
+    return false;
   }
   QJsonObject jroot = m_json.object ();
 
@@ -562,28 +562,28 @@ Engine::loadExperiment (const QString& path)
   // Allow relative QML path definitions
   if (! qmlPathInfo.isAbsolute ()) {
     qmlPathInfo.setFile (fileinfo.path () + QDir::separator () + qmlPathInfo.filePath ());
-    }
+  }
   if (! qmlPathInfo.exists ()) {
     error ("Experiment QML definition not found",
-             qmlPathInfo.filePath () + " not found");
+	   qmlPathInfo.filePath () + " not found");
     return false;
   }
 
   m_component = new QQmlComponent (&m_engine, qmlPathInfo.filePath ());
   if (m_component->isError ()) {
-      QString errDesc;
-      for (auto& err : m_component->errors ())
-	  errDesc.append (err.toString ()).append ("\n");
-      error ("Could not load the QML experiment", errDesc);
-      unloadExperiment ();
-      return false;
+    QString errDesc;
+    for (auto& err : m_component->errors ())
+      errDesc.append (err.toString ()).append ("\n");
+    error ("Could not load the QML experiment", errDesc);
+    unloadExperiment ();
+    return false;
   }
   QObject* xp = m_component->create ();
   if (m_component->isError ()) {
-      qDebug () << "error: could not instantiate the QML experiment";
-      for (auto& err : m_component->errors ())
-	  qDebug () << err;
-      return false;
+    qDebug () << "error: could not instantiate the QML experiment";
+    for (auto& err : m_component->errors ())
+      qDebug () << err;
+    return false;
   }
   m_experiment = qobject_cast<Experiment*> (xp);
   m_experiment->setSetup (&m_setup);
@@ -597,107 +597,107 @@ Engine::loadExperiment (const QString& path)
   const QVariantMap& trialParameters = m_experiment->trialParameters ();
   QMapIterator<QString,QVariant> it (trialParameters);
   while (it.hasNext ()) {
-      it.next ();
-      const QString& param_name = it.key ();
-      qDebug () << "found trial parameter" << param_name;
+    it.next ();
+    const QString& param_name = it.key ();
+    qDebug () << "found trial parameter" << param_name;
       
-      // Get the current value of the parameter to
-      // check it’s type
-      QVariant prop = m_experiment->property (param_name.toUtf8 ());
-      if (prop.isValid ()) {
-	  if (prop.canConvert<float> ()) {
-	      qDebug () << "Adding trial parameter" << param_name << "as float";
-	      trial_types[param_name] = PredType::NATIVE_FLOAT;
-	      trial_offsets[param_name] = record_size;
-	      record_size += sizeof (float);
-	  }
-	  else if (prop.canConvert<plstim::Vector*> ()) {
-	      plstim::Vector* vec = prop.value<plstim::Vector*> ();
-	      // Get the current size of the array
-	      int len = vec->length ();
-	      qDebug () << "Adding trial parameter" << param_name << "as double array of" << len << "elements";
-	      hsize_t hlen = len;
-	      trial_types[param_name] = ArrayType (PredType::NATIVE_FLOAT, 1, &hlen);
-	      trial_offsets[param_name] = record_size;
-	      record_size += len * sizeof (float);
-	  }
-	  else {
-	      qDebug () << "Unknown type for trial parameter" << param_name;
-	  }
+    // Get the current value of the parameter to
+    // check it’s type
+    QVariant prop = m_experiment->property (param_name.toUtf8 ());
+    if (prop.isValid ()) {
+      if (prop.canConvert<float> ()) {
+	qDebug () << "Adding trial parameter" << param_name << "as float";
+	trial_types[param_name] = PredType::NATIVE_FLOAT;
+	trial_offsets[param_name] = record_size;
+	record_size += sizeof (float);
       }
+      else if (prop.canConvert<plstim::Vector*> ()) {
+	plstim::Vector* vec = prop.value<plstim::Vector*> ();
+	// Get the current size of the array
+	int len = vec->length ();
+	qDebug () << "Adding trial parameter" << param_name << "as double array of" << len << "elements";
+	hsize_t hlen = len;
+	trial_types[param_name] = ArrayType (PredType::NATIVE_FLOAT, 1, &hlen);
+	trial_offsets[param_name] = record_size;
+	record_size += len * sizeof (float);
+      }
+      else {
+	qDebug () << "Unknown type for trial parameter" << param_name;
+      }
+    }
   }
   
   // Check for modules to be loaded
   const QVariantList& modules = m_experiment->modules ();
   for (int i = 0; i < modules.size (); i++) {
-      QVariant var = modules.at (i);
-      if (var.canConvert<QString> ()) {
-	  QString name = var.toString ();
+    QVariant var = modules.at (i);
+    if (var.canConvert<QString> ()) {
+      QString name = var.toString ();
 #ifdef HAVE_EYELINK
-	  if (name == "eyelink") {
-	      load_eyelink ();
-	  }
-#endif
+      if (name == "eyelink") {
+	load_eyelink ();
       }
+#endif
+    }
   }
 
   // Create the pages defined in the experiment
   for (int i = 0; i < m_experiment->pageCount (); i++) {
-      Page* page = m_experiment->page (i);
-      QString page_title = page->name ();
-      // Compute required memory for the page
-      record_offsets[page_title]["begin"] = record_size;
-      record_size += sizeof (qint64);	// Start page presentation
-      if (! page->acceptAnyKey ()) {
-	  record_offsets[page_title]["key"] = record_size;
-	  record_size += sizeof (int);	// Pressed key
-          // Add the accepted keys mapping
-          for (auto k : page->acceptedKeys ())
-            xp_keys << k;
-      }
+    Page* page = m_experiment->page (i);
+    QString page_title = page->name ();
+    // Compute required memory for the page
+    record_offsets[page_title]["begin"] = record_size;
+    record_size += sizeof (qint64);	// Start page presentation
+    if (! page->acceptAnyKey ()) {
+      record_offsets[page_title]["key"] = record_size;
+      record_size += sizeof (int);	// Pressed key
+      // Add the accepted keys mapping
+      for (auto k : page->acceptedKeys ())
+	xp_keys << k;
+    }
 #ifdef HAVE_POWERMATE
-      if (page->waitRotation ()) {
-          record_offsets[page_title]["rotation"] = record_size;
-          record_size += sizeof (int);	// PowerMate rotation
-      }
+    if (page->waitRotation ()) {
+      record_offsets[page_title]["rotation"] = record_size;
+      record_size += sizeof (int);	// PowerMate rotation
+    }
 #endif // HAVE_POWERMATE
   }
 
   // Define the trial record
   if (record_size) {
-      qDebug () << "record size set to" << record_size;
-      trial_record = malloc (record_size);
-      record_type = new CompType (record_size);
-      // Add trial info to the record
-      for (auto it : trial_offsets) {
-	  const QString & param_name = it.first;
-	  qDebug () << "  Trial for" << it.first << "at" << it.second;
-	  record_type->insertMember (param_name.toUtf8 ().data (), it.second, trial_types[param_name]);
-      }
-      // Add pages info to the record
-      QString fmt ("%1_%2");
-      for (int i = 0; i < m_experiment->pageCount (); i++) {
-	  plstim::Page* page = m_experiment->page (i);
-	  auto page_name = page->name ();
+    qDebug () << "record size set to" << record_size;
+    trial_record = malloc (record_size);
+    record_type = new CompType (record_size);
+    // Add trial info to the record
+    for (auto it : trial_offsets) {
+      const QString & param_name = it.first;
+      qDebug () << "  Trial for" << it.first << "at" << it.second;
+      record_type->insertMember (param_name.toUtf8 ().data (), it.second, trial_types[param_name]);
+    }
+    // Add pages info to the record
+    QString fmt ("%1_%2");
+    for (int i = 0; i < m_experiment->pageCount (); i++) {
+      plstim::Page* page = m_experiment->page (i);
+      auto page_name = page->name ();
       for (auto param : record_offsets[page_name]) {
-          auto param_name = param.first;
-          auto offset = param.second;
-          H5::DataType param_type;
-          if (param_name == "begin")
-              param_type = PredType::NATIVE_INT64;
-          else if (param_name == "key")
-              param_type = PredType::NATIVE_INT;
+	auto param_name = param.first;
+	auto offset = param.second;
+	H5::DataType param_type;
+	if (param_name == "begin")
+	  param_type = PredType::NATIVE_INT64;
+	else if (param_name == "key")
+	  param_type = PredType::NATIVE_INT;
 #ifdef HAVE_POWERMATE
-          else if (param_name == "rotation")
-              param_type = PredType::NATIVE_INT;
+	else if (param_name == "rotation")
+	  param_type = PredType::NATIVE_INT;
 #endif // HAVE_POWERMATE
-          else
-              param_type = PredType::NATIVE_DOUBLE;
-          qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
-          record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
+	else
+	  param_type = PredType::NATIVE_DOUBLE;
+	qDebug () << "  Record for page" << page_name << "param" << param_name << "at" << offset;
+	record_type->insertMember (fmt.arg (page_name).arg (param_name).toUtf8 ().data (), offset, param_type);
       }
-      }
-      qDebug () << "Trial record size:" << record_size;
+    }
+    qDebug () << "Trial record size:" << record_size;
   }
 
 
@@ -740,12 +740,12 @@ find_session_maxi (hid_t group_id, const char * dset_name, void* data)
 void
 Engine::init_session ()
 {
-    setCurrentTrial (0);
+  setCurrentTrial (0);
 
 
-    // Disable screensaver
+  // Disable screensaver
 #ifdef HAVE_WIN32
-    SystemParametersInfo (SPI_SETSCREENSAVEACTIVE, FALSE, NULL, 0);
+  SystemParametersInfo (SPI_SETSCREENSAVEACTIVE, FALSE, NULL, 0);
 #else // HAVE_WIN32
 #endif // HAVE_WIN32
 
@@ -789,38 +789,38 @@ Engine::init_session ()
 
     // Save key mapping
     if (! xp_keys.empty ()) {
-        size_t rowsize = sizeof (int) + sizeof (char*);
-        char* km = new char[xp_keys.size () * rowsize];
-        unsigned int i = 0;
-        for (auto k : xp_keys) {
-          auto utf_key = k.toUtf8 ();
+      size_t rowsize = sizeof (int) + sizeof (char*);
+      char* km = new char[xp_keys.size () * rowsize];
+      unsigned int i = 0;
+      for (auto k : xp_keys) {
+	auto utf_key = k.toUtf8 ();
 
-          int* code = reinterpret_cast<int*> (km+rowsize*i);
-          char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
+	int* code = reinterpret_cast<int*> (km+rowsize*i);
+	char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
 
-          *code = stringToKey (k);
-          *name = new char[utf_key.size ()+1];
-          strcpy (*name, utf_key.data ());
-          i++;
-        }
-        StrType keys_type (PredType::C_S1, H5T_VARIABLE);
-        keys_type.setCset (H5T_CSET_UTF8);
-        hsize_t nkeys = xp_keys.size ();
-        DataSpace kspace (1, &nkeys);
+	*code = stringToKey (k);
+	*name = new char[utf_key.size ()+1];
+	strcpy (*name, utf_key.data ());
+	i++;
+      }
+      StrType keys_type (PredType::C_S1, H5T_VARIABLE);
+      keys_type.setCset (H5T_CSET_UTF8);
+      hsize_t nkeys = xp_keys.size ();
+      DataSpace kspace (1, &nkeys);
 
-        CompType km_type (rowsize);
-        km_type.insertMember ("code", 0, PredType::NATIVE_INT);
-        km_type.insertMember ("name", sizeof (int), keys_type);
-        dset.createAttribute ("keys", km_type, kspace)
-          .write (km_type, km);
+      CompType km_type (rowsize);
+      km_type.insertMember ("code", 0, PredType::NATIVE_INT);
+      km_type.insertMember ("name", sizeof (int), keys_type);
+      dset.createAttribute ("keys", km_type, kspace)
+	.write (km_type, km);
 
-        hf->flush (H5F_SCOPE_GLOBAL);
-        for (i = 0; i < nkeys; i++) {
-          char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
-          //free (*name);
-          delete [] (*name);
-        }
-        delete [] km;
+      hf->flush (H5F_SCOPE_GLOBAL);
+      for (i = 0; i < nkeys; i++) {
+	char** name = reinterpret_cast<char**> (km+rowsize*i+sizeof (int));
+	//free (*name);
+	delete [] (*name);
+      }
+      delete [] km;
     }
 
 #ifdef HAVE_EYELINK
@@ -840,11 +840,11 @@ void
 Engine::connectStimWindowExposed ()
 {
   m_exposed_conn = connect (stim, &StimWindow::exposed, [this] () {
-          qDebug () << "Stim window exposed";
-          this->setRunning (true);
-          this->run_trial ();
-          disconnect (m_exposed_conn);
-      });
+      qDebug () << "Stim window exposed";
+      this->setRunning (true);
+      this->run_trial ();
+      disconnect (m_exposed_conn);
+    });
 }
 
 void
@@ -889,136 +889,134 @@ Engine::runSessionInline ()
 void
 Engine::quit ()
 {
-    QCoreApplication::instance ()->quit ();
+  QCoreApplication::instance ()->quit ();
 }
 
 void
 Engine::about_to_quit ()
 {
-    qDebug () << "About to quit";
-    endSession ();
-    if (hf != NULL) {
-	hf->close ();
-	hf = NULL;
-    }
+  qDebug () << "About to quit";
+  endSession ();
+  if (hf != NULL) {
+    hf->close ();
+    hf = NULL;
+  }
 }
 
 Engine::Engine ()
   : save_setup (false),
-    bin_dist (0, 1),
-    real_dist (0, 1),
     trial_record (NULL),
     record_size (0),
     hf (NULL)
 {
-    plstim::initialise ();
+  plstim::initialise ();
 
-    m_engine.rootContext ()->setContextProperty ("engine",
-        QVariant::fromValue (static_cast<QObject*> (this)));
+  m_engine.rootContext ()->setContextProperty ("engine",
+					       QVariant::fromValue (static_cast<QObject*> (this)));
 
-    m_component = NULL;
-    m_experiment = NULL;
-    record_type = NULL;
+  m_component = NULL;
+  m_experiment = NULL;
+  record_type = NULL;
 
-    m_running = false;
-    m_eta = 0;
+  m_running = false;
+  m_eta = 0;
 
 #ifdef HAVE_EYELINK
-    m_eyelinkRecording = false;
-    eyelink_connected = false;
-    waiting_fixation = false;
+  m_eyelinkRecording = false;
+  eyelink_connected = false;
+  waiting_fixation = false;
 #ifdef DUMMY_EYELINK
-    eyelink_dummy = true;
+  eyelink_dummy = true;
 #else
-    eyelink_dummy = false;
+  eyelink_dummy = false;
 #endif
 #endif
 
-    // Accepted keys for next page presentation
-    nextPageKeys << Qt::Key_Return
-	<< Qt::Key_Enter
-	<< Qt::Key_Space;
+  // Accepted keys for next page presentation
+  nextPageKeys << Qt::Key_Return
+	       << Qt::Key_Enter
+	       << Qt::Key_Space;
         
-    // Search for a display screen
-    auto screen = Engine::displayScreen ();
+  // Search for a display screen
+  auto screen = Engine::displayScreen ();
 
-    stim = new StimWindow (screen);
-    connect (stim, &StimWindow::keyPressed,
-	    this, &Engine::stimKeyPressed);
+  stim = new StimWindow (screen);
+  connect (stim, &StimWindow::keyPressed,
+	   this, &Engine::stimKeyPressed);
 #ifdef HAVE_POWERMATE
-    connect (stim, &StimWindow::powerMateRotation,
-	    this, &Engine::powerMateRotation);
-    connect (stim, &StimWindow::powerMateButtonPressed,
-	    this, &Engine::powerMateButtonPressed);
+  connect (stim, &StimWindow::powerMateRotation,
+	   this, &Engine::powerMateRotation);
+  connect (stim, &StimWindow::powerMateButtonPressed,
+	   this, &Engine::powerMateButtonPressed);
 #endif // HAVE_POWERMATE
 
-    qDebug () << "Desktop location:" << QStandardPaths::writableLocation (QStandardPaths::DesktopLocation);
-    qDebug () << "Documents location:" << QStandardPaths::writableLocation (QStandardPaths::DocumentsLocation);
-    qDebug () << "Home location:" << QStandardPaths::writableLocation (QStandardPaths::HomeLocation);
-    qDebug () << "Data location:" << QStandardPaths::writableLocation (QStandardPaths::DataLocation);
-    qDebug () << "Generic data location:" << QStandardPaths::writableLocation (QStandardPaths::GenericDataLocation);
+  qDebug () << "Desktop location:" << QStandardPaths::writableLocation (QStandardPaths::DesktopLocation);
+  qDebug () << "Documents location:" << QStandardPaths::writableLocation (QStandardPaths::DocumentsLocation);
+  qDebug () << "Home location:" << QStandardPaths::writableLocation (QStandardPaths::HomeLocation);
+  qDebug () << "Data location:" << QStandardPaths::writableLocation (QStandardPaths::DataLocation);
+  qDebug () << "Generic data location:" << QStandardPaths::writableLocation (QStandardPaths::GenericDataLocation);
 
-    // Try to fetch back setup
-    m_settings = new QSettings;
-    m_settings->beginGroup ("setups");
-    auto groups = m_settings->childGroups ();
+  // Try to fetch back setup
+  m_settings = new QSettings;
+  m_settings->beginGroup ("setups");
+  auto groups = m_settings->childGroups ();
+  m_settings->endGroup ();
+
+  // No setup previously defined, infer a new one
+  if (groups.empty ()) {
+    auto hostname = QHostInfo::localHostName ();
+    qDebug () << "creating a new setup for" << hostname;
+
+    // Update setup with screen geometry
+    auto setupName = hostname + "_" + screen->name ();
+    m_settings->beginGroup (QString ("setups/%1").arg (setupName));
+    m_settings->setValue ("res_x", screen->geometry ().width ());
+    m_settings->setValue ("res_y", screen->geometry ().height ());
+    m_settings->setValue ("phy_w", screen->physicalSize ().width ());
+    m_settings->setValue ("phy_h", screen->physicalSize ().height ());
+    m_settings->setValue ("dst", 400);
+    m_settings->setValue ("rate", screen->refreshRate ());
     m_settings->endGroup ();
+    m_settings->sync ();
+    loadSetup (setupName);
+  }
 
-    // No setup previously defined, infer a new one
-    if (groups.empty ()) {
-	auto hostname = QHostInfo::localHostName ();
-	qDebug () << "creating a new setup for" << hostname;
+  // Use an existing setup
+  else {
+    QString setupName = m_settings->contains ("lastSetup") ?
+      m_settings->value ("lastSetup").toString () :
+      groups.at (0);
+    loadSetup (setupName);
+  }
 
-	// Update setup with screen geometry
-        auto setupName = hostname + "_" + screen->name ();
-        m_settings->beginGroup (QString ("setups/%1").arg (setupName));
-        m_settings->setValue ("res_x", screen->geometry ().width ());
-        m_settings->setValue ("res_y", screen->geometry ().height ());
-        m_settings->setValue ("phy_w", screen->physicalSize ().width ());
-        m_settings->setValue ("phy_h", screen->physicalSize ().height ());
-        m_settings->setValue ("dst", 400);
-        m_settings->setValue ("rate", screen->refreshRate ());
-        m_settings->endGroup ();
-        m_settings->sync ();
-        loadSetup (setupName);
-    }
+  save_setup = true;
 
-    // Use an existing setup
-    else {
-	QString setupName = m_settings->contains ("lastSetup") ?
-	    m_settings->value ("lastSetup").toString () :
-	    groups.at (0);
-	loadSetup (setupName);
-    }
-
-    save_setup = true;
-
-    // Close event termination
-    connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
-	    this, SLOT (about_to_quit ()));
+  // Close event termination
+  connect (QCoreApplication::instance (), SIGNAL (aboutToQuit ()),
+	   this, SLOT (about_to_quit ()));
 }
 
 QVariant
 Engine::evaluate (const QString& expression)
 {
-    /*QString expression ("2*3");
-    // No experiment loaded
-    if (m_component == NULL)
-	return QVariant ();
+  /*QString expression ("2*3");
+  // No experiment loaded
+  if (m_component == NULL)
+  return QVariant ();
 
-    QQmlExpression expr (m_engine.rootContext (),
-	    m_experiment, expression);
-    qDebug () << "Evaluating" << expr.expression ()
-	      << "error:" << expr.hasError ();
-    return expr.evaluate ();*/
+  QQmlExpression expr (m_engine.rootContext (),
+  m_experiment, expression);
+  qDebug () << "Evaluating" << expr.expression ()
+  << "error:" << expr.hasError ();
+  return expr.evaluate ();*/
 
-    auto expr = expression.trimmed ();
+  auto expr = expression.trimmed ();
 
-    if (expr == "currentTrial") {
-	qDebug () << "Returning current trial";
-	return QVariant::fromValue (currentTrial ());
-    }
-    return QVariant ();
+  if (expr == "currentTrial") {
+    qDebug () << "Returning current trial";
+    return QVariant::fromValue (currentTrial ());
+  }
+  return QVariant ();
 }
 
 #if 0
@@ -1070,98 +1068,98 @@ Engine::new_subject_validated ()
 void
 Engine::selectSubject (const QString& subjectName)
 {
-    qDebug () << "Loading subject" << subjectName;
+  qDebug () << "Loading subject" << subjectName;
 
-    // No subject list found
-    auto subjects = m_json.object ()["Subjects"];
-    if (! subjects.isObject () && ! subjects.isArray ()) {
-        error ("Invalid Subjects definition",
-               "Subjects JSON field should be an object or array");
-        return;
-    }
+  // No subject list found
+  auto subjects = m_json.object ()["Subjects"];
+  if (! subjects.isObject () && ! subjects.isArray ()) {
+    error ("Invalid Subjects definition",
+	   "Subjects JSON field should be an object or array");
+    return;
+  }
 
-    // Get subject data file path
-    QJsonObject subject;
-    if (subjects.isObject ())
-      subject = subjects.toObject ()[subjectName].toObject ();
-    QFileInfo dataFile;
-    if (subject.contains ("Data")) {
-        qDebug () << "subject has a Data";
-        dataFile.setFile (subject["Data"].toString ());
+  // Get subject data file path
+  QJsonObject subject;
+  if (subjects.isObject ())
+    subject = subjects.toObject ()[subjectName].toObject ();
+  QFileInfo dataFile;
+  if (subject.contains ("Data")) {
+    qDebug () << "subject has a Data";
+    dataFile.setFile (subject["Data"].toString ());
+  }
+  else {
+    qDebug () << "subject has no Data, setting its path to:" << (xp_name + "-" + subjectName + ".h5");
+    dataFile.setFile (xp_name + "-" + subjectName + ".h5");
+    qDebug () << "Path is now:" << dataFile.path () << "-" << dataFile.filePath ();
+  }
+
+  // Make relative paths relative to dataDir
+  if (! dataFile.isAbsolute ()) {
+    qDebug () << "File is not absolute: " << dataFile.filePath ();
+    dataFile.setFile (m_setup.dataDir () + QDir::separator () + xp_name + QDir::separator () + dataFile.filePath ());
+  }
+  qDebug () << "Subject data file set to: " << dataFile.filePath ();
+
+  QFile fi (dataFile.filePath ());
+
+  // Make sure the datafile still exists
+  if (! fi.exists ()) {
+    // Create the directory
+    auto dir = dataFile.dir ();
+    if (! dir.exists () && ! dir.mkpath (dir.path ()))
+      error (tr ("Could not create the data directory"));
+    // Try to create a data file
+    bool ok = fi.open (QIODevice::WriteOnly);
+    if (ok) {
+      qDebug () << "Subject data file created";
+      fi.close ();
     }
     else {
-        qDebug () << "subject has no Data, setting its path to:" << (xp_name + "-" + subjectName + ".h5");
-        dataFile.setFile (xp_name + "-" + subjectName + ".h5");
-        qDebug () << "Path is now:" << dataFile.path () << "-" << dataFile.filePath ();
+      error (tr ("Could not create subject data file"));
+      return;
     }
+  }
+  // Open the HDF5 datafile
+  // TODO: handle HDF5 exceptions here
+  if (hf != NULL) {
+    hf->close ();
+    hf = NULL;
+  }
+  hf = new H5File (dataFile.filePath ().toLocal8Bit ().data (), H5F_ACC_RDWR);
+  //m_subjectName = subjectName;
+  setSubjectName (subjectName);
+  qDebug () << "Subject data file loaded";
 
-    // Make relative paths relative to dataDir
-    if (! dataFile.isAbsolute ()) {
-        qDebug () << "File is not absolute: " << dataFile.filePath ();
-        dataFile.setFile (m_setup.dataDir () + QDir::separator () + xp_name + QDir::separator () + dataFile.filePath ());
-    }
-    qDebug () << "Subject data file set to: " << dataFile.filePath ();
+  // Load subject parameters
+  if (subject.contains ("Parameters")) {
+    auto subjectParams = subject["Parameters"].toObject ();
 
-    QFile fi (dataFile.filePath ());
-
-    // Make sure the datafile still exists
-    if (! fi.exists ()) {
-        // Create the directory
-        auto dir = dataFile.dir ();
-        if (! dir.exists () && ! dir.mkpath (dir.path ()))
-            error (tr ("Could not create the data directory"));
-        // Try to create a data file
-        bool ok = fi.open (QIODevice::WriteOnly);
-        if (ok) {
-            qDebug () << "Subject data file created";
-            fi.close ();
-        }
-        else {
-            error (tr ("Could not create subject data file"));
-            return;
-        }
-    }
-    // Open the HDF5 datafile
-    // TODO: handle HDF5 exceptions here
-    if (hf != NULL) {
-        hf->close ();
-        hf = NULL;
-    }
-    hf = new H5File (dataFile.filePath ().toLocal8Bit ().data (), H5F_ACC_RDWR);
-    //m_subjectName = subjectName;
-    setSubjectName (subjectName);
-    qDebug () << "Subject data file loaded";
-
-    // Load subject parameters
-    if (subject.contains ("Parameters")) {
-	auto subjectParams = subject["Parameters"].toObject ();
-
-	auto& params = m_experiment->subjectParameters ();
-	QMapIterator<QString,QVariant> it (params);
-	while (it.hasNext ()) {
-	    it.next ();
-	    auto& paramName = it.key ();
-	    //qDebug () << "Trying to load subject parameter" << paramName;
-	    if (! subjectParams.contains (paramName)) {
-		qWarning () << "WARNING: Missing subject parameter" << paramName;
-	    }
-	    else {
-		QVariant currentValue = m_experiment->property (paramName.toUtf8 ().data ());
-		if (! currentValue.isValid ()) {
-		    qWarning () << "WARNING: Trying to set subject property" << paramName << "which is not found in the experiment";
-		}
-		else {
-		    if (! subjectParams[paramName].isDouble ()) {
-			qWarning () << "WARNING: Subject parameter" << paramName << "is not a floating number";
-		    }
-		    else {
-			m_experiment->setProperty (paramName.toUtf8 ().data (), subjectParams[paramName].toDouble ());
-		    }
-		}
-	    }
+    auto& params = m_experiment->subjectParameters ();
+    QMapIterator<QString,QVariant> it (params);
+    while (it.hasNext ()) {
+      it.next ();
+      auto& paramName = it.key ();
+      //qDebug () << "Trying to load subject parameter" << paramName;
+      if (! subjectParams.contains (paramName)) {
+	qWarning () << "WARNING: Missing subject parameter" << paramName;
+      }
+      else {
+	QVariant currentValue = m_experiment->property (paramName.toUtf8 ().data ());
+	if (! currentValue.isValid ()) {
+	  qWarning () << "WARNING: Trying to set subject property" << paramName << "which is not found in the experiment";
 	}
+	else {
+	  if (! subjectParams[paramName].isDouble ()) {
+	    qWarning () << "WARNING: Subject parameter" << paramName << "is not a floating number";
+	  }
+	  else {
+	    m_experiment->setProperty (paramName.toUtf8 ().data (), subjectParams[paramName].toDouble ());
+	  }
+	}
+      }
     }
-    //emit subjectLoaded (subjectName);
+  }
+  //emit subjectLoaded (subjectName);
 }
 
 void
@@ -1177,7 +1175,7 @@ Engine::setup_updated ()
     // Minimal base-2 texture size
     int tex_size = 1 << static_cast<int> (floor (log2 (size_px)));
     if (tex_size < size_px)
-	tex_size <<= 1;
+      tex_size <<= 1;
 
     qDebug () << "Texture size:" << tex_size << "x" << tex_size;
 
@@ -1196,17 +1194,17 @@ Engine::setup_updated ()
 
     swap_interval = 1;
     for (int i = 0; i < m_experiment->pageCount (); i++) {
-	auto page = m_experiment->page (i);
-	if (page->animated ()) {
-	    // Make sure animated frames have updated number of frames
-	    int nframes = static_cast<int> (round ((m_setup.refreshRate () / swap_interval)*page->duration ()/1000.0));
-	    qDebug () << "Displaying" << nframes << "frames for" << page->name ();
-	    qDebug () << "  " << m_setup.refreshRate () << "/" << swap_interval;
-	    page->setFrameCount (nframes);
-	}
+      auto page = m_experiment->page (i);
+      if (page->animated ()) {
+	// Make sure animated frames have updated number of frames
+	int nframes = static_cast<int> (round ((m_setup.refreshRate () / swap_interval)*page->duration ()/1000.0));
+	qDebug () << "Displaying" << nframes << "frames for" << page->name ();
+	qDebug () << "  " << m_setup.refreshRate () << "/" << swap_interval;
+	page->setFrameCount (nframes);
+      }
 
-	if (page->paintTime () == Page::EXPERIMENT)
-	    paintPage (page, img, painter);
+      if (page->paintTime () == Page::EXPERIMENT)
+	paintPage (page, img, painter);
     }
   }
 
@@ -1215,8 +1213,8 @@ Engine::setup_updated ()
 
 Engine::~Engine ()
 {
-    delete m_settings;
-    delete stim;
+  delete m_settings;
+  delete stim;
 }
 
 void
@@ -1248,16 +1246,16 @@ Engine::loadSetup (const QString& setupName)
 QScreen*
 Engine::displayScreen ()
 {
-    auto primaryScreen = QGuiApplication::primaryScreen ();
+  auto primaryScreen = QGuiApplication::primaryScreen ();
 
-    // Search for a second screen
-    auto screens = QGuiApplication::screens ();
-    for (int i = 0; i < screens.size (); i++) {
-      auto screen = screens.at (i);
-      if (screen != primaryScreen)
-        return screen;
-    }
+  // Search for a second screen
+  auto screens = QGuiApplication::screens ();
+  for (int i = 0; i < screens.size (); i++) {
+    auto screen = screens.at (i);
+    if (screen != primaryScreen)
+      return screen;
+  }
 
-    // No other screen found
-    return primaryScreen;
+  // No other screen found
+  return primaryScreen;
 }

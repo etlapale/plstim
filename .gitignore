@@ -30,4 +30,5 @@ scripts
 qrc_*.cpp
 *.zip
 *.qrc.depends
-images/*.png
+frame*.png
+*.tar.xz
