@@ -26,7 +26,7 @@ class Error : public QObject
 
 public:
   Error (const QString& title="", const QString& description="",
-	 QObject* parent=NULL)
+	 QObject* parent=nullptr)
     : QObject (parent)
     , m_title (title)
     , m_description (description)
@@ -53,11 +53,11 @@ class Subject : public QObject
   Q_OBJECT
   Q_PROPERTY (QString name READ name)
 public:
-  Subject (QObject* parent=NULL)
+  Subject (QObject* parent=nullptr)
     : QObject (parent)
   { }
 
-  Subject (const QString& name, QObject* parent=NULL)
+  Subject (const QString& name, QObject* parent=nullptr)
     : QObject (parent)
     , m_name (name)
   { }
@@ -98,8 +98,8 @@ class Vector : public QObject
   Q_PROPERTY (int length READ length WRITE setLength)
 
 public:
-  Vector (QObject* parent=NULL)
-    : QObject (parent), m_data (NULL)
+  Vector (QObject* parent=nullptr)
+    : QObject (parent), m_data (nullptr)
   {}
 
   ~Vector ()
@@ -177,7 +177,7 @@ class PainterPath : public QObject
   Q_OBJECT
 
 public:
-  PainterPath (QObject* parent=NULL)
+  PainterPath (QObject* parent=nullptr)
     : QObject (parent)
   {
     m_path = new QPainterPath;
@@ -217,7 +217,7 @@ class Pen : public QObject
   Q_PROPERTY (QColor color READ color WRITE setColor)
 
 public:
-  Pen (QObject* parent=NULL)
+  Pen (QObject* parent=nullptr)
     : QObject (parent)
   {}
 
@@ -244,7 +244,7 @@ class Painter : public QObject
   Q_OBJECT
 
 public:
-  Painter (QPainter& painter, QObject* parent=NULL)
+  Painter (QPainter& painter, QObject* parent=nullptr)
     : QObject (parent), m_painter (painter)
   {}
 
@@ -338,7 +338,7 @@ public:
       MANUAL
     };
 
-  Page (QObject* parent=NULL)
+  Page (QObject* parent=nullptr)
     : QObject (parent)
     , m_last (false)
     , m_duration (0), m_frameCount (0)
@@ -493,10 +493,10 @@ class Experiment : public QObject
   Q_CLASSINFO ("DefaultProperty", "pages")
     
   public:
-  Experiment (QObject* parent=NULL)
+  Experiment (QObject* parent=nullptr)
   : QObject (parent)
     , m_swapInterval (1)
-    , m_setup (NULL)
+    , m_setup (nullptr)
   {
     // Initialise the random number generator
     RandomDevSeedSequence rdss;

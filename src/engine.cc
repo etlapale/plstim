@@ -130,7 +130,7 @@ Engine::run_trial ()
 
 #ifdef HAVE_EYELINK
   // Save trial timestamp in EDF file
-  if (hf != NULL)
+  if (hf != nullptr)
     eyemsg_printf ("trial %d", m_currentTrial+1);
 #endif // HAVE_EYELINK
 
@@ -190,7 +190,7 @@ Engine::show_page (int index)
   qDebug () << ">>> showing page" << page->name ();
 #ifdef HAVE_EYELINK
   // Save page timestamp in EDF file
-  if (hf != NULL)
+  if (hf != nullptr)
     eyemsg_printf ("showing page %s", page->name ().toUtf8 ().data ());
 #endif // HAVE_EYELINK
 
@@ -287,13 +287,13 @@ Engine::nextPage (Page* wantedPage)
 #endif // HAVE_EYELINK
 
   // End of trial
-  auto page = current_page < 0 ? NULL : m_experiment->page (current_page);
+  auto page = current_page < 0 ? nullptr : m_experiment->page (current_page);
   if ((page && page->last ())
       || current_page + 1 == m_experiment->pageCount ()) {
     qDebug () << "End of trial " << m_currentTrial << "of" << m_experiment->trialCount ();
 
     // Save the page record on HDF5
-    if (hf != NULL && current_page >= 0) {
+    if (hf != nullptr && current_page >= 0) {
       hsize_t one = 1;
       DataSpace fspace = dset.getSpace ();
       hsize_t hframe = m_currentTrial;
@@ -428,7 +428,7 @@ Engine::stimKeyPressed (QKeyEvent* evt)
 void
 Engine::endSession ()
 {
-  if (hf != NULL) {
+  if (hf != nullptr) {
 #ifdef HAVE_EYELINK
     if (m_eyelinkRecording) {
       // Stop recording
@@ -465,14 +465,14 @@ Engine::unloadExperiment ()
 {
   endSession ();
 
-  m_experiment = NULL;
-  experimentChanged (NULL);
+  m_experiment = nullptr;
+  experimentChanged (nullptr);
 
   // Erase all components from QML engine memroy
   m_engine.clearComponentCache ();
   if (m_component) {
     delete m_component;
-    m_component = NULL;
+    m_component = nullptr;
   }
 
 #ifdef HAVE_EYELINK
@@ -482,21 +482,21 @@ Engine::unloadExperiment ()
 
   xp_name.clear ();
 
-  if (trial_record != NULL) {
+  if (trial_record != nullptr) {
     free (trial_record);
-    trial_record = NULL;
+    trial_record = nullptr;
   }
-  if (record_type != NULL) {
+  if (record_type != nullptr) {
     delete record_type;
-    record_type = NULL;
+    record_type = nullptr;
   }
   record_size = 0;
   trial_offsets.clear ();
   record_offsets.clear ();
   xp_keys.clear ();
-  if (hf != NULL) {
+  if (hf != nullptr) {
     hf->close ();
-    hf = NULL;
+    hf = nullptr;
   }
 
   stim->clear ();
@@ -754,7 +754,7 @@ Engine::init_session ()
   m_sessionStart = now;
 
   // Check if a subject datafile is opened
-  if (hf != NULL) {
+  if (hf != nullptr) {
     // Parse the HDF5 datasets to get a block number
     int session_maxi = 0;
     int idx = 0;
@@ -897,26 +897,26 @@ Engine::about_to_quit ()
 {
   qDebug () << "About to quit";
   endSession ();
-  if (hf != NULL) {
+  if (hf != nullptr) {
     hf->close ();
-    hf = NULL;
+    hf = nullptr;
   }
 }
 
 Engine::Engine ()
   : save_setup (false),
-    trial_record (NULL),
+    trial_record (nullptr),
     record_size (0),
-    hf (NULL)
+    hf (nullptr)
 {
   plstim::initialise ();
 
   m_engine.rootContext ()->setContextProperty ("engine",
 					       QVariant::fromValue (static_cast<QObject*> (this)));
 
-  m_component = NULL;
-  m_experiment = NULL;
-  record_type = NULL;
+  m_component = nullptr;
+  m_experiment = nullptr;
+  record_type = nullptr;
 
   m_running = false;
   m_eta = 0;
@@ -1051,9 +1051,9 @@ Engine::new_subject_validated ()
 
   // Create the HDF5 file
   // TODO: handle HDF5 exceptions here
-  if (hf != NULL) {
+  if (hf != nullptr) {
     hf->close ();
-    hf = NULL;
+    hf = nullptr;
   }
   hf = new H5File (subject_datafile.toLocal8Bit ().data (), flags);
   hf->flush (H5F_SCOPE_GLOBAL);
@@ -1121,9 +1121,9 @@ Engine::selectSubject (const QString& subjectName)
   }
   // Open the HDF5 datafile
   // TODO: handle HDF5 exceptions here
-  if (hf != NULL) {
+  if (hf != nullptr) {
     hf->close ();
-    hf = NULL;
+    hf = nullptr;
   }
   hf = new H5File (dataFile.filePath ().toLocal8Bit ().data (), H5F_ACC_RDWR);
   //m_subjectName = subjectName;

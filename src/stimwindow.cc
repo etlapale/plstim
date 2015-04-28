@@ -70,7 +70,7 @@ StimWindow::setupOpenGL ()
 {
     qDebug () << "StimWindow::setupOpenGL ()";
 
-    if (m_context != NULL) {
+    if (m_context != nullptr) {
         qDebug () << "Deleting previous OpenGL context";
         delete m_context;
     }
@@ -382,7 +382,7 @@ StimWindow::updateShaders ()
     //qDebug () << vshader_txt;
     
     // Remove previous vertex shader
-    if (m_vshader != NULL) {
+    if (m_vshader != nullptr) {
         qDebug () << "Removing previous vertex shader";
 	m_program->removeShader (m_vshader);
 	delete m_vshader;
@@ -494,7 +494,7 @@ StimWindow::render ()
     glClear (GL_COLOR_BUFFER_BIT);
     //qDebug () << "glClear errors:" << glGetError ();
 
-    if (m_currentFrame == NULL) {
+    if (m_currentFrame == nullptr) {
 	qDebug () << "render() with no effect (no frame)";
 	return;
     }

@@ -12,7 +12,7 @@ GUI::GUI (const QUrl& uiUrl)
 {
     // Load the QtQuick interface
     m_ui_engine.rootContext ()->setContextProperty ("xp",
-        QVariant::fromValue (static_cast<QObject*> (NULL)));
+        QVariant::fromValue (static_cast<QObject*> (nullptr)));
     m_ui_engine.rootContext ()->setContextProperty ("engine",
         QVariant::fromValue (static_cast<QObject*> (&m_engine)));
     m_ui_engine.rootContext ()->setContextProperty ("setup",
@@ -101,7 +101,7 @@ setChildProperty (QObject* root, const QString& childName,
                   const char* property, const T& value)
 {
     auto obj = root->findChild<QObject*> (childName);
-    if (obj != NULL)
+    if (obj != nullptr)
         obj->setProperty (property, value);
 }
 

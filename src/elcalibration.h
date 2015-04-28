@@ -28,7 +28,7 @@ namespace plstim
     virtual void keyReleaseEvent (QKeyEvent* event);
     void add_key_event (QKeyEvent* event, bool pressed);
   public:
-    EyeLinkCalibrator (QWidget* parent=NULL);
+    EyeLinkCalibrator (QWidget* parent=nullptr);
     void add_target (float x, float y);
     void erase_target ();
     void remove_camera ();

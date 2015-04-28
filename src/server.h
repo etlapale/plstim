@@ -18,7 +18,7 @@ protected:
     Engine* m_engine;
 
 public:
-    Server (Engine* engine, QObject* parent=NULL)
+    Server (Engine* engine, QObject* parent=nullptr)
 	: QTcpServer (parent), m_engine (engine)
     {}
 

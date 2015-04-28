@@ -59,7 +59,7 @@ el_draw_image (void* userdata, INT16 width, INT16 height, byte* pixels)
 {
   auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
-  if (calib != NULL) {
+  if (calib != nullptr) {
     QImage simg (pixels, width, height, QImage::Format_ARGB32);
     auto rimg = simg.rgbSwapped ();
     auto pixmap = QPixmap::fromImage (rimg);
@@ -79,7 +79,7 @@ el_clear_cal_display (void* userdata)
 {
   auto xp = static_cast<Engine*> (userdata);
   auto calib = xp->calibrator;
-  if (calib != NULL)
+  if (calib != nullptr)
     calib->clear ();
   return 0;
 }
@@ -174,7 +174,7 @@ el_exit_cal_display (void* userdata)
   if (xp->calibrator) {
     xp->calibrator->hide ();
     delete xp->calibrator;
-    xp->calibrator = NULL;
+    xp->calibrator = nullptr;
   }
   return 0;
 }
@@ -238,7 +238,7 @@ Engine::calibrate_eyelink ()
   if (calibrator) {
     calibrator->hide ();
     delete calibrator;
-    calibrator = NULL;
+    calibrator = nullptr;
   }
 
   // De-register the calibration hooks
@@ -252,8 +252,8 @@ Engine::calibrate_eyelink ()
 
 EyeLinkCalibrator::EyeLinkCalibrator (QWidget* parent)
   : QGraphicsView (),
-    target (NULL),
-    camera (NULL),
+    target (nullptr),
+    camera (nullptr),
     target_size (10)
 {
   setScene (&sc);
@@ -377,18 +377,18 @@ EyeLinkCalibrator::add_target (float x, float y)
 void
 EyeLinkCalibrator::erase_target ()
 {
-  if (target != NULL) {
+  if (target != nullptr) {
     sc.removeItem (target);
-    target = NULL;
+    target = nullptr;
   }
 }
 
 void
 EyeLinkCalibrator::remove_camera ()
 {
-  if (camera != NULL) {
+  if (camera != nullptr) {
     sc.removeItem (camera);
-    camera = NULL;
+    camera = nullptr;
   }
 }
 
