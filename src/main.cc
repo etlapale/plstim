@@ -17,14 +17,9 @@
 
 using namespace plstim;
 
-namespace plstim {
-extern void hello();
-}
 
 int main(int argc, char* argv[])
 {
-  hello();
-  
   // Qt application with a GUI
 #ifdef HAVE_EYELINK
   // EyeLink calibrator does not yet support Qt5
