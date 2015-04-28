@@ -9,6 +9,7 @@
 using namespace std;
 
 #include "engine.h"
+#include "../lib/experiment.h"
 using namespace plstim;
 
 #include <QtCore>
@@ -556,20 +557,10 @@ Engine::loadExperiment (const QString& path)
       return false;
     }
   }
-
-  QFileInfo qmlPathInfo (jroot["Source"].toString ());
-
-  // Allow relative QML path definitions
-  if (! qmlPathInfo.isAbsolute ()) {
-    qmlPathInfo.setFile (fileinfo.path () + QDir::separator () + qmlPathInfo.filePath ());
-  }
-  if (! qmlPathInfo.exists ()) {
-    error ("Experiment QML definition not found",
-	   qmlPathInfo.filePath () + " not found");
-    return false;
-  }
-
-  m_component = new QQmlComponent (&m_engine, qmlPathInfo.filePath ());
+  
+  m_component = plstim::load_experiment(&m_engine,
+					jroot["Source"].toString(),
+					fileinfo.path());
   if (m_component->isError ()) {
     QString errDesc;
     for (auto& err : m_component->errors ())

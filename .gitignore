@@ -32,3 +32,8 @@ qrc_*.cpp
 *.qrc.depends
 frame*.png
 *.tar.xz
+*~
+lib*.a
+images/*.png
+plstim-tests
+tests/catch.hpp
