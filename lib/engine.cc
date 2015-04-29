@@ -843,7 +843,8 @@ Engine::init_session ()
 void Engine::connectStimWindowExposed()
 {
   m_exposed_conn = connect(dynamic_cast<QObject*>(m_displayer),
-			   SIGNAL(exposed), this, SLOT(onDisplayerExposed));
+			   SIGNAL(exposed()),
+			   this, SLOT(onDisplayerExposed()));
 }
 
 void Engine::onDisplayerExposed()
@@ -938,10 +939,11 @@ Engine::Engine (Displayer* displayer)
 	       << Qt::Key_Enter
 	       << Qt::Key_Space;
         
-  // Search for a display screen
   // TODO
   //connect (stim, &StimWindow::keyPressed,
   //this, &Engine::stimKeyPressed);
+  connect(dynamic_cast<QObject*>(m_displayer), SIGNAL(keyPressed(QKeyEvent*)),
+	  this, SLOT(stimKeyPressed(QKeyEvent*)));
 #ifdef HAVE_POWERMATE
   connect (stim, &StimWindow::powerMateRotation,
 	   this, &Engine::powerMateRotation);

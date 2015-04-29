@@ -46,6 +46,7 @@ public:
   virtual QScreen* displayScreen() = 0;
 
 signals:
+  virtual void keyPressed(QKeyEvent* event) = 0;
   /// Sent when the displayer becomes visible.
   virtual void exposed() = 0;
 };

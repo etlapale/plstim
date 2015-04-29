@@ -37,6 +37,7 @@ public:
   virtual QScreen* displayScreen() override;
 signals:
   void exposed() override;
+  void keyPressed (QKeyEvent* evt) override;
   
 public:
   void render ();
@@ -44,7 +45,6 @@ public slots:
   void renderNow ();
   void updateShaders ();
 signals:
-  void keyPressed (QKeyEvent* evt);
 #ifdef HAVE_POWERMATE
   void powerMateRotation (PowerMateEvent* evt);
   void powerMateButtonPressed (PowerMateEvent* evt);
