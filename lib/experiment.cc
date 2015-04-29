@@ -37,7 +37,15 @@ std::pair<QQmlComponent*,QObject*> load_experiment(QQmlEngine* engine,
   auto xp = comp->create();
   if (xp == nullptr || comp->isError())
     return make_pair(comp, nullptr);
-  
+
+  // Make sure we have an Experiment
+  auto experiment = qobject_cast<Experiment*>(xp);
+  if (experiment == nullptr) {
+    qWarning() << "loaded QML file is not an Experiment";
+    delete xp;
+    return make_pair(comp, nullptr);
+  }
+    
   return make_pair(comp,xp);
 }
 

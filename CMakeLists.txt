@@ -54,7 +54,7 @@ endforeach ()
 set (CMAKE_AUTOMOC ON)
 
 # Library
-set (libplstim_src lib/experiment.cc lib/qmltypes.cc lib/setup.cc lib/utils.cc)
+set (libplstim_src lib/qmltypes.cc lib/setup.cc lib/utils.cc)
 add_library (libplstim ${libplstim_src})
 set_target_properties (libplstim PROPERTIES OUTPUT_NAME plstim)
 qt5_use_modules (libplstim Core Qml Gui)

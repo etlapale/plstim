@@ -558,19 +558,38 @@ Engine::loadExperiment (const QString& path)
     }
   }
 
-  QObject* xp;
-  tie(m_component,xp) = plstim::load_experiment(&m_engine,
-						jroot["Source"].toString(),
-						fileinfo.path());
-  if (m_component->isError ()) {
-    QString errDesc;
-    for (auto& err : m_component->errors ())
-      errDesc.append (err.toString ()).append ("\n");
-    error ("Could not load the QML experiment", errDesc);
-    unloadExperiment ();
+  QFileInfo file_info(jroot["Source"].toString());
+  // Use absolute paths
+  if (! file_info.isAbsolute())
+    file_info.setFile (fileinfo.path()
+		       + QDir::separator() + file_info.filePath());
+  // Convert the file to an URL
+  auto url = QUrl::fromLocalFile(file_info.filePath());
+
+  // Load the experiment
+  m_component = new QQmlComponent(&m_engine, url);
+  if (m_component->isError()) {
+    error("could not load the QML experiment");
+    unloadExperiment();
     return false;
   }
-  m_experiment = qobject_cast<Experiment*> (xp);
+    // Instanciate the component
+  auto xp = m_component->create();
+  if (xp == nullptr || m_component->isError()) {
+    error("could not instantiate QML experiment");
+    unloadExperiment();
+    return false;
+  }
+  
+  // Make sure we have an Experiment
+  m_experiment = qobject_cast<Experiment*>(xp);
+  if (m_experiment == nullptr) {
+    error("loaded QML file is not an Experiment");
+    delete xp;
+    unloadExperiment();
+    return false;
+  }
+  
   m_experiment->setSetup (&m_setup);
 
   // Add start time to the record
