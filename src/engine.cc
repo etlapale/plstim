@@ -557,23 +557,17 @@ Engine::loadExperiment (const QString& path)
       return false;
     }
   }
-  
-  m_component = plstim::load_experiment(&m_engine,
-					jroot["Source"].toString(),
-					fileinfo.path());
+
+  QObject* xp;
+  tie(m_component,xp) = plstim::load_experiment(&m_engine,
+						jroot["Source"].toString(),
+						fileinfo.path());
   if (m_component->isError ()) {
     QString errDesc;
     for (auto& err : m_component->errors ())
       errDesc.append (err.toString ()).append ("\n");
     error ("Could not load the QML experiment", errDesc);
     unloadExperiment ();
-    return false;
-  }
-  QObject* xp = m_component->create ();
-  if (m_component->isError ()) {
-    qDebug () << "error: could not instantiate the QML experiment";
-    for (auto& err : m_component->errors ())
-      qDebug () << err;
     return false;
   }
   m_experiment = qobject_cast<Experiment*> (xp);

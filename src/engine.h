@@ -23,10 +23,12 @@
 #include "powermate.h"
 #endif // HAVE_POWERMATE
 
+#include "../lib/qmltypes.h"
+#include "../lib/setup.h"
+#include "../lib/utils.h"
+
 #include "qtypes.h"
-#include "setup.h"
 #include "stimwindow.h"
-#include "utils.h"
 
 
 namespace plstim

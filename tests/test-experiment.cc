@@ -3,6 +3,9 @@
 #include "../lib/experiment.h"
 using namespace plstim;
 
+#include <tuple>
+using std::tie;
+
 
 TEST_CASE( "experiment", "[library]" ) {
 
@@ -10,15 +13,22 @@ TEST_CASE( "experiment", "[library]" ) {
   
   SECTION( "load" ) {
 
+    QQmlComponent* comp;
+    QObject* obj;
+    
     // Empty experiment is invalid
-    auto c1 = load_experiment(&engine, "tests/experiments/empty.qml", ".");
-    REQUIRE( c1->isError() );
+    tie(comp, obj) = load_experiment(&engine, "tests/experiments/empty.qml", ".");
+    REQUIRE( comp->isError() );
+    REQUIRE( obj == nullptr );
+    delete obj;
 
 
-    auto c2 = load_experiment(&engine, "tests/experiments/nop.qml", ".");
-    if (c2->isError())
-      for (auto& err : c2->errors())
+    tie(comp, obj) = load_experiment(&engine, "tests/experiments/nop.qml", ".");
+    if (comp->isError())
+      for (auto& err : comp->errors())
 	qWarning() << err;
-    REQUIRE( ! c2->isError() );
+    REQUIRE( ! comp->isError() );
+    REQUIRE( obj != NULL );
+    delete obj;
   }
 }

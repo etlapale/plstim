@@ -1,4 +1,4 @@
-// lib/experiment.cc – QML experiment loader
+// lib/experiment.cc – Experiment loader
 //
 // Copyright © 2012–2015 University of California, Irvine
 // Licensed under the Simplified BSD License.
@@ -8,8 +8,9 @@
 namespace plstim
 {
 
-QQmlComponent* load_experiment(QQmlEngine* engine,
-			       const QString& path, const QString& base_dir)
+std::pair<QQmlComponent*,QObject*> load_experiment(QQmlEngine* engine,
+						   const QString& path,
+						   const QString& base_dir)
 {
   qDebug() << "Trying to load" << path << "from" << base_dir;
   
@@ -22,10 +23,22 @@ QQmlComponent* load_experiment(QQmlEngine* engine,
   return load_experiment(engine, QUrl::fromLocalFile(file_info.filePath()));
 }
 
-QQmlComponent* load_experiment(QQmlEngine* engine, const QUrl& url)
+std::pair<QQmlComponent*,QObject*> load_experiment(QQmlEngine* engine,
+						   const QUrl& url)
 {
+  using std::make_pair;
+  
+  // Load the experiment
   auto comp = new QQmlComponent(engine, url);
-  return comp;
+  if (comp->isError())
+    return make_pair(comp, nullptr);
+
+  // Instanciate the component
+  auto xp = comp->create();
+  if (xp == nullptr || comp->isError())
+    return make_pair(comp, nullptr);
+  
+  return make_pair(comp,xp);
 }
 
 } // namespace plstim

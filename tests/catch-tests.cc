@@ -5,6 +5,7 @@
 #include <QtQml>
 
 #include "../lib/experiment.h"
+#include "../lib/utils.h"
 
 int main(int argc, char* const argv[] )
 {
@@ -16,7 +17,7 @@ int main(int argc, char* const argv[] )
 
   QCoreApplication app(argc, const_cast<char**>(argv));
 
-  qmlRegisterType<plstim::Experiment2> ("PlStim", 1, 0, "Experiment");
+  plstim::initialise();
   
   return session.run();
 }
