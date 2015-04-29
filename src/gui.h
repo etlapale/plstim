@@ -6,25 +6,42 @@
 #pragma once
 
 #include <QtQuick>
-#include "engine.h"
+#include "../lib/engine.h"
+#include "stimwindow.h"
 
 
 namespace plstim
 {
+  
 class GUI : public QObject
 {
-    Q_OBJECT
+  Q_OBJECT
 public:
-    GUI (const QUrl& uipath);
-    void loadExperiment (const QString& path);
 
-    plstim::Engine* engine ()
-    { return &m_engine; }
+  /// Screen on which to display the stimuli.
+  static QScreen* displayScreen();
+  
+  GUI(const QUrl& uipath);
+  virtual ~GUI();
+  
+  void loadExperiment(const QString& path);
+
+  plstim::Engine* engine()
+  { return m_engine; }
+  
 protected:
-    QQmlApplicationEngine m_ui_engine;
-    plstim::Engine m_engine;
-    QStringList m_subjectList;
+  QQmlApplicationEngine m_ui_engine;
+  plstim::Engine* m_engine;
+  StimWindow* m_displayer;
+  QStringList m_subjectList;
+			   
+			     
 protected slots:
-    void subjectSelected (int index);
+  void subjectSelected (int index);
 };
+ 
 }
+
+// Local Variables:
+// mode: c++
+// End:

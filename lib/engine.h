@@ -1,4 +1,4 @@
-// src/engine.h – Experiment engine
+// lib/engine.h – Experiment engine
 //
 // Copyright © 2012–2015 University of California, Irvine
 // Licensed under the Simplified BSD License.
@@ -23,12 +23,10 @@
 #include "powermate.h"
 #endif // HAVE_POWERMATE
 
-#include "../lib/qmltypes.h"
-#include "../lib/setup.h"
-#include "../lib/utils.h"
-
-#include "qtypes.h"
-#include "stimwindow.h"
+#include "displayer.h"
+#include "qmltypes.h"
+#include "setup.h"
+#include "utils.h"
 
 
 namespace plstim
@@ -49,8 +47,8 @@ public:
   { return m_settings; }
 
 protected:
-  /// Stimulus OpenGL window
-  StimWindow* stim;
+  /// Stimulus displayer
+  Displayer* m_displayer;
   
   QMetaObject::Connection m_exposed_conn;
   
@@ -92,7 +90,7 @@ protected:
   
 public:
   
-  Engine();
+  Engine(Displayer* displayer);
   
   virtual ~Engine();
   
@@ -115,6 +113,8 @@ public slots:
   void nextPage(Page* wantedPage=nullptr);
   
   Error* error(const QString& msg, const QString& description="");
+
+  void onDisplayerExposed();
   
 public:
   void run_trial();
@@ -150,8 +150,6 @@ public:
     emit subjectChanged (name);
   }
   
-  static QScreen* displayScreen();
-				  
 public slots:
   
   /**

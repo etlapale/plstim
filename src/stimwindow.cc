@@ -61,10 +61,6 @@ StimWindow::StimWindow (QScreen* scr)
             });
 }
 
-StimWindow::~StimWindow ()
-{
-}
-
 void
 StimWindow::setupOpenGL ()
 {
@@ -512,8 +508,7 @@ StimWindow::render ()
     //qDebug () << glGetError ();
 }
 
-void
-StimWindow::renderNow ()
+void StimWindow::renderNow()
 {
   if (! m_opengl_initialized)
     return;
@@ -528,6 +523,32 @@ StimWindow::renderNow ()
     render ();
     m_context->swapBuffers (this);
     m_context->doneCurrent ();
+}
+
+void StimWindow::begin()
+{
+  auto screen = this->screen();
+  auto geom = screen->geometry ();
+  setPosition (geom.x (), geom.y ());
+  
+  resize (geom.width (), geom.height ());
+  showFullScreen ();
+}
+
+void StimWindow::beginInline()
+{
+  resize(tex_width, tex_height);
+  show();
+}
+
+void StimWindow::end()
+{
+  hide();
+}
+
+QScreen* StimWindow::displayScreen()
+{
+  return screen();
 }
 
 // vim: sw=4

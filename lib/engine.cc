@@ -1,4 +1,4 @@
-// src/engine.cc – Experiment engine
+// lib/engine.cc – Experiment engine
 //
 // Copyright © 2012–2015 University of California, Irvine
 // Licensed under the Simplified BSD License.
@@ -14,7 +14,7 @@ using namespace plstim;
 
 #include <QtCore>
 #include <QHostInfo>
-#include <QtQuick>
+//#include <QtQuick>
 
 using namespace H5;
 
@@ -50,13 +50,13 @@ Engine::paintPage(Page* page, QImage& img, QPainter& painter)
     painter.end ();
     
     //img.save (QString ("page-") + page->name () + ".png");
-    stim->addFixedFrame (page->name (), img);
+    m_displayer->addFixedFrame(page->name(), img);
   }
 
   // Multiple frames
   else {
     //timer.start ();
-    stim->deleteAnimatedFrames (page->name ());
+    m_displayer->deleteAnimatedFrames(page->name());
     //qDebug () << "deleting unamed took: " << timer.elapsed () << " milliseconds" << endl;
     //timer.start ();
 
@@ -74,7 +74,7 @@ Engine::paintPage(Page* page, QImage& img, QPainter& painter)
 
       painter.end ();
 
-      stim->addAnimatedFrame (page->name (), img);
+      m_displayer->addAnimatedFrame(page->name(), img);
     }
     //qDebug () << "generating frames took: " << timer.elapsed () << " milliseconds" << endl;
   }
@@ -196,10 +196,10 @@ Engine::show_page (int index)
 #endif // HAVE_EYELINK
 
   if (page->animated ()) {
-    stim->showAnimatedFrames (page->name ());
+    m_displayer->showAnimatedFrames(page->name());
   }
   else {
-    stim->showFixedFrame (page->name ());
+    m_displayer->showFixedFrame(page->name());
   }
 
   current_page = index;
@@ -457,7 +457,7 @@ Engine::endSession ()
     hf->flush (H5F_SCOPE_GLOBAL);	// Store everything on file
   }
   current_page = -1;
-  stim->hide ();
+  m_displayer->end();
   setRunning (false);
 }
 
@@ -500,7 +500,7 @@ Engine::unloadExperiment ()
     hf = nullptr;
   }
 
-  stim->clear ();
+  m_displayer->clear ();
 }
 
 bool
@@ -840,15 +840,18 @@ Engine::init_session ()
   }
 }
 
-void
-Engine::connectStimWindowExposed ()
+void Engine::connectStimWindowExposed()
 {
-  m_exposed_conn = connect (stim, &StimWindow::exposed, [this] () {
-      qDebug () << "Stim window exposed";
-      this->setRunning (true);
-      this->run_trial ();
-      disconnect (m_exposed_conn);
-    });
+  m_exposed_conn = connect(dynamic_cast<QObject*>(m_displayer),
+			   SIGNAL(exposed), this, SLOT(onDisplayerExposed));
+}
+
+void Engine::onDisplayerExposed()
+{
+  qDebug () << "Stim window exposed";
+  this->setRunning (true);
+  this->run_trial ();
+  disconnect (m_exposed_conn);
 }
 
 void
@@ -858,6 +861,7 @@ Engine::runSession ()
   if (! m_experiment) return;
 
   init_session ();
+  
 #ifdef HAVE_EYELINK
   // Run the calibration (no need to wait OpenGL full screen)
   calibrate_eyelink ();
@@ -866,14 +870,8 @@ Engine::runSession ()
   start_recording (1, 1, 1, 1);
 #endif // HAVE_EYELINK
 
-  // Put at the right position
-  auto screen = stim->screen ();
-  auto geom = screen->geometry ();
-  stim->setPosition (geom.x (), geom.y ());
-  stim->resize (geom.width (), geom.height ());
-  // Show in full screen
-  stim->showFullScreen ();
   connectStimWindowExposed ();
+  m_displayer->begin();
 }
 
 void
@@ -883,11 +881,9 @@ Engine::runSessionInline ()
   if (! m_experiment) return;
 
   init_session ();
-  int tex_size = m_experiment->textureSize ();
-  stim->resize (tex_size, tex_size);
 
-  stim->show ();
   connectStimWindowExposed ();
+  m_displayer->beginInline();
 }
 
 void
@@ -907,11 +903,12 @@ Engine::about_to_quit ()
   }
 }
 
-Engine::Engine ()
-  : save_setup (false),
-    trial_record (nullptr),
-    record_size (0),
-    hf (nullptr)
+Engine::Engine (Displayer* displayer)
+  : m_displayer(displayer)
+  , save_setup (false)
+  , trial_record (nullptr)
+  , record_size (0)
+  , hf (nullptr)
 {
   plstim::initialise ();
 
@@ -942,11 +939,9 @@ Engine::Engine ()
 	       << Qt::Key_Space;
         
   // Search for a display screen
-  auto screen = Engine::displayScreen ();
-
-  stim = new StimWindow (screen);
-  connect (stim, &StimWindow::keyPressed,
-	   this, &Engine::stimKeyPressed);
+  // TODO
+  //connect (stim, &StimWindow::keyPressed,
+  //this, &Engine::stimKeyPressed);
 #ifdef HAVE_POWERMATE
   connect (stim, &StimWindow::powerMateRotation,
 	   this, &Engine::powerMateRotation);
@@ -972,7 +967,10 @@ Engine::Engine ()
     qDebug () << "creating a new setup for" << hostname;
 
     // Update setup with screen geometry
+
+    auto screen = m_displayer->displayScreen();
     auto setupName = hostname + "_" + screen->name ();
+    
     m_settings->beginGroup (QString ("setups/%1").arg (setupName));
     m_settings->setValue ("res_x", screen->geometry ().width ());
     m_settings->setValue ("res_y", screen->geometry ().height ());
@@ -1187,7 +1185,7 @@ Engine::setup_updated ()
     m_experiment->setTextureSize (tex_size);
 
     // Notify the GLWidget of a new texture size
-    stim->setTextureSize (tex_size, tex_size);
+    m_displayer->setTextureSize (tex_size, tex_size);
 
     // Notify of setup changes
     emit m_experiment->setupUpdated ();
@@ -1218,7 +1216,6 @@ Engine::setup_updated ()
 Engine::~Engine ()
 {
   delete m_settings;
-  delete stim;
 }
 
 void
@@ -1245,21 +1242,4 @@ Engine::loadSetup (const QString& setupName)
   m_settings->setValue ("lastSetup", setupName);
 
   setup_updated ();
-}
-
-QScreen*
-Engine::displayScreen ()
-{
-  auto primaryScreen = QGuiApplication::primaryScreen ();
-
-  // Search for a second screen
-  auto screens = QGuiApplication::screens ();
-  for (int i = 0; i < screens.size (); i++) {
-    auto screen = screens.at (i);
-    if (screen != primaryScreen)
-      return screen;
-  }
-
-  // No other screen found
-  return primaryScreen;
 }

@@ -12,54 +12,64 @@
 #include "powermate.h"
 #endif // HAVE_POWERMATE
 
+#include "../lib/displayer.h"
+
 namespace plstim
 {
-class StimWindow : public QWindow, protected QOpenGLFunctions_3_2_Core
+class StimWindow : public QWindow, public Displayer,
+		   protected QOpenGLFunctions_3_2_Core
 {
-    Q_OBJECT
+  Q_OBJECT
 public:
-    explicit StimWindow (QScreen* scr=nullptr);
-    ~StimWindow ();
-    void addFixedFrame (const QString& name, const QImage& img);
-    void showFixedFrame (const QString& name);
-    void addAnimatedFrame (const QString& name, const QImage& img);
-    void showAnimatedFrames (const QString& name);
-    void deleteAnimatedFrames (const QString& name);
-    void render ();
-    void setTextureSize (int twidth, int theight);
-    /// Delete everything created for this stimulus window
-    void clear ();
-public slots:
-    void renderNow ();
-    void updateShaders ();
+  explicit StimWindow (QScreen* scr=nullptr);
+
+  // Overrides from Displayer
+  virtual void addFixedFrame (const QString& name, const QImage& img) override;
+  virtual void showFixedFrame (const QString& name) override;
+  virtual void addAnimatedFrame (const QString& name, const QImage& img) override;
+  virtual void showAnimatedFrames (const QString& name) override;
+  virtual void deleteAnimatedFrames (const QString& name) override;
+  virtual void setTextureSize (int twidth, int theight) override;
+  virtual void clear () override;
+  virtual void begin() override;
+  virtual void beginInline() override;
+  virtual void end() override;
+  virtual QScreen* displayScreen() override;
 signals:
-    void exposed ();
-    void keyPressed (QKeyEvent* evt);
+  void exposed() override;
+  
+public:
+  void render ();
+public slots:
+  void renderNow ();
+  void updateShaders ();
+signals:
+  void keyPressed (QKeyEvent* evt);
 #ifdef HAVE_POWERMATE
-    void powerMateRotation (PowerMateEvent* evt);
-    void powerMateButtonPressed (PowerMateEvent* evt);
-    void powerMateButtonReleased (PowerMateEvent* evt);
+  void powerMateRotation (PowerMateEvent* evt);
+  void powerMateButtonPressed (PowerMateEvent* evt);
+  void powerMateButtonReleased (PowerMateEvent* evt);
 #endif // HAVE_POWERMATE
 protected:
-    virtual bool event (QEvent* evt) override;
-    virtual void exposeEvent (QExposeEvent* evt) override;
-    virtual void resizeEvent (QResizeEvent* evt) override;
-    virtual void keyPressEvent (QKeyEvent* evt) override;
+  virtual bool event (QEvent* evt) override;
+  virtual void exposeEvent (QExposeEvent* evt) override;
+  virtual void resizeEvent (QResizeEvent* evt) override;
+  virtual void keyPressEvent (QKeyEvent* evt) override;
 
-    void setupOpenGL ();
+  void setupOpenGL ();
 private:
-    QOpenGLContext* m_context;
-    QMap<QString,QOpenGLTexture*> m_fixedFrames;
-    QMap<QString,QVector<QOpenGLTexture*>> m_animatedFrames;
-    QOpenGLShaderProgram* m_program;
-    QOpenGLShader* m_vshader;
-    int tex_width;
-    int tex_height;
-    GLfloat vertices[12];
-    int m_texloc;
-    QOpenGLTexture* m_currentFrame;
-    GLuint m_vao;
-    GLuint m_vbo;
+  QOpenGLContext* m_context;
+  QMap<QString,QOpenGLTexture*> m_fixedFrames;
+  QMap<QString,QVector<QOpenGLTexture*>> m_animatedFrames;
+  QOpenGLShaderProgram* m_program;
+  QOpenGLShader* m_vshader;
+  int tex_width;
+  int tex_height;
+  GLfloat vertices[12];
+  int m_texloc;
+  QOpenGLTexture* m_currentFrame;
+  GLuint m_vao;
+  GLuint m_vbo;
   bool m_opengl_initialized = false;
 };
 } // namespace plstim

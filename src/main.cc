@@ -13,8 +13,6 @@
 #include "server.h"
 #endif // WITH_NETWORK
 
-#include "qtypes.h"
-
 using namespace plstim;
 
 

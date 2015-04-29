@@ -54,7 +54,7 @@ endforeach ()
 set (CMAKE_AUTOMOC ON)
 
 # Library
-set (libplstim_src lib/qmltypes.cc lib/setup.cc lib/utils.cc)
+set (libplstim_src lib/engine.cc lib/qmltypes.cc lib/setup.cc lib/utils.cc lib/displayer.cc)
 add_library (libplstim ${libplstim_src})
 set_target_properties (libplstim PROPERTIES OUTPUT_NAME plstim)
 qt5_use_modules (libplstim Core Qml Gui)
@@ -63,16 +63,16 @@ qt5_use_modules (libplstim Core Qml Gui)
 file (GLOB CATCH_SRC tests/test-*.cc)
 add_executable (plstim-tests EXCLUDE_FROM_ALL tests/catch-tests.cc ${CATCH_SRC})
 qt5_use_modules (plstim-tests Core Qml)
-target_link_libraries (plstim-tests libplstim)
+target_link_libraries (plstim-tests libplstim ${HDF5_LIBRARIES})
 add_custom_target (check)
 add_dependencies (check plstim-tests)
 add_custom_command (TARGET check POST_BUILD COMMAND plstim-tests)
 
-# Main program
-set (plstim_src src/engine.cc src/stimwindow.cc src/gui.cc src/qtypes.cc src/main.cc ${eyelink_src})
+# GUI program
+set (plstim_src src/stimwindow.cc src/gui.cc src/main.cc ${eyelink_src})
 qt5_add_resources (plstim_qrc plstim.qrc)
 add_executable (plstim ${plstim_src} ${plstim_qrc})
 qt5_use_modules (plstim Core Gui Network Qml Quick ${eyelink_qt_modules})
-target_link_libraries (plstim ${HDF5_LIBRARIES} ${OPENGL_LIBRARIES} ${EYELINK_LIBRARIES} libplstim)
+target_link_libraries (plstim libplstim ${HDF5_LIBRARIES} ${OPENGL_LIBRARIES} ${EYELINK_LIBRARIES})
 
 # vim: sw=2
