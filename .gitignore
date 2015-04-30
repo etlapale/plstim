@@ -37,3 +37,4 @@ lib*.a
 images/*.png
 plstim-tests
 tests/catch.hpp
+doc/build
