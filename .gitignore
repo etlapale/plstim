@@ -38,3 +38,4 @@ images/*.png
 plstim-tests
 tests/catch.hpp
 doc/build
+make.bat
