@@ -181,6 +181,9 @@ protected:
   void savePageParameter(const QString& pageTitle,
 			 const QString& paramName,
 			 int paramValue);
+  
+  /// Called when the QML experiment is ready to be created.
+  void experimentReady();
 					 
 protected slots:
   void loadSetup(const QString& setupName);

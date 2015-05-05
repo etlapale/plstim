@@ -578,6 +578,16 @@ void Engine::loadExperiment(const QByteArray& ba, const QUrl& baseUrl)
 
   // Load the experiment
   m_component = new QQmlComponent(&m_engine, url);
+  connect(m_component, &QQmlComponent::statusChanged,
+	  [this](QQmlComponent::Status status) {
+	    qDebug() << "status changed to: " << status;
+	    if (status == QQmlComponent::Ready)
+	      experimentReady();
+	  });
+}
+
+void Engine::experimentReady()
+{
   if (m_component->isError()) {
     error("could not load the QML experiment");
     unloadExperiment();
