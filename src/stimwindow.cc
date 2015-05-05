@@ -45,7 +45,7 @@ StimWindow::StimWindow (QScreen* scr)
     // We need at least OpenGL 3.0
     // TODO: investigate why we cannot get less than 3.2
     fmt.setMajorVersion (3);
-    fmt.setMinorVersion (2);
+    fmt.setMinorVersion (0);
     fmt.setProfile(QSurfaceFormat::CoreProfile);
     setFormat (fmt);
 

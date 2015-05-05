@@ -6,7 +6,7 @@
 #pragma once
 
 #include <QtGui>
-#include <QOpenGLFunctions_3_2_Core>
+#include <QOpenGLFunctions_3_0>
 
 #ifdef HAVE_POWERMATE
 #include "powermate.h"
@@ -17,7 +17,7 @@
 namespace plstim
 {
 class StimWindow : public QWindow, public Displayer,
-		   protected QOpenGLFunctions_3_2_Core
+		   protected QOpenGLFunctions_3_0
 {
   Q_OBJECT
 public:
