@@ -31,8 +31,10 @@ int main(int argc, char* argv[])
   
   // Load an experiment if given as command line argument
   auto args = app.arguments();
-  if (args.size () == 2)
-    gui.loadExperiment(args.at(1));
+  if (args.size () == 2) {
+    auto path = args.at(1);
+    gui.loadExperiment(QUrl::fromLocalFile(path));
+  }
   
 #ifdef HAVE_POWERMATE
   // Watch for PowerMate events in a background thread

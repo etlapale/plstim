@@ -98,7 +98,7 @@ public:
   QList<QObject*> errors()
   { return m_errors; }
   
-  bool loadExperiment(const QString& path);
+  bool loadExperiment(const QUrl& url);
   
   QJsonDocument& experimentDescription()
   { return m_json; }

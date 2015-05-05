@@ -16,6 +16,7 @@ GUI::GUI (const QUrl& uiUrl)
   m_engine = new Engine(m_displayer);
   
   // Load the QtQuick interface
+  m_ui_engine.rootContext()->setContextProperty ("gui", QVariant::fromValue (static_cast<QObject*>(this)));
   m_ui_engine.rootContext ()->setContextProperty ("xp",
 						  QVariant::fromValue (static_cast<QObject*> (nullptr)));
   m_ui_engine.rootContext ()->setContextProperty ("engine",
@@ -121,11 +122,11 @@ setChildProperty (QObject* root, const QString& childName,
 }
 
 void
-GUI::loadExperiment(const QString& path)
+GUI::loadExperiment(const QUrl& url)
 {
-  qDebug () << "Loading experiment from " << path;
+  qDebug () << "Loading experiment from " << url;
 
-  m_engine->loadExperiment (path);
+  m_engine->loadExperiment (url); // TODO
   auto xp = m_engine->experiment ();
   QObject* topLevel = m_ui_engine.rootObjects ().value (0);
 

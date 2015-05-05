@@ -14,8 +14,24 @@ ApplicationWindow {
     property bool loaded : false
     property bool running : false
 
+    // Experiment selector
+    FileDialog {
+        id: fileDialog
+        title: "Select an experiment file"
+        nameFilters: ["Experiment files (*.json)", "All files (*)"]
+        selectedNameFilter: "Experiment files (*.json)"
+        onAccepted : {
+            gui.loadExperiment(fileUrl);
+        }
+    }
+
     toolBar : ToolBar {
         RowLayout {
+            ToolButton {
+                text: "Load"
+                visible: !loaded
+                onClicked: fileDialog.open()
+            }
             ToolButton {
                 objectName : "runButton"
                 text : "Run"

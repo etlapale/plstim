@@ -507,13 +507,14 @@ Engine::unloadExperiment ()
 }
 
 bool
-Engine::loadExperiment (const QString& path)
+Engine::loadExperiment (const QUrl& xpurl)
 {
   // Cleanup any existing experiment
   if (m_experiment_loaded)
     unloadExperiment();
 
   // Canonicalise the experiment description path
+  auto path = xpurl.toLocalFile();
   QFileInfo fileinfo (path);
   
   // Get the experiment short name

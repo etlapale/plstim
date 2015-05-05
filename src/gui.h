@@ -28,8 +28,8 @@ public:
   { return m_engine; }
 
 public slots:
-  /// Load the given experiment from local file.
-  void loadExperiment(const QString& path);
+  /// Load the given experiment from an URL.
+  void loadExperiment(const QUrl& url);
   
 protected:
   QQmlApplicationEngine m_ui_engine;
