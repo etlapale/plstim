@@ -1,0 +1,3 @@
+[submodule "doc/source/poco-sphinx"]
+	path = doc/source/poco-sphinx
+	url = https://git.atelo.org/etlapale/poco-sphinx.git

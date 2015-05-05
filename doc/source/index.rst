@@ -42,7 +42,7 @@ Download
 |
 `archives <http://emilien.tlapale.com/data/plstim/>`_
 
-`Project website <http://git.atelo.org/etlapale/plstim>`_
+`Project website <https://git.atelo.org/etlapale/plstim>`_
 
 .. _Qt5: http://qt.io
 .. _QML: http://doc.qt.io/qt-5/qmlapplications.html
