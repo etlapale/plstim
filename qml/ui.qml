@@ -1,5 +1,6 @@
-import QtQuick 2.0
+import QtQuick 2.2
 import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 
@@ -10,6 +11,7 @@ ApplicationWindow {
     height : 800
 
     property bool advanced : false
+    property bool loaded : false
     property bool running : false
 
     toolBar : ToolBar {
@@ -17,13 +19,13 @@ ApplicationWindow {
             ToolButton {
                 objectName : "runButton"
                 text : "Run"
-                visible : !running
+                visible : !running && loaded
                 enabled : advanced || subjectList.currentIndex != 0
             }
             ToolButton {
                 objectName : "runInlineButton"
                 text : "Run inline"
-                visible : advanced && !running
+                visible : advanced && !running && loaded
             }
             ToolButton {
                 objectName : "abortButton"

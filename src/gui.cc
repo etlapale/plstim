@@ -81,9 +81,14 @@ GUI::GUI (const QUrl& uiUrl)
     });
     
   // Dynamically show action buttons
-  QObject::connect (m_engine, &Engine::runningChanged, [topLevel] (bool running) {
-      topLevel->setProperty ("running", running);
-    });
+  QObject::connect(m_engine, &Engine::runningChanged,
+		   [topLevel] (bool running) {
+		     topLevel->setProperty ("running", running);
+		   });
+  QObject::connect(m_engine, &Engine::experimentLoadedChanged,
+		   [topLevel] (bool loaded) {
+		     topLevel->setProperty ("loaded", loaded);
+		   });
 
   // Display error messages
   QObject::connect (m_engine, &Engine::errorsChanged,
@@ -116,7 +121,7 @@ setChildProperty (QObject* root, const QString& childName,
 }
 
 void
-GUI::loadExperiment (const QString& path)
+GUI::loadExperiment(const QString& path)
 {
   qDebug () << "Loading experiment from " << path;
 

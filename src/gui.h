@@ -23,11 +23,13 @@ public:
   
   GUI(const QUrl& uipath);
   virtual ~GUI();
-  
-  void loadExperiment(const QString& path);
 
   plstim::Engine* engine()
   { return m_engine; }
+
+public slots:
+  /// Load the given experiment from local file.
+  void loadExperiment(const QString& path);
   
 protected:
   QQmlApplicationEngine m_ui_engine;

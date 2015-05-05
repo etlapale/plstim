@@ -500,6 +500,9 @@ Engine::unloadExperiment ()
     hf = nullptr;
   }
 
+  m_experiment_loaded = false;
+  emit experimentLoadedChanged(false);
+  
   m_displayer->clear ();
 }
 
@@ -507,7 +510,7 @@ bool
 Engine::loadExperiment (const QString& path)
 {
   // Cleanup any existing experiment
-  if (! xp_name.isEmpty())
+  if (m_experiment_loaded)
     unloadExperiment();
 
   // Canonicalise the experiment description path
@@ -710,6 +713,9 @@ Engine::loadExperiment (const QString& path)
 
   // Initialise the experiment
   setup_updated ();
+
+  m_experiment_loaded = true;
+  emit experimentLoadedChanged(true);
 
   return true;
 }

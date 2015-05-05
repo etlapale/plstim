@@ -35,6 +35,7 @@ class Engine : public QObject
 {
   Q_OBJECT
   Q_PROPERTY(bool sessionRunning READ isRunning WRITE setRunning NOTIFY runningChanged)
+  Q_PROPERTY(bool experimentLoaded READ isExperimentLoaded NOTIFY experimentLoadedChanged)
   Q_PROPERTY(int currentTrial READ currentTrial WRITE setCurrentTrial NOTIFY currentTrialChanged)
   Q_PROPERTY(int eta READ eta WRITE setEta NOTIFY etaChanged)
   Q_PROPERTY(QString subjectName READ subjectName WRITE setSubjectName NOTIFY subjectChanged)
@@ -129,6 +130,9 @@ public:
     m_running = running;
     emit runningChanged (running);
   }
+
+  bool isExperimentLoaded() const
+  { return m_experiment_loaded; }
   
   int currentTrial() const
   { return m_currentTrial; }
@@ -191,6 +195,7 @@ public:
   
 protected:
   bool m_running;
+  bool m_experiment_loaded = false;
   int m_currentTrial;
   bool save_setup;
   QString m_subjectName;
@@ -269,6 +274,7 @@ public:
 signals:
   void errorsChanged();
   void runningChanged(bool running);
+  void experimentLoadedChanged(bool loaded);
   void currentTrialChanged(int trial);
   void etaChanged(int eta);
   void subjectChanged(const QString& subject);
