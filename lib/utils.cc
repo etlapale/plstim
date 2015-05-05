@@ -79,4 +79,25 @@ stringToKey (const QString& s)
     return 0;
 }
 
+QUrl urlFromUserInput(const QString& input, const QUrl& baseUrl)
+{
+  // Check if we have an URL
+  if (input.startsWith("file:", Qt::CaseInsensitive)
+      || input.startsWith("https:", Qt::CaseInsensitive)
+      || input.startsWith("http:", Qt::CaseInsensitive)
+      || input.startsWith("ftp:", Qt::CaseInsensitive))
+    return QUrl::fromUserInput(input);
+  // Try a relative URL
+  else if (! baseUrl.isEmpty()) {
+    return baseUrl.resolved(QUrl(input));
+  }
+  // Try a local file otherwise
+  else {
+    QFileInfo fileInfo(input);
+    //if (! fileInfo.isAbsolute() && ! baseDir.isEmpty())
+    //fileInfo.setFile(baseDir + QDir::separator() + fileInfo.filePath());
+    return QUrl::fromLocalFile(fileInfo.filePath());
+  }
+}
+
 } // namespace plstim

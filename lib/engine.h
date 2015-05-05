@@ -97,8 +97,11 @@ public:
   
   QList<QObject*> errors()
   { return m_errors; }
-  
-  bool loadExperiment(const QUrl& url);
+
+  /// Fetch and load a JSON experiment from an URL.
+  void loadExperiment(const QUrl& url);
+  /// Load a JSON experiment from a byte array.
+  void loadExperiment(const QByteArray& ba, const QUrl& baseUrl=QUrl());
   
   QJsonDocument& experimentDescription()
   { return m_json; }
@@ -217,6 +220,8 @@ protected:
   QQmlEngine m_engine;
   /// QML component for the current experiment
   QQmlComponent* m_component;
+
+  QNetworkAccessManager m_net_mgr;
 
 public:
   /// Currently loaded experiment

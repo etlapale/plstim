@@ -506,40 +506,51 @@ Engine::unloadExperiment ()
   m_displayer->clear ();
 }
 
-bool
-Engine::loadExperiment (const QUrl& xpurl)
+void Engine::loadExperiment(const QUrl& url)
 {
   // Cleanup any existing experiment
   if (m_experiment_loaded)
     unloadExperiment();
 
-  // Canonicalise the experiment description path
-  auto path = xpurl.toLocalFile();
-  QFileInfo fileinfo (path);
-  
   // Get the experiment short name
-  xp_name = fileinfo.fileName ();
+  xp_name = url.fileName();
   if (xp_name.endsWith (".json"))
-    xp_name = xp_name.left (xp_name.size () - 5);
+    xp_name = xp_name.left(xp_name.size() - 5);
 
   // Load the JSON description of the experiment
-  QFile f (path);
-  f.open (QIODevice::ReadOnly);
-  QByteArray ba = f.readAll ();
-  f.close ();
+  if (url.isLocalFile()) {
+    QFileInfo fileInfo(url.toLocalFile());
+    QFile f(fileInfo.filePath());
+    f.open(QIODevice::ReadOnly);
+    loadExperiment(f.readAll(), fileInfo.path());
+  }
+  else {
+    auto reply = m_net_mgr.get(QNetworkRequest(url));
+    connect(reply, &QNetworkReply::finished, [this,reply,url]() {
+	if (reply->error() == QNetworkReply::NoError)
+	  loadExperiment(reply->readAll(), url);
+	else
+	  qWarning() << "could not fetch the JSON experiment";
+	reply->deleteLater();
+      });
+  }
+}
+
+void Engine::loadExperiment(const QByteArray& ba, const QUrl& baseUrl)
+{
   QJsonParseError jerr;
   m_json = QJsonDocument::fromJson (ba, &jerr);
   if (jerr.error != QJsonParseError::NoError) {
     error ("Could not parse the JSON description",
 	   jerr.errorString ());
     unloadExperiment ();
-    return false;
+    return;
   }
   if (! m_json.isObject ()) {
     error ("Invalid JSON description",
 	   "JSON root is not an object");
     unloadExperiment ();
-    return false;
+    return;
   }
   QJsonObject jroot = m_json.object ();
 
@@ -548,41 +559,36 @@ Engine::loadExperiment (const QUrl& xpurl)
   if (! runBefore.isEmpty ()) {
     qDebug () << "Running command" << runBefore;
     QProcess proc;
-    proc.setWorkingDirectory (fileinfo.path ());
+    //proc.setWorkingDirectory(fileinfo.path ());
     proc.start (runBefore);
     proc.waitForFinished ();
     if (proc.exitStatus () == QProcess::CrashExit) {
       error ("Failed RunBefore", "Process crashed");
-      return false;
+      return;
     }
     if (proc.exitCode () > 0) {
       error ("Failed RunBefore",
              QString ("Process exited with error code %1").arg (proc.exitCode ()));
-      return false;
+      return;
     }
   }
 
-  QFileInfo file_info(jroot["Source"].toString());
-  // Use absolute paths
-  if (! file_info.isAbsolute())
-    file_info.setFile (fileinfo.path()
-		       + QDir::separator() + file_info.filePath());
-  // Convert the file to an URL
-  auto url = QUrl::fromLocalFile(file_info.filePath());
+  auto url = plstim::urlFromUserInput(jroot["Source"].toString(), baseUrl);
+  qDebug() << "loading QML experiment from" << url;
 
   // Load the experiment
   m_component = new QQmlComponent(&m_engine, url);
   if (m_component->isError()) {
     error("could not load the QML experiment");
     unloadExperiment();
-    return false;
+    return;
   }
     // Instanciate the component
   auto xp = m_component->create();
   if (xp == nullptr || m_component->isError()) {
     error("could not instantiate QML experiment");
     unloadExperiment();
-    return false;
+    return;
   }
   
   // Make sure we have an Experiment
@@ -591,7 +597,7 @@ Engine::loadExperiment (const QUrl& xpurl)
     error("loaded QML file is not an Experiment");
     delete xp;
     unloadExperiment();
-    return false;
+    return;
   }
   
   m_experiment->setSetup (&m_setup);
@@ -717,8 +723,6 @@ Engine::loadExperiment (const QUrl& xpurl)
 
   m_experiment_loaded = true;
   emit experimentLoadedChanged(true);
-
-  return true;
 }
 
 void

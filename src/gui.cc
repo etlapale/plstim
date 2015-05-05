@@ -126,7 +126,7 @@ GUI::loadExperiment(const QUrl& url)
 {
   qDebug () << "Loading experiment from " << url;
 
-  m_engine->loadExperiment (url); // TODO
+  m_engine->loadExperiment (url);
   auto xp = m_engine->experiment ();
   QObject* topLevel = m_ui_engine.rootObjects ().value (0);
 

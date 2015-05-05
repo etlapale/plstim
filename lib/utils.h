@@ -44,6 +44,7 @@ QString keyToString (int k);
 /// Convert a named key to a keycode
 int stringToKey (const QString& s);
 
+ QUrl urlFromUserInput(const QString& input, const QUrl& baseUrl=QUrl());
   
 } // namespace plstim
 

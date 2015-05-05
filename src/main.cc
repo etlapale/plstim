@@ -31,18 +31,8 @@ int main(int argc, char* argv[])
   
   // Load an experiment if given as command line argument
   auto args = app.arguments();
-  if (args.size() == 2) {
-    // Check if we have an URL
-    auto arg = args.at(1);
-    if (arg.startsWith("file:", Qt::CaseInsensitive)
-	|| arg.startsWith("https:", Qt::CaseInsensitive)
-	|| arg.startsWith("http:", Qt::CaseInsensitive)
-	|| arg.startsWith("ftp:", Qt::CaseInsensitive))
-      gui.loadExperiment(QUrl::fromUserInput(arg));
-    // Try a local file otherwise
-    else
-      gui.loadExperiment(QUrl::fromLocalFile(arg));
-  }
+  if (args.size() == 2)
+    gui.loadExperiment(plstim::urlFromUserInput(args.at(1)));
   
 #ifdef HAVE_POWERMATE
   // Watch for PowerMate events in a background thread
