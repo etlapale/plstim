@@ -1,4 +1,4 @@
-plstim
+Plstim
 ======
 
 Plstim is a Qt5_ and OpenGL program to create and run visual
@@ -8,7 +8,7 @@ Plstim allows users to define experiments as a succession of states,
 written in a JavaScript dialect, QML_, and take care of
 visual display, subject interaction and data collection.
 
-Necomi is released under the :doc:`Simplified BSD License <license>`.
+Plstim is released under the :doc:`Simplified BSD License <license>`.
 
 Screenshots
 -----------
@@ -42,7 +42,7 @@ Download
 |
 `archives <http://emilien.tlapale.com/data/plstim/>`_
 
-`Project website <https://git.atelo.org/etlapale/plstim>`_
+`Gitlab repository <https://git.atelo.org/etlapale/plstim>`_
 
 .. _Qt5: http://qt.io
 .. _QML: http://doc.qt.io/qt-5/qmlapplications.html

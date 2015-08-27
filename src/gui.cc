@@ -27,7 +27,7 @@ GUI::GUI (const QUrl& uiUrl)
 						  QVariant::fromValue (m_engine->errors ()));
   m_ui_engine.load (uiUrl);
   QObject* topLevel = m_ui_engine.rootObjects ().value (0);
-  QQuickWindow* win = qobject_cast<QQuickWindow*> (topLevel);
+  auto win = qobject_cast<QQuickWindow*> (topLevel);
   if (! win) {
     qCritical ("Root GUI item is not a window!");
     return;
